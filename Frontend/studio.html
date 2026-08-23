@@ -204,12 +204,16 @@
             position: absolute;
             top: 0;
             bottom: 0;
-            width: 2px;
+            width: 4px;
             background: theme('colors.primary');
             left: 50%;
             transform: translateX(-50%);
             cursor: ew-resize;
             z-index: 20;
+            /* Increase click target area */
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            background-clip: padding-box;
         }
         .split-slider-thumb::after {
             content: '';
@@ -306,20 +310,20 @@
                 <!-- Toolbar Overlay -->
                 <div class="absolute top-4 left-4 z-30 flex gap-2">
                     <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 p-1 flex gap-1 items-center">
-                        <button class="w-8 h-8 flex items-center justify-center bg-primary/20 text-primary border border-primary transition-colors hover:bg-primary/30" title="Raw SAR Baseline (T1)">
+                        <button id="view-t1" class="w-8 h-8 flex items-center justify-center bg-primary/20 text-primary border border-primary transition-colors hover:bg-primary/30" title="Raw SAR Baseline (T1)">
                             <span class="font-mono text-xs">T1</span>
                         </button>
-                        <button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="AI Change Mask (T2)">
+                        <button id="view-t2" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="AI Change Mask (T2)">
                             <span class="font-mono text-xs">T2</span>
                         </button>
                         <div class="w-px h-6 bg-white/10 mx-1"></div>
-                        <button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Confidence Heatmap">
+                        <button id="view-heatmap" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Confidence Heatmap">
                             <span class="material-symbols-outlined text-[18px]">local_fire_department</span>
                         </button>
-                        <button class="w-8 h-8 flex items-center justify-center text-error hover:bg-error/20 hover:text-error transition-colors" title="Binary Change Mask">
+                        <button id="view-mask" class="w-8 h-8 flex items-center justify-center text-[#ff453a] hover:bg-[#ff453a]/20 hover:text-[#ff453a] transition-colors" title="Binary Change Mask">
                             <span class="material-symbols-outlined text-[18px]">category</span>
                         </button>
-                        <button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="T2 + Overlay">
+                        <button id="view-overlay" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="T2 + Overlay">
                             <span class="material-symbols-outlined text-[18px]">layers_clear</span>
                         </button>
                     </div>
@@ -341,16 +345,26 @@
 
                 <!-- Imagery Container -->
                 <div class="relative w-full h-full flex-1 overflow-hidden" id="split-view-container">
+                    <!-- No Inference Overlay -->
+                    <div id="no-inference-overlay" class="absolute inset-0 z-50 flex items-center justify-center bg-[#0a0a0a]/90 backdrop-blur-md hidden">
+                        <div class="flex flex-col items-center gap-4 text-center">
+                            <span class="material-symbols-outlined text-[48px] text-[#ff453a]">warning</span>
+                            <h2 class="font-headline-md text-[#ff453a] uppercase tracking-widest">NO ACTIVE INFERENCE</h2>
+                            <p class="font-mono text-outline text-sm max-w-md">No valid SAR inference result found in memory. Please run live intelligence from the Explorer.</p>
+                            <a href="explorer.html" class="mt-4 px-6 py-2 bg-primary text-[#0a0a0a] font-ui-semibold uppercase tracking-widest hover:bg-primary-fixed-dim transition-colors">Go to Explorer</a>
+                        </div>
+                    </div>
+
                     <!-- Tactical Emerald State Outlines Map Overlay -->
                     <div class="absolute inset-0 z-20 pointer-events-none opacity-60" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\' preserveAspectRatio=\'none\'><path d=\'M10,20 Q30,10 50,30 T90,20 M20,40 Q40,60 70,50 T90,80 M10,80 Q30,70 50,90 T80,100\' stroke=\'%234edea3\' stroke-width=\'0.5\' fill=\'none\' vector-effect=\'non-scaling-stroke\' opacity=\'0.7\'/></svg>');"></div>
                     
                     <!-- T1 Image (Left) -->
-                    <div class="absolute inset-0 bg-cover bg-center grayscale" data-alt="Raw Baseline SAR Image" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDb5Uuf8yrJAyQKb4339QiqQX0jCvCd80MUEVua5-74oLDwIfgievKlxcSb2GjdCNB75ItRz1YDzeJV7eYUmQlHq05l5TEbrlfz6NHBK674x7lhh9EN_3LzExsE3yCPsJ697dohBylr_bRS40iJyebce_wj-d14qDnGDW2Qb4RBEEvzijsaAoKqDXgrjY7KDEmg1B28IEpW9OP-StVZcFH1rUomWfE2FOCXIjOM-M65qlcNEjdHLkeW')"></div>
+                    <div class="absolute inset-0 bg-cover bg-center grayscale" data-alt="Raw Baseline SAR Image" id="t1-image-bg" style=""></div>
                     
                     <!-- T2 Image (Right) with Clip -->
-                    <div class="absolute inset-0 bg-cover bg-center grayscale contrast-125" data-alt="Multi-temporal SAR Image" id="t2-image-clip" style="clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%); background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCyhJvY1uVmJcDpP2XSjOBD24-rb1R7BtiIQAs9HWeTgVq-fP_bqps777Ib1amr2OZDlT8vXPQXLh4ZetTiyWkET0_z9-HScG5eJ9gKnTVZXGhBa2vuLhxbZypxVOTLZK24FQadFoURxfx0LVTJ4xQ_WQnnBQ1hBT3tvwFBy_IHQ6aMcrBD4tq7UqOqJP9zIVQZFXopNqiQJGyLUaAV0-WrZhH6XinvW9HKetNRxpSM_t86Dy121NZ9')">
+                    <div class="absolute inset-0 bg-cover bg-center grayscale contrast-125" data-alt="Multi-temporal SAR Image" id="t2-image-clip" style="clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);">
                         <!-- Heatmap Overlay Simulation -->
-                        <div class="absolute inset-0 mix-blend-screen opacity-50 colormap-overlay" id="heatmap-overlay" style="background: linear-gradient(to top right, transparent, rgba(255,0,0,0.2), rgba(0,255,0,0.2)); filter: hue-rotate(0deg);"></div>
+                        <div class="absolute inset-0 mix-blend-screen opacity-50 colormap-overlay hidden" id="heatmap-overlay" style="background: linear-gradient(to top right, transparent, rgba(255,0,0,0.2), rgba(0,255,0,0.2)); filter: hue-rotate(0deg);"></div>
                     </div>
                     
                     <!-- Split Handle -->
@@ -380,12 +394,23 @@
                     <!-- Layer Selection -->
                     <div class="flex flex-col gap-2">
                         <label class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2">Active Layer</label>
-                        <select class="bg-surface border border-white/10 text-on-surface font-mono text-sm focus:border-primary focus:ring-1 focus:ring-primary p-2 w-full appearance-none rounded-none">
-                            <option>Raw SAR Baseline (T1)</option>
-                            <option selected="">AI Change Mask (T2)</option>
-                            <option>Confidence Heatmap</option>
-                            <option>Binary Change Mask</option>
+                        <select id="layer-select" class="bg-surface border border-white/10 text-on-surface font-mono text-sm focus:border-primary focus:ring-1 focus:ring-primary p-2 w-full appearance-none rounded-none">
+                            <option value="t1">Raw SAR Baseline (T1)</option>
+                            <option value="t2" selected="">AI Change Mask (T2)</option>
+                            <option value="heatmap">Confidence Heatmap</option>
+                            <option value="mask">Binary Change Mask</option>
+                            <option value="overlay">T2 + Overlay</option>
                         </select>
+                    </div>
+                    <!-- Inference Metrics -->
+                    <div class="flex flex-col gap-3">
+                        <label class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2">Inference Metrics</label>
+                        <div class="flex flex-col gap-2 font-mono text-xs text-outline">
+                            <div class="flex justify-between"><span class="uppercase">Threshold</span><span id="studio-threshold" class="text-on-surface">--</span></div>
+                            <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="studio-clusters" class="text-on-surface">--</span></div>
+                            <div class="flex justify-between"><span class="uppercase">Change %</span><span id="studio-change" class="text-primary font-bold">--</span></div>
+                            <div class="flex justify-between"><span class="uppercase">Changed Px</span><span id="studio-changed-px" class="text-primary font-bold">--</span></div>
+                        </div>
                     </div>
                     <!-- Adjustments -->
                     <div class="flex flex-col gap-4">
@@ -459,7 +484,111 @@
         </div>
     </footer>
 
+    <script src="assets/sar-store.js"></script>
     <script>
+        // Data Loading & Setup
+        document.addEventListener('DOMContentLoaded', async () => {
+            const metadata = SARStore.loadMetadata();
+            const previews = await SARStore.loadPreviews();
+            
+            if (!metadata || !previews || !previews.t1 || !previews.t2) {
+                document.getElementById('no-inference-overlay').classList.remove('hidden');
+                document.getElementById('split-slider').style.display = 'none';
+                return;
+            }
+
+            const t1Bg = document.getElementById('t1-image-bg');
+            const t2Clip = document.getElementById('t2-image-clip');
+            
+            t1Bg.style.backgroundImage = `url('${previews.t1}')`;
+            t2Clip.style.backgroundImage = `url('${previews.t2}')`;
+
+            // Populate Metrics
+            const fmtInt = (n) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString() : '--';
+            document.getElementById('studio-threshold').innerText = (metadata.threshold != null) ? metadata.threshold : '--';
+            document.getElementById('studio-clusters').innerText = (metadata.num_change_clusters != null) ? metadata.num_change_clusters : (Array.isArray(metadata.regions) ? metadata.regions.length : '--');
+            document.getElementById('studio-change').innerText = (typeof metadata.change_percentage === 'number') ? `${metadata.change_percentage}%` : '--';
+            document.getElementById('studio-changed-px').innerText = fmtInt(metadata.changed_pixels);
+
+            // Active Layer Logic
+            const layerSelect = document.getElementById('layer-select');
+            const heatmapOverlay = document.getElementById('heatmap-overlay');
+            
+            const btnT1 = document.getElementById('view-t1');
+            const btnT2 = document.getElementById('view-t2');
+            const btnHeatmap = document.getElementById('view-heatmap');
+            const btnMask = document.getElementById('view-mask');
+            const btnOverlay = document.getElementById('view-overlay');
+            
+            const buttons = {
+                't1': btnT1,
+                't2': btnT2,
+                'heatmap': btnHeatmap,
+                'mask': btnMask,
+                'overlay': btnOverlay
+            };
+
+            const setActiveLayer = (layer) => {
+                layerSelect.value = layer;
+                
+                // Reset button styles
+                Object.values(buttons).forEach(btn => {
+                    if(btn) {
+                        if (btn.id === 'view-mask') {
+                            btn.className = 'w-8 h-8 flex items-center justify-center text-[#ff453a] hover:bg-[#ff453a]/20 hover:text-[#ff453a] transition-colors';
+                        } else {
+                            btn.className = 'w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors';
+                        }
+                    }
+                });
+
+                // Set active button style
+                const activeBtn = buttons[layer];
+                if (activeBtn) {
+                    if (layer === 'mask') {
+                        activeBtn.className = 'w-8 h-8 flex items-center justify-center text-[#ff453a] border border-[#ff453a] bg-[#ff453a]/20 font-bold';
+                    } else {
+                        activeBtn.className = 'w-8 h-8 flex items-center justify-center bg-primary/20 text-primary border border-primary transition-colors hover:bg-primary/30';
+                    }
+                }
+
+                // Update imagery
+                if (layer === 't1') {
+                    t2Clip.style.backgroundImage = `url('${previews.t1}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 't2') {
+                    t2Clip.style.backgroundImage = `url('${previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'heatmap') {
+                    t2Clip.style.backgroundImage = `url('${previews.heatmap}')`;
+                    heatmapOverlay.classList.remove('hidden');
+                } else if (layer === 'mask') {
+                    t2Clip.style.backgroundImage = `url('${previews.mask}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'overlay') {
+                    t2Clip.style.backgroundImage = `url('${previews.overlay}')`;
+                    heatmapOverlay.classList.add('hidden');
+                }
+                
+                if (layer === 'mask') {
+                    t2Clip.style.imageRendering = 'pixelated';
+                } else {
+                    t2Clip.style.imageRendering = 'auto';
+                }
+            };
+
+            layerSelect.addEventListener('change', (e) => setActiveLayer(e.target.value));
+            
+            Object.keys(buttons).forEach(layer => {
+                if(buttons[layer]) {
+                    buttons[layer].addEventListener('click', () => setActiveLayer(layer));
+                }
+            });
+
+            // Initialize to T2 (split-view default)
+            setActiveLayer('t2');
+        });
+
         // Simple Split Slider Logic
         const container = document.getElementById('split-view-container');
         const slider = document.getElementById('split-slider');

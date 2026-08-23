@@ -222,7 +222,7 @@
         <div class="flex gap-4 items-center">
             <a href="telemetry.html" class="flex items-center gap-2 bg-primary/10 border border-primary/20 hover:border-primary/50 transition-all rounded-none px-3 py-1 font-mono text-xs text-primary" title="Live Telemetry Link">
                 <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                <span class="uppercase tracking-widest hidden lg:inline">Link Active: 100%</span>
+                <span class="uppercase tracking-widest hidden lg:inline">Link Active (UI DEMO)</span>
                 <span class="uppercase tracking-widest lg:hidden">Active</span>
             </a>
             <div class="flex gap-3">
@@ -238,27 +238,37 @@
 
     <!-- Main Content Area -->
     <main class="flex-1 pt-24 px-margin overflow-y-auto relative z-10 w-full max-w-[1920px] mx-auto pb-32">
-        <header class="mb-10 border-b border-outline/15 pb-4 flex flex-wrap justify-between items-end gap-4">
-            <div>
-                <h1 class="font-headline-lg text-headline-lg text-on-surface uppercase shadow-black drop-shadow-lg glitch-hover transition-all">RISAT-2B TELEMETRY HUB</h1>
-                <p class="font-accent-italic text-accent-italic text-on-surface-variant mt-2 max-w-2xl">Real-time health, link lock &amp; CUDA compute telemetry for NRSC SAR Processing Engines.</p>
+        <div id="no-inference-overlay" class="absolute inset-0 z-50 flex items-center justify-center bg-[#0a0a0a]/90 backdrop-blur-md hidden pointer-events-auto">
+            <div class="flex flex-col items-center gap-4 text-center">
+                <span class="material-symbols-outlined text-[48px] text-[#ff453a]">warning</span>
+                <h2 class="font-headline-md text-[#ff453a] uppercase tracking-widest">NO ACTIVE INFERENCE</h2>
+                <p class="font-mono text-outline text-sm max-w-md">No valid SAR inference result found in memory. Please run live intelligence from the Explorer.</p>
+                <a href="explorer.html" class="mt-4 px-6 py-2 bg-primary text-[#0a0a0a] font-ui-semibold uppercase tracking-widest hover:bg-primary-fixed-dim transition-colors">Go to Explorer</a>
             </div>
-            <div class="flex gap-3">
-                <a href="explorer.html" class="bg-primary text-[#0a0a0a] px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest hover:bg-primary-fixed-dim transition-all flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-[16px]">satellite_alt</span> Return to Explorer
-                </a>
-                <a href="studio.html" class="bg-surface-container-high border border-outline/30 text-on-surface hover:text-primary px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest transition-all flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-[16px]">view_in_ar</span> Open 3D Studio
-                </a>
-            </div>
-        </header>
+        </div>
 
-        <div class="layout-grid">
+        <div id="telemetry-content">
+            <header class="mb-10 border-b border-outline/15 pb-4 flex flex-wrap justify-between items-end gap-4">
+                <div>
+                    <h1 class="font-headline-lg text-headline-lg text-on-surface uppercase shadow-black drop-shadow-lg glitch-hover transition-all">RISAT-2B TELEMETRY HUB</h1>
+                    <p class="font-accent-italic text-accent-italic text-on-surface-variant mt-2 max-w-2xl">Real-time health, link lock &amp; CUDA compute telemetry for NRSC SAR Processing Engines.</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="explorer.html" class="bg-primary text-[#0a0a0a] px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest hover:bg-primary-fixed-dim transition-all flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[16px]">satellite_alt</span> Return to Explorer
+                    </a>
+                    <a href="studio.html" class="bg-surface-container-high border border-outline/30 text-on-surface hover:text-primary px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest transition-all flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[16px]">view_in_ar</span> Open 3D Studio
+                    </a>
+                </div>
+            </header>
+
+            <div class="layout-grid">
             <!-- Connectivity Panel -->
             <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-4 flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Connectivity</h3>
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Connectivity <span class="text-[10px] text-tertiary-container ml-2">(SIMULATED / UI DEMO)</span></h3>
                         <span class="material-symbols-outlined text-primary" data-icon="satellite_alt">satellite_alt</span>
                     </div>
                     <div class="mb-4">
@@ -287,7 +297,7 @@
                 <div class="circuit-trace-v w-[2px] h-1/3 bottom-10 left-0" style="animation-delay: 2.25s;"></div>
                 <div class="relative z-10">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">AI Compute Node</h3>
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">AI Compute Node <span class="text-[10px] text-tertiary-container ml-2">(SIMULATED / UI DEMO)</span></h3>
                         <span class="material-symbols-outlined text-outline" data-icon="memory_alt">memory_alt</span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -313,10 +323,10 @@
             </div>
 
             <!-- Historical Uptime Chart -->
-            <div class="glass-panel p-gutter rounded-none col-span-12 mt-2 h-64 flex flex-col relative overflow-hidden">
+            <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-4 mt-2 h-64 flex flex-col relative overflow-hidden">
                 <div class="relative z-10 flex flex-col h-full">
                     <div class="flex items-center justify-between mb-4 border-b border-outline/15 pb-2">
-                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">System Uptime & Satellite Telemetry (7 Days)</h3>
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">System Uptime <span class="text-[10px] text-tertiary-container ml-2">(SIMULATED)</span></h3>
                         <span class="font-headline-md text-headline-md text-primary font-mono">99.98%</span>
                     </div>
                     <div class="flex-1 flex items-end space-x-1">
@@ -337,6 +347,51 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Real Inference Metadata -->
+            <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-8 mt-2 h-64 flex flex-col relative overflow-hidden bg-primary/5 border border-primary/20">
+                <div class="relative z-10 flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 border-b border-outline/15 pb-2">
+                        <h3 class="font-ui-semibold text-ui-semibold text-primary uppercase tracking-widest">Inference Results <span class="text-[10px] text-primary ml-2 font-bold">(REAL DATA)</span></h3>
+                        <span class="material-symbols-outlined text-primary" data-icon="data_usage">data_usage</span>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 h-full">
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Model Name</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-model-name">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Threshold</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-threshold">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Execution Time</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary"><span id="real-exec-time">--</span> s</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Run Status</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-[#10b981] uppercase" id="real-status">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Total Pixels</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-on-surface" id="real-total-px">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Changed Pixels</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-changed-px">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Change %</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-change-pct">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Clusters</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-clusters">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
     </main>
 
@@ -354,7 +409,53 @@
         </div>
     </footer>
 
+    <script src="assets/sar-store.js"></script>
     <script>
+        (function initTelemetry() {
+            console.log("[DEBUG] initTelemetry() started");
+            try {
+                if (typeof SARStore === 'undefined') {
+                    console.error("[DEBUG] SARStore is undefined! Script not loaded.");
+                } else {
+                    console.log("[DEBUG] SARStore loaded successfully.");
+                }
+
+                const metadata = SARStore.loadMetadata();
+                console.log("[DEBUG] metadata found?", !!metadata);
+                
+                if (metadata) {
+                    console.log("[DEBUG] metadata keys:", Object.keys(metadata));
+                }
+                
+                const realDataPanel = document.getElementById('real-model-name');
+                console.log("[DEBUG] real-data panel found in DOM?", !!realDataPanel);
+
+                if (!metadata || !metadata.regions) {
+                    console.log("[DEBUG] No valid inference. Showing overlay.");
+                    document.getElementById('no-inference-overlay').classList.remove('hidden');
+                    document.getElementById('telemetry-content').style.opacity = '0.3';
+                    document.getElementById('telemetry-content').style.pointerEvents = 'none';
+                    return;
+                }
+
+                const fmtNum = (n) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString() : '--';
+                
+                document.getElementById('real-model-name').innerText = metadata.model || 'Unknown';
+                document.getElementById('real-threshold').innerText = metadata.threshold != null ? metadata.threshold : '--';
+                document.getElementById('real-exec-time').innerText = metadata.execution_time_sec != null ? metadata.execution_time_sec : '--';
+                document.getElementById('real-status').innerText = metadata.status || 'SUCCESS';
+                
+                document.getElementById('real-total-px').innerText = fmtNum(metadata.total_pixels);
+                document.getElementById('real-changed-px').innerText = fmtNum(metadata.changed_pixels);
+                document.getElementById('real-change-pct').innerText = metadata.change_percentage != null ? `${metadata.change_percentage}%` : '--';
+                document.getElementById('real-clusters').innerText = fmtNum(metadata.num_change_clusters);
+
+                console.log("[DEBUG] Values populated successfully.");
+            } catch (err) {
+                console.error("Telemetry initialization error:", err);
+            }
+        })();
+
         // IST Time Update
         function updateTime() {
             const now = new Date();

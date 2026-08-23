@@ -57,6 +57,32 @@ class ModelService:
             snunet.eval().to(self.device)
             self._models["snunet_cd"] = snunet
 
+            # SNUNet-CD SAR Model 3
+            try:
+                snunet_sar = SNUNetCD(in_channels=2, num_classes=1)
+                ckpt_path = Path(__file__).resolve().parent.parent.parent.parent / "runs" / "2026-08-23_01-14-15_tum_oscd_sar_snunet_bce_tversky_scratch" / "checkpoints" / "best.pt"
+                if ckpt_path.exists():
+                    checkpoint = torch.load(str(ckpt_path), map_location=self.device, weights_only=False)
+                    if isinstance(checkpoint, dict):
+                        if "model_state_dict" in checkpoint:
+                            state_dict = checkpoint["model_state_dict"]
+                        elif "state_dict" in checkpoint:
+                            state_dict = checkpoint["state_dict"]
+                        else:
+                            state_dict = checkpoint
+                    else:
+                        state_dict = checkpoint
+                    snunet_sar.load_state_dict(state_dict)
+                    logger.info(f"Loaded Model 3 SAR checkpoint from {ckpt_path}")
+                else:
+                    logger.error(f"CRITICAL: Model 3 SAR checkpoint not found at {ckpt_path}. Refusing to load random weights.")
+                    raise FileNotFoundError(f"Missing required Model 3 checkpoint: {ckpt_path}")
+                
+                snunet_sar.eval().to(self.device)
+                self._models["snunet_cd_sar"] = snunet_sar
+            except Exception as e:
+                logger.error(f"Failed to load snunet_cd_sar: {e}")
+
             logger.info(f"Successfully pre-loaded models: {list(self._models.keys())}")
         except Exception as e:
             logger.error(f"Error pre-loading models: {e}", exc_info=True)
@@ -104,10 +130,17 @@ class ModelService:
         t2_tensor = t2_tensor.to(self.device, dtype=torch.float32)
 
         # Select model
-        key = "siamese_unet_sar"
+        if "snunet" in model_name.lower():
+            key = "snunet_cd_sar"
+        else:
+            key = "siamese_unet_sar"
+            
         model = self._models.get(key)
         if model is None:
-            model = SiameseUNet(in_channels=2, num_classes=1).eval().to(self.device)
+            if "snunet" in model_name.lower():
+                raise RuntimeError("Model 3 SAR (snunet_cd_sar) was not successfully loaded from a checkpoint. Refusing to run inference with random weights.")
+            else:
+                model = SiameseUNet(in_channels=2, num_classes=1).eval().to(self.device)
             self._models[key] = model
 
         logits = model(t1_tensor, t2_tensor)

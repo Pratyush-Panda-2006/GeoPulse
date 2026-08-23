@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from detection.snunet_modules import (
+from src.detection.snunet_modules import (
     SNUNetChannelAttention,
     SNUNetNestedConvBlock,
     SNUNetUpBlock,

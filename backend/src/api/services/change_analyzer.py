@@ -14,7 +14,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import scipy.ndimage as ndimage
 
-from api.schemas import ChangedRegion
+from src.api.schemas import ChangedRegion
 
 
 def compute_approx_pixel_area_km2(bbox: List[float], image_shape: Tuple[int, int]) -> float:

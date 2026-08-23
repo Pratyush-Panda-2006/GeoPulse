@@ -33,6 +33,7 @@ from src.api.services.visualization import (
     generate_overlay_image,
     sar_dualpol_to_rgb,
 )
+from src.preprocessing.sar_loader import load_sar_pair_for_inference
 
 router = APIRouter(prefix="/detect", tags=["Change Detection"])
 
@@ -213,4 +214,121 @@ async def detect_uploaded_images(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Inference on uploaded images failed: {e}",
+        )
+
+
+@router.post(
+    "/change-detection",
+    response_model=ChangeDetectionResponse,
+    summary="Change Detection on Uploaded SAR TIFF Pair",
+)
+async def detect_sar_changes_from_upload(
+    image_t1: UploadFile = File(..., description="Reference (T1) SAR image file (.tif)"),
+    image_t2: UploadFile = File(..., description="Target (T2) SAR image file (.tif)"),
+    threshold: float = Form(0.95, ge=0.0, le=1.0, description="Decision threshold"),
+    min_region_area_px: int = Form(10, ge=1, description="Minimum cluster pixel area"),
+) -> ChangeDetectionResponse:
+    """
+    Change Detection on custom uploaded Sentinel-1 SAR image pair (TIFF format).
+    Uses exactly the same preprocessing as SNUNet-CD Model 3 training.
+    """
+    t0 = time.perf_counter()
+    try:
+        t1_bytes = await image_t1.read()
+        t2_bytes = await image_t2.read()
+
+        import torch.nn.functional as F
+        
+        # Phase 1 requirement: Use exact preprocessing from training (is_linear=False for TUM OSCD)
+        # load_sar_pair_for_inference returns (t1_tensor, t2_tensor, valid_t1, valid_t2) if return_validity_mask=True
+        t1_np, t2_np = load_sar_pair_for_inference(
+            t1_bytes,
+            t2_bytes,
+            is_linear=False,
+            return_tensors=False,
+        )
+        
+        # Ensure T1 and T2 have the same dimensions by cropping to the minimum
+        h1, w1 = t1_np.shape[1:]
+        h2, w2 = t2_np.shape[1:]
+        min_h, min_w = min(h1, h2), min(w1, w2)
+        
+        t1_np = t1_np[:, :min_h, :min_w]
+        t2_np = t2_np[:, :min_h, :min_w]
+
+        t1_tensor = torch.from_numpy(t1_np)
+        t2_tensor = torch.from_numpy(t2_np)
+
+        # Pad to multiple of 16 for UNet architectures
+        pad_h = (16 - (min_h % 16)) % 16
+        pad_w = (16 - (min_w % 16)) % 16
+        if pad_h > 0 or pad_w > 0:
+            t1_tensor = F.pad(t1_tensor, (0, pad_w, 0, pad_h))
+            t2_tensor = F.pad(t2_tensor, (0, pad_w, 0, pad_h))
+
+        model_service = ModelService.get_instance()
+        prob_map, binary_mask = model_service.predict_change_sar(
+            t1_tensor=t1_tensor,
+            t2_tensor=t2_tensor,
+            model_name="snunet_cd_sar",
+            threshold=threshold,
+        )
+        
+        # Crop back to original minimum dimensions
+        if pad_h > 0 or pad_w > 0:
+            prob_map = prob_map[:min_h, :min_w]
+            binary_mask = binary_mask[:min_h, :min_w]
+
+        regions, _ = extract_changed_regions(
+            binary_mask=binary_mask,
+            prob_map=prob_map,
+            min_region_area_px=min_region_area_px,
+        )
+
+        # Ensure spatial consistency
+        if t1_np.shape[1:] != binary_mask.shape:
+            # Mask generation should match input shape, but just in case
+            pass
+
+        # Visualization
+        t1_rgb = sar_dualpol_to_rgb(t1_np)
+        t2_rgb = sar_dualpol_to_rgb(t2_np)
+        
+        mask_rgb = generate_change_mask_image(binary_mask)
+        heatmap_rgb = generate_heatmap_image(prob_map, colormap_name="turbo")
+        overlay_rgb = generate_overlay_image(t2_rgb, binary_mask)
+
+        t1_b64 = array_to_base64_png(t1_rgb)
+        t2_b64 = array_to_base64_png(t2_rgb)
+        mask_b64 = array_to_base64_png(mask_rgb)
+        heatmap_b64 = array_to_base64_png(heatmap_rgb)
+        overlay_b64 = array_to_base64_png(overlay_rgb)
+
+        total_px = binary_mask.size
+        changed_px = int(np.sum(binary_mask > 0))
+        change_pct = round((changed_px / total_px) * 100.0, 3) if total_px > 0 else 0.0
+        elapsed = round(time.perf_counter() - t0, 3)
+
+        return ChangeDetectionResponse(
+            status="success",
+            model_used="snunet_cd_sar",
+            threshold=threshold,
+            total_pixels=total_px,
+            changed_pixels=changed_px,
+            change_percentage=change_pct,
+            total_changed_area_sq_km=None,
+            num_change_clusters=len(regions),
+            regions=regions,
+            t1_preview_base64=t1_b64,
+            t2_preview_base64=t2_b64,
+            change_mask_base64=mask_b64,
+            confidence_heatmap_base64=heatmap_b64,
+            overlay_base64=overlay_b64,
+            execution_time_sec=elapsed,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"SAR Inference on uploaded images failed: {e}",
         )
