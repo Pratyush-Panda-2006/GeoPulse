@@ -1,7 +1,7 @@
 /*
  * sar-store.js
  * ============
- * Shared SAR change-detection result store for the NRSC frontend suite.
+ * Shared SAR change-detection result store for the GeoPulse frontend suite.
  *
  * Design goals (see Explorer integration brief):
  *   1. sessionStorage holds ONLY compact, JSON-safe metadata — never base64 imagery.

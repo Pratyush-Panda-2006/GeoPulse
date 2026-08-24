@@ -2,7 +2,7 @@
 """
 scripts/test_api_server.py
 ==========================
-Comprehensive automated test suite for the SAR Change Intelligence API.
+Comprehensive automated test suite for the GeoPulse SAR Intelligence API.
 Tests all routers, models, serialization, and end-to-end pipelines.
 """
 
@@ -166,7 +166,7 @@ def test_live_sentinel_ingestion():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("  🧪  Testing SAR Change Intelligence API Endpoints")
+    print("  🧪  Testing GeoPulse SAR Intelligence API Endpoints")
     print("=" * 60)
     try:
         test_health()

@@ -2,7 +2,7 @@
 """
 scripts/run_server.py
 =====================
-CLI runner for the SAR Change Intelligence FastAPI Server.
+CLI runner for the GeoPulse SAR Intelligence FastAPI Server.
 
 Usage:
     python scripts/run_server.py
@@ -32,7 +32,7 @@ import uvicorn
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run SAR Change Intelligence FastAPI Server"
+        description="Run GeoPulse SAR Intelligence FastAPI Server"
     )
     parser.add_argument(
         "--host",
@@ -61,7 +61,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 60)
-    print("  🛰️  Starting SAR Change Intelligence API Server")
+    print("  🛰️  Starting GeoPulse SAR Intelligence API Server")
     print(f"  📡  Address: http://localhost:{args.port}")
     print(f"  📖  Docs:    http://localhost:{args.port}/docs")
     print("=" * 60)

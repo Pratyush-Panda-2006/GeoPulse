@@ -1,7 +1,7 @@
 """
 src/api/main.py
 ===============
-FastAPI Application entry point for the SAR Change Intelligence System.
+FastAPI Application entry point for the GeoPulse SAR Intelligence System.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ logger = logging.getLogger("api")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Warm up model services and check CDSE credentials upon startup."""
-    logger.info("Initializing SAR Change Intelligence Server...")
+    logger.info("Initializing GeoPulse SAR Intelligence Server...")
     
     # Warm up models
     ModelService.get_instance()
@@ -51,11 +51,11 @@ async def lifespan(app: FastAPI):
         
     logger.info("API Server ready to accept requests.")
     yield
-    logger.info("Shutting down SAR Change Intelligence Server...")
+    logger.info("Shutting down GeoPulse SAR Intelligence Server...")
 
 
 app = FastAPI(
-    title="SAR Change Intelligence API",
+    title="GeoPulse SAR Intelligence API",
     description=(
         "Production REST API for automated Synthetic Aperture Radar (SAR) and optical "
         "satellite Change Detection. Provides Sentinel-1 GRD ingestion from Copernicus CDSE, "

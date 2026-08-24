@@ -81,7 +81,9 @@ def extract_changed_regions(
         else None
     )
 
-    region_counter = 1
+    MERGE_GAP_PX = 10
+
+    raw_regions = []
     for idx, slc in enumerate(region_slices, start=1):
         if slc is None:
             continue
@@ -106,6 +108,61 @@ def extract_changed_regions(
         # Mean change probability within this region
         region_probs = prob_map[slc][region_mask]
         mean_prob = float(np.mean(region_probs)) if len(region_probs) > 0 else 0.5
+
+        raw_regions.append({
+            "min_row": min_row,
+            "max_row": max_row,
+            "min_col": min_col,
+            "max_col": max_col,
+            "area_px": area_px,
+            "sum_c": global_centroid_c * area_px,
+            "sum_r": global_centroid_r * area_px,
+            "sum_prob": mean_prob * area_px,
+        })
+
+    # Transitive Merge
+    parent = list(range(len(raw_regions)))
+
+    def find(i: int) -> int:
+        if parent[i] == i:
+            return i
+        parent[i] = find(parent[i])
+        return parent[i]
+
+    def union(i: int, j: int):
+        root_i = find(i)
+        root_j = find(j)
+        if root_i != root_j:
+            parent[root_i] = root_j
+
+    for i in range(len(raw_regions)):
+        for j in range(i + 1, len(raw_regions)):
+            b1 = raw_regions[i]
+            b2 = raw_regions[j]
+            vert_gap = max(0, max(b1["min_row"], b2["min_row"]) - min(b1["max_row"], b2["max_row"]))
+            horiz_gap = max(0, max(b1["min_col"], b2["min_col"]) - min(b1["max_col"], b2["max_col"]))
+            if max(vert_gap, horiz_gap) <= MERGE_GAP_PX:
+                union(i, j)
+
+    merged_groups = {}
+    for i in range(len(raw_regions)):
+        root = find(i)
+        if root not in merged_groups:
+            merged_groups[root] = []
+        merged_groups[root].append(raw_regions[i])
+
+    regions: List[ChangedRegion] = []
+    region_counter = 1
+
+    for root, group in merged_groups.items():
+        area_px = sum(g["area_px"] for g in group)
+        min_row = min(g["min_row"] for g in group)
+        max_row = max(g["max_row"] for g in group)
+        min_col = min(g["min_col"] for g in group)
+        max_col = max(g["max_col"] for g in group)
+        global_centroid_c = sum(g["sum_c"] for g in group) / area_px
+        global_centroid_r = sum(g["sum_r"] for g in group) / area_px
+        mean_prob = sum(g["sum_prob"] for g in group) / area_px
 
         # Geo-referencing if bbox is available
         geo_bbox = None

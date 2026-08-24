@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>NRSC SAR Explorer - Orbital Intel & Change Detection</title>
+    <title>GeoPulse SAR Explorer - GeoPulse & Change Detection</title>
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
     <!-- Google Fonts: Bricolage Grotesque, Inter, Playfair Display, JetBrains Mono -->
@@ -215,7 +215,7 @@
     <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3 h-toolbar-width">
         <a href="index.html" class="font-headline-md text-[18px] md:text-[20px] text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse"></span>
-            <span>National Remote Sensing Centre (NRSC)</span>
+            <span>GeoPulse</span>
         </a>
         <div class="hidden md:flex gap-6 lg:gap-8 items-center">
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">Overview</a>
@@ -283,6 +283,7 @@
                         <div class="flex justify-end gap-2 mb-[-8px]">
                              <button id="mode-live" class="text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10">LIVE</button>
                              <button id="mode-upload" class="text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary">UPLOAD</button>
+                             <button id="mode-demo" class="text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary">DEMO</button>
                         </div>
                         <div id="live-inputs" class="flex flex-col gap-4">
                             <div class="flex flex-col gap-1.5">
@@ -312,6 +313,21 @@
                                 </div>
                             </div>
                         </div>
+                        <div id="demo-inputs" class="flex flex-col gap-4 hidden">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Demo Scene</label>
+                                <select id="demo-scene-select" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
+                                    <option class="bg-[#0a0a0a] text-outline" value="01_dubai">Dubai, UAE</option>
+                                    <option class="bg-[#0a0a0a] text-outline" value="02_lasvegas">Las Vegas, USA</option>
+                                    <option class="bg-[#0a0a0a] text-outline" value="03_chongqing">Chongqing, China</option>
+                                    <option class="bg-[#0a0a0a] text-outline" value="04_montpellier">Montpellier, France</option>
+                                    <option class="bg-[#0a0a0a] text-outline" value="05_rio">Rio de Janeiro, Brazil</option>
+                                </select>
+                            </div>
+                            <div class="text-[10px] font-mono text-outline/70 leading-tight">
+                                Select a scene to automatically fetch predefined SAR T1/T2 image pairs.
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -325,16 +341,16 @@
                     <div class="flex flex-col gap-1.5">
                         <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Tile Resolution</label>
                         <select class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
-                            <option value="256">256 x 256 px</option>
-                            <option selected="" value="512">512 x 512 px</option>
+                            <option class="bg-[#0a0a0a] text-outline" value="256">256 x 256 px</option>
+                            <option class="bg-[#0a0a0a] text-outline" selected="" value="512">512 x 512 px</option>
                         </select>
                     </div>
                     <!-- Model Selector -->
                     <div class="flex flex-col gap-1.5 mt-2">
                         <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Inference Model</label>
                         <select class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
-                            <option value="siamese">Siamese U-Net v2</option>
-                            <option selected="" value="snunet">SNUNet-CD (Optimized)</option>
+                            <option class="bg-[#0a0a0a] text-outline" value="siamese">Siamese U-Net v2</option>
+                            <option class="bg-[#0a0a0a] text-outline" selected="" value="snunet">SNUNet-CD (Optimized)</option>
                         </select>
                     </div>
                     <!-- Sensitivity Slider -->
@@ -531,7 +547,7 @@
     <!-- Footer -->
     <footer class="bg-[#0a0a0a] border-t border-outline/15 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-3 z-50 relative shrink-0">
         <div class="text-outline font-mono text-xs uppercase tracking-widest">
-            National Remote Sensing Centre (NRSC) | All Rights Reserved
+            GeoPulse | All Rights Reserved
         </div>
         <div class="flex gap-4 text-outline font-mono text-xs uppercase tracking-widest">
             <a class="hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
@@ -589,24 +605,40 @@
         // Mode Toggle
         const modeLive = document.getElementById('mode-live');
         const modeUpload = document.getElementById('mode-upload');
+        const modeDemo = document.getElementById('mode-demo');
         const liveInputs = document.getElementById('live-inputs');
         const uploadInputs = document.getElementById('upload-inputs');
+        const demoInputs = document.getElementById('demo-inputs');
         let currentMode = 'live';
 
         modeLive.addEventListener('click', () => {
             currentMode = 'live';
             modeLive.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
             modeUpload.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
             liveInputs.classList.remove('hidden');
             uploadInputs.classList.add('hidden');
+            demoInputs.classList.add('hidden');
         });
 
         modeUpload.addEventListener('click', () => {
             currentMode = 'upload';
             modeUpload.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
             modeLive.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
             uploadInputs.classList.remove('hidden');
             liveInputs.classList.add('hidden');
+            demoInputs.classList.add('hidden');
+        });
+
+        modeDemo.addEventListener('click', () => {
+            currentMode = 'demo';
+            modeDemo.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeLive.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeUpload.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            demoInputs.classList.remove('hidden');
+            liveInputs.classList.add('hidden');
+            uploadInputs.classList.add('hidden');
         });
 
         // Drag and Drop Logic
@@ -652,27 +684,16 @@
         // 2. Radar Sweep Trigger
         runBtn.addEventListener('click', async () => {
             if (currentMode === 'live') {
-                alert('Live API connection requires CDSE_CLIENT_ID. Please use UPLOAD mode for Demo.');
+                alert('Live API connection requires CDSE_CLIENT_ID. Please use UPLOAD or DEMO mode.');
                 return;
             }
 
-            const t1File = document.getElementById('t1-file').files[0];
-            const t2File = document.getElementById('t2-file').files[0];
+            let t1File, t2File;
 
-            if (!t1File || !t2File) {
-                alert('Please upload both T1 and T2 TIFF files.');
-                return;
-            }
-
-            sweep.classList.remove('hidden');
+            // Show terminal log early
             terminal.classList.remove('hidden');
-            logContent.innerHTML = '';
-            
-            // Terminal log with explicit states:
-            //   info    -> neutral green (default)
-            //   success -> bright green (successful API / inference)
-            //   warn    -> yellow (non-fatal, e.g. storage quota)
-            //   error   -> red [FAILED] (actual API / inference failure)
+            logContent.innerHTML = ''; // clear old logs
+
             const addLog = (msg, level) => {
                 const div = document.createElement('div');
                 const prefix = level === 'error' ? '[FAILED] ' : level === 'warn' ? '[WARN] ' : '';
@@ -685,7 +706,46 @@
                 logContent.scrollTop = logContent.scrollHeight;
             };
 
-            addLog('Initializing Upload Uplink...');
+            if (currentMode === 'upload') {
+                const t1Input = document.getElementById('t1-file');
+                const t2Input = document.getElementById('t2-file');
+                
+                if (!t1Input.files.length || !t2Input.files.length) {
+                    alert('Please select both T1 and T2 images for intelligence sweep.');
+                    terminal.classList.add('hidden');
+                    return;
+                }
+                
+                t1File = t1Input.files[0];
+                t2File = t2Input.files[0];
+                
+                addLog('Initializing Upload Uplink...');
+            } else if (currentMode === 'demo') {
+                const scene = document.getElementById('demo-scene-select').value;
+                // We assume demo_samples folder is hosted at /assets/demo_samples/
+                const baseUrl = `assets/demo_samples/${scene}`;
+                
+                addLog(`Downloading Demo Scene: ${scene}...`);
+                try {
+                    const [t1Res, t2Res] = await Promise.all([
+                        fetch(`${baseUrl}/t1.tif`),
+                        fetch(`${baseUrl}/t2.tif`)
+                    ]);
+                    
+                    if (!t1Res.ok || !t2Res.ok) throw new Error('Demo assets not found locally.');
+                    
+                    const t1Blob = await t1Res.blob();
+                    const t2Blob = await t2Res.blob();
+                    
+                    t1File = new File([t1Blob], 't1.tif', { type: 'image/tiff' });
+                    t2File = new File([t2Blob], 't2.tif', { type: 'image/tiff' });
+                    addLog('Demo scene acquired successfully.', 'success');
+                } catch (e) {
+                    addLog(e.message, 'error');
+                    return;
+                }
+            }
+
             addLog('Sending payload to inference engine...');
             
             const formData = new FormData();
