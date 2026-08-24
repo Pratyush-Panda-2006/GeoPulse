@@ -182,7 +182,7 @@
         .marker-tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
         .marker-bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
         .marker-br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
-        
+
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
             height: 16px;
@@ -306,15 +306,21 @@
                 <div class="container-marker marker-tr"></div>
                 <div class="container-marker marker-bl"></div>
                 <div class="container-marker marker-br"></div>
-                
+
                 <!-- Toolbar Overlay -->
                 <div class="absolute top-4 left-4 z-30 flex gap-2">
                     <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 p-1 flex gap-1 items-center">
-                        <button id="view-t1" class="w-8 h-8 flex items-center justify-center bg-primary/20 text-primary border border-primary transition-colors hover:bg-primary/30" title="Raw SAR Baseline (T1)">
+                        <button id="view-t1" class="w-8 h-8 flex items-center justify-center bg-primary/20 text-primary border border-primary transition-colors hover:bg-primary/30" title="Satellite SAR (T1)">
                             <span class="font-mono text-xs">T1</span>
                         </button>
-                        <button id="view-t2" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="AI Change Mask (T2)">
+                        <button id="view-t2" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Satellite SAR (T2)">
                             <span class="font-mono text-xs">T2</span>
+                        </button>
+                        <button id="view-optical" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Optical (True Color, when available)">
+                            <span class="material-symbols-outlined text-[18px]">satellite_alt</span>
+                        </button>
+                        <button id="view-falsecolor" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="False Color (Dual-Pol VV/VH)">
+                            <span class="material-symbols-outlined text-[18px]">palette</span>
                         </button>
                         <div class="w-px h-6 bg-white/10 mx-1"></div>
                         <button id="view-heatmap" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Confidence Heatmap">
@@ -325,6 +331,11 @@
                         </button>
                         <button id="view-overlay" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="T2 + Overlay">
                             <span class="material-symbols-outlined text-[18px]">layers_clear</span>
+                        </button>
+                        <div class="w-px h-6 bg-white/10 mx-1"></div>
+                        <button id="view-boxes" class="h-8 px-2 flex items-center justify-center gap-1 text-[#ffb000] hover:bg-[#ffb000]/20 transition-colors" title="Highlight major changed areas with labeled boxes">
+                            <span class="material-symbols-outlined text-[18px]">crop_free</span>
+                            <span class="font-mono text-[10px] uppercase tracking-wider">Highlight</span>
                         </button>
                     </div>
                 </div>
@@ -357,19 +368,19 @@
 
                     <!-- Tactical Emerald State Outlines Map Overlay -->
                     <div class="absolute inset-0 z-20 pointer-events-none opacity-60" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\' preserveAspectRatio=\'none\'><path d=\'M10,20 Q30,10 50,30 T90,20 M20,40 Q40,60 70,50 T90,80 M10,80 Q30,70 50,90 T80,100\' stroke=\'%234edea3\' stroke-width=\'0.5\' fill=\'none\' vector-effect=\'non-scaling-stroke\' opacity=\'0.7\'/></svg>');"></div>
-                    
+
                     <!-- T1 Image (Left) -->
-                    <div class="absolute inset-0 bg-cover bg-center grayscale" data-alt="Raw Baseline SAR Image" id="t1-image-bg" style=""></div>
-                    
+                    <div class="absolute inset-0 bg-cover bg-center" data-alt="Raw Baseline SAR Image" id="t1-image-bg" style=""></div>
+
                     <!-- T2 Image (Right) with Clip -->
-                    <div class="absolute inset-0 bg-cover bg-center grayscale contrast-125" data-alt="Multi-temporal SAR Image" id="t2-image-clip" style="clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);">
+                    <div class="absolute inset-0 bg-cover bg-center" data-alt="Multi-temporal SAR Image" id="t2-image-clip" style="clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);">
                         <!-- Heatmap Overlay Simulation -->
                         <div class="absolute inset-0 mix-blend-screen opacity-50 colormap-overlay hidden" id="heatmap-overlay" style="background: linear-gradient(to top right, transparent, rgba(255,0,0,0.2), rgba(0,255,0,0.2)); filter: hue-rotate(0deg);"></div>
                     </div>
-                    
+
                     <!-- Split Handle -->
                     <div class="split-slider-thumb" id="split-slider"></div>
-                    
+
                     <!-- Coordinate Readout -->
                     <div class="absolute bottom-4 right-4 bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 px-4 py-1 z-30 flex items-center gap-3">
                         <span class="font-mono text-xs text-primary tracking-widest uppercase">18°56'43"N 72°57'58"E (MUMBAI PORT)</span>
@@ -395,11 +406,15 @@
                     <div class="flex flex-col gap-2">
                         <label class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2">Active Layer</label>
                         <select id="layer-select" class="bg-surface border border-white/10 text-on-surface font-mono text-sm focus:border-primary focus:ring-1 focus:ring-primary p-2 w-full appearance-none rounded-none">
-                            <option value="t1">Raw SAR Baseline (T1)</option>
-                            <option value="t2" selected="">AI Change Mask (T2)</option>
+                            <option value="t1">Satellite SAR (T1)</option>
+                            <option value="t2" selected="">Satellite SAR (T2)</option>
+                            <option value="optical">Optical — True Color</option>
+                            <option value="grayscale">SAR Grayscale (T2)</option>
+                            <option value="falsecolor">False Color (Dual-Pol)</option>
                             <option value="heatmap">Confidence Heatmap</option>
                             <option value="mask">Binary Change Mask</option>
                             <option value="overlay">T2 + Overlay</option>
+                            <option value="boxes">Highlight Changes</option>
                         </select>
                     </div>
                     <!-- Inference Metrics -->
@@ -490,7 +505,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const metadata = SARStore.loadMetadata();
             const previews = await SARStore.loadPreviews();
-            
+
             if (!metadata || !previews || !previews.t1 || !previews.t2) {
                 document.getElementById('no-inference-overlay').classList.remove('hidden');
                 document.getElementById('split-slider').style.display = 'none';
@@ -499,7 +514,7 @@
 
             const t1Bg = document.getElementById('t1-image-bg');
             const t2Clip = document.getElementById('t2-image-clip');
-            
+
             t1Bg.style.backgroundImage = `url('${previews.t1}')`;
             t2Clip.style.backgroundImage = `url('${previews.t2}')`;
 
@@ -513,32 +528,65 @@
             // Active Layer Logic
             const layerSelect = document.getElementById('layer-select');
             const heatmapOverlay = document.getElementById('heatmap-overlay');
-            
+
             const btnT1 = document.getElementById('view-t1');
             const btnT2 = document.getElementById('view-t2');
+            const btnOptical = document.getElementById('view-optical');
+            const btnFalsecolor = document.getElementById('view-falsecolor');
             const btnHeatmap = document.getElementById('view-heatmap');
             const btnMask = document.getElementById('view-mask');
             const btnOverlay = document.getElementById('view-overlay');
-            
+            const btnBoxes = document.getElementById('view-boxes');
+
             const buttons = {
                 't1': btnT1,
                 't2': btnT2,
+                'optical': btnOptical,
+                'falsecolor': btnFalsecolor,
                 'heatmap': btnHeatmap,
                 'mask': btnMask,
-                'overlay': btnOverlay
+                'overlay': btnOverlay,
+                'boxes': btnBoxes
             };
+
+            // Helper: hide a toolbar button + remove its dropdown option when a
+            // preview is unavailable, so an absent layer never renders a broken
+            // (404) background. Used for optional layers below.
+            const hideLayer = (layer, btn) => {
+                if (btn) btn.style.display = 'none';
+                const opt = layerSelect.querySelector(`option[value="${layer}"]`);
+                if (opt) opt.remove();
+            };
+
+            // False Color is an optional dual-pol layer (SAR runs only). Hide the
+            // toggle + dropdown option when the preview is absent (e.g. RGB uploads
+            // or previews cached before this layer existed) so it never 404s.
+            if (!previews.falseColorT2) hideLayer('falsecolor', btnFalsecolor);
+            // Optical true-color basemap only exists for coordinate-based (bbox)
+            // runs where the AOI could be fetched; omit it otherwise.
+            if (!previews.optical) hideLayer('optical', btnOptical);
+            // SAR grayscale is a dropdown-only option; drop it if not present.
+            if (!previews.grayscaleT2) {
+                const gOpt = layerSelect.querySelector('option[value="grayscale"]');
+                if (gOpt) gOpt.remove();
+            }
+            // "Highlight Changes" boxes are baked for SAR runs; hide if absent.
+            if (!previews.boxes && !previews.opticalBoxes) hideLayer('boxes', btnBoxes);
 
             const setActiveLayer = (layer) => {
                 layerSelect.value = layer;
-                
-                // Reset button styles
+
+                // Reset button styles (each button keeps its own base shape/accent).
                 Object.values(buttons).forEach(btn => {
-                    if(btn) {
-                        if (btn.id === 'view-mask') {
-                            btn.className = 'w-8 h-8 flex items-center justify-center text-[#ff453a] hover:bg-[#ff453a]/20 hover:text-[#ff453a] transition-colors';
-                        } else {
-                            btn.className = 'w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors';
-                        }
+                    if (!btn) return;
+                    if (btn.id === 'view-mask') {
+                        btn.className = 'w-8 h-8 flex items-center justify-center text-[#ff453a] hover:bg-[#ff453a]/20 hover:text-[#ff453a] transition-colors';
+                    } else if (btn.id === 'view-boxes') {
+                        btn.className = 'h-8 px-2 flex items-center justify-center gap-1 text-[#ffb000] hover:bg-[#ffb000]/20 transition-colors';
+                    } else if (btn.id === 'view-t1' || btn.id === 'view-t2') {
+                        btn.className = 'w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors';
+                    } else {
+                        btn.className = 'w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors';
                     }
                 });
 
@@ -547,6 +595,8 @@
                 if (activeBtn) {
                     if (layer === 'mask') {
                         activeBtn.className = 'w-8 h-8 flex items-center justify-center text-[#ff453a] border border-[#ff453a] bg-[#ff453a]/20 font-bold';
+                    } else if (layer === 'boxes') {
+                        activeBtn.className = 'h-8 px-2 flex items-center justify-center gap-1 text-[#ffb000] border border-[#ffb000] bg-[#ffb000]/20 font-bold';
                     } else {
                         activeBtn.className = 'w-8 h-8 flex items-center justify-center bg-primary/20 text-primary border border-primary transition-colors hover:bg-primary/30';
                     }
@@ -559,6 +609,19 @@
                 } else if (layer === 't2') {
                     t2Clip.style.backgroundImage = `url('${previews.t2}')`;
                     heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'optical') {
+                    // True-color optical basemap (coordinate runs only); fall back
+                    // to the colorized satellite SAR if somehow absent.
+                    t2Clip.style.backgroundImage = `url('${previews.optical || previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'grayscale') {
+                    // Classic single-channel SAR intensity (VV), on demand.
+                    t2Clip.style.backgroundImage = `url('${previews.grayscaleT2 || previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'falsecolor') {
+                    // Optional dual-pol false color; fall back to satellite if absent.
+                    t2Clip.style.backgroundImage = `url('${previews.falseColorT2 || previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
                 } else if (layer === 'heatmap') {
                     t2Clip.style.backgroundImage = `url('${previews.heatmap}')`;
                     heatmapOverlay.classList.remove('hidden');
@@ -568,8 +631,14 @@
                 } else if (layer === 'overlay') {
                     t2Clip.style.backgroundImage = `url('${previews.overlay}')`;
                     heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'boxes') {
+                    // "Highlight Changes": labeled severity boxes. Prefer the boxes
+                    // baked over the true-color optical when available (clearest),
+                    // else over the colorized satellite SAR.
+                    t2Clip.style.backgroundImage = `url('${previews.opticalBoxes || previews.boxes || previews.overlay}')`;
+                    heatmapOverlay.classList.add('hidden');
                 }
-                
+
                 if (layer === 'mask') {
                     t2Clip.style.imageRendering = 'pixelated';
                 } else {
@@ -578,7 +647,7 @@
             };
 
             layerSelect.addEventListener('change', (e) => setActiveLayer(e.target.value));
-            
+
             Object.keys(buttons).forEach(layer => {
                 if(buttons[layer]) {
                     buttons[layer].addEventListener('click', () => setActiveLayer(layer));
@@ -587,38 +656,102 @@
 
             // Initialize to T2 (split-view default)
             setActiveLayer('t2');
+
+            // Auto focus if redirected from Analytics
+            const targetRegionId = sessionStorage.getItem('target_cluster');
+            if (targetRegionId) {
+                sessionStorage.removeItem('target_cluster'); // Clear it so it doesn't stick
+                const region = (metadata.regions || []).find(r => r.region_id != null && r.region_id.toString() === targetRegionId);
+                if (region && Array.isArray(region.centroid_xy)) {
+                    // Show the highlighted (boxed) result so the change is obvious.
+                    // Prefer boxes over true-color optical, else over satellite SAR.
+                    const focusSrc = previews.opticalBoxes || previews.boxes || previews.overlay || previews.t2;
+                    const focusLayer = previews.boxes ? 'boxes' : (previews.overlay ? 'overlay' : 't2');
+                    setActiveLayer(focusLayer);
+
+                    // Fill BOTH panes with the focus image so the highlighted box is
+                    // visible regardless of the split-slider position.
+                    t1Bg.style.backgroundImage = `url('${focusSrc}')`;
+                    t2Clip.style.backgroundImage = `url('${focusSrc}')`;
+
+                    // Derive the true pixel dimensions from the image itself instead
+                    // of assuming a square (Math.sqrt(total_pixels) was wrong for
+                    // non-square SAR tiles and mis-centered the zoom).
+                    const focusImg = new Image();
+                    focusImg.onload = () => {
+                        const W = focusImg.naturalWidth || 1;
+                        const H = focusImg.naturalHeight || 1;
+                        // centroid_xy is (col, row) = (x, y).
+                        const cx = Number(region.centroid_xy[0]);
+                        const cy = Number(region.centroid_xy[1]);
+                        const bgX = Math.max(0, Math.min(100, (cx / W) * 100));
+                        const bgY = Math.max(0, Math.min(100, (cy / H) * 100));
+                        const bgPos = `${bgX}% ${bgY}%`;
+                        const bgSize = '180%'; // gentle zoom — keeps the JPEG crisp
+
+                        [t1Bg, t2Clip].forEach(el => {
+                            el.style.transition = 'background-size 1.2s ease-in-out, background-position 1.2s ease-in-out';
+                            el.style.imageRendering = 'auto';
+                        });
+                        // Trigger the transition after the swap has painted.
+                        setTimeout(() => {
+                            t1Bg.style.backgroundPosition = bgPos;
+                            t1Bg.style.backgroundSize = bgSize;
+                            t2Clip.style.backgroundPosition = bgPos;
+                            t2Clip.style.backgroundSize = bgSize;
+                        }, 50);
+
+                        const coordDisplay = document.querySelector('.absolute.bottom-4.right-4 span');
+                        if (coordDisplay) {
+                            coordDisplay.innerText = `FOCUS: CLUSTER ${targetRegionId} | Px: ${cx.toFixed(0)}, ${cy.toFixed(0)}`;
+                        }
+                    };
+                    focusImg.src = focusSrc;
+                }
+            }
         });
 
         // Simple Split Slider Logic
         const container = document.getElementById('split-view-container');
         const slider = document.getElementById('split-slider');
         const t2Clip = document.getElementById('t2-image-clip');
-        
+
         let isDragging = false;
+        let sliderReqId = null;
 
         slider.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Prevent native drag/select
             isDragging = true;
             document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
         });
 
         document.addEventListener('mouseup', () => {
-            isDragging = false;
-            document.body.style.cursor = 'default';
+            if (isDragging) {
+                isDragging = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = '';
+                if (sliderReqId) cancelAnimationFrame(sliderReqId);
+            }
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            
-            const rect = container.getBoundingClientRect();
-            let x = e.clientX - rect.left;
-            
-            if (x < 0) x = 0;
-            if (x > rect.width) x = rect.width;
-            
-            const percent = (x / rect.width) * 100;
-            
-            slider.style.left = `${percent}%`;
-            t2Clip.style.clipPath = `polygon(${percent}% 0, 100% 0, 100% 100%, ${percent}% 100%)`;
+
+            if (sliderReqId) cancelAnimationFrame(sliderReqId);
+
+            sliderReqId = requestAnimationFrame(() => {
+                const rect = container.getBoundingClientRect();
+                let x = e.clientX - rect.left;
+
+                if (x < 0) x = 0;
+                if (x > rect.width) x = rect.width;
+
+                const percent = (x / rect.width) * 100;
+
+                slider.style.left = `${percent}%`;
+                t2Clip.style.clipPath = `polygon(${percent}% 0, 100% 0, 100% 100%, ${percent}% 100%)`;
+            });
         });
 
         // Opacity Slider

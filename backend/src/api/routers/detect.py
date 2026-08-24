@@ -24,14 +24,19 @@ from src.data_ingestion.sentinel_client import (
     fetch_sentinel1_pair,
     SentinelAPIError,
 )
+from src.data_ingestion.optical_client import fetch_optical_basemap
 from src.api.services.model_service import ModelService
 from src.api.services.change_analyzer import extract_changed_regions
 from src.api.services.visualization import (
     array_to_base64_png,
+    array_to_base64_jpeg,
     generate_change_mask_image,
     generate_heatmap_image,
     generate_overlay_image,
     sar_dualpol_to_rgb,
+    sar_to_grayscale,
+    sar_to_colorized,
+    draw_change_boxes,
 )
 from src.preprocessing.sar_loader import load_sar_pair_for_inference
 
@@ -53,6 +58,13 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
     """
     t0 = time.perf_counter()
     try:
+        # Validate the requested model before any (expensive) data ingestion.
+        if req.model_name not in ["snunet_cd_sar"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Model '{req.model_name}' is not allowed or has no trained checkpoint."
+            )
+
         # Step 1: Ingestion from CDSE
         t1_np, t2_np = fetch_sentinel1_pair(
             bbox=req.bbox.to_list(),
@@ -66,12 +78,18 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
 
         # Step 2: Model Inference
         model_service = ModelService.get_instance()
-        prob_map, binary_mask = model_service.predict_change_sar(
-            t1_tensor=t1_tensor,
-            t2_tensor=t2_tensor,
-            model_name=req.model_name,
-            threshold=req.threshold,
-        )
+        try:
+            prob_map, binary_mask = model_service.predict_change_sar(
+                t1_tensor=t1_tensor,
+                t2_tensor=t2_tensor,
+                model_name=req.model_name,
+                threshold=req.threshold,
+            )
+        except ValueError as ve:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(ve),
+            )
 
         # Step 3: Intelligence & Region Analysis
         regions, total_changed_km2 = extract_changed_regions(
@@ -81,18 +99,42 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
             bbox=req.bbox.to_list(),
         )
 
-        # Step 4: Visualizations
-        t1_rgb = sar_dualpol_to_rgb(t1_np)
-        t2_rgb = sar_dualpol_to_rgb(t2_np)
+        # Step 4: Visualizations (display-only; never affects inference above)
+        # Default previews: colorized "satellite-style" SAR (readable, natural
+        # earth tones). Grayscale and dual-pol false color are optional layers.
+        t1_color = sar_to_colorized(t1_np)
+        t2_color = sar_to_colorized(t2_np)
+        t1_gray = sar_to_grayscale(t1_np)
+        t2_gray = sar_to_grayscale(t2_np)
+        t1_fc = sar_dualpol_to_rgb(t1_np)
+        t2_fc = sar_dualpol_to_rgb(t2_np)
         mask_rgb = generate_change_mask_image(binary_mask)
         heatmap_rgb = generate_heatmap_image(prob_map, colormap_name="turbo")
-        overlay_rgb = generate_overlay_image(t2_rgb, binary_mask)
+        # Overlay: highlight detected changes over the readable colorized background.
+        overlay_rgb = generate_overlay_image(t2_color, binary_mask)
+        # "Highlight Changes": labeled severity-colored boxes over colorized T2.
+        boxes_rgb = draw_change_boxes(t2_color, regions)
 
-        t1_b64 = array_to_base64_png(t1_rgb)
-        t2_b64 = array_to_base64_png(t2_rgb)
+        # Optional true-color optical basemap for this AOI (display-only, best-effort).
+        # Aligned to the SAR grid so the change boxes overlay correctly. Returns
+        # None on any failure so the optical layer is simply omitted.
+        optical_b64 = None
+        optical_boxes_b64 = None
+        optical_rgb = fetch_optical_basemap(req.bbox.to_list(), t2_np.shape[1:])
+        if optical_rgb is not None:
+            optical_b64 = array_to_base64_jpeg(optical_rgb)
+            optical_boxes_b64 = array_to_base64_jpeg(draw_change_boxes(optical_rgb, regions))
+
+        t1_b64 = array_to_base64_jpeg(t1_color)
+        t2_b64 = array_to_base64_jpeg(t2_color)
+        t1_gray_b64 = array_to_base64_jpeg(t1_gray)
+        t2_gray_b64 = array_to_base64_jpeg(t2_gray)
+        t1_fc_b64 = array_to_base64_jpeg(t1_fc)
+        t2_fc_b64 = array_to_base64_jpeg(t2_fc)
         mask_b64 = array_to_base64_png(mask_rgb)
-        heatmap_b64 = array_to_base64_png(heatmap_rgb)
-        overlay_b64 = array_to_base64_png(overlay_rgb)
+        heatmap_b64 = array_to_base64_jpeg(heatmap_rgb)
+        overlay_b64 = array_to_base64_jpeg(overlay_rgb)
+        boxes_b64 = array_to_base64_jpeg(boxes_rgb)
 
         total_px = binary_mask.size
         changed_px = int(np.sum(binary_mask > 0))
@@ -111,12 +153,23 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
             regions=regions,
             t1_preview_base64=t1_b64,
             t2_preview_base64=t2_b64,
+            t1_grayscale_base64=t1_gray_b64,
+            t2_grayscale_base64=t2_gray_b64,
+            t1_false_color_base64=t1_fc_b64,
+            t2_false_color_base64=t2_fc_b64,
+            optical_base64=optical_b64,
+            optical_boxes_base64=optical_boxes_b64,
             change_mask_base64=mask_b64,
             confidence_heatmap_base64=heatmap_b64,
             overlay_base64=overlay_b64,
+            change_boxes_base64=boxes_b64,
             execution_time_sec=elapsed,
         )
 
+    except HTTPException:
+        # Deliberate 4xx/5xx (e.g. model refusal 400, missing checkpoint 503)
+        # must propagate unchanged rather than be masked as a generic 500.
+        raise
     except SentinelAPIError as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -137,7 +190,7 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
 async def detect_uploaded_images(
     image_t1: UploadFile = File(..., description="Reference (T1) image file (PNG/JPEG)"),
     image_t2: UploadFile = File(..., description="Target (T2) image file (PNG/JPEG)"),
-    model_name: str = Form("siamese_unet", description="Model architecture: 'siamese_unet' or 'snunet_cd'"),
+    model_name: str = Form("snunet_cd_sar", description="Model architecture: 'snunet_cd_sar'"),
     threshold: float = Form(0.5, ge=0.0, le=1.0, description="Decision threshold"),
     min_region_area_px: int = Form(10, ge=1, description="Minimum cluster pixel area"),
 ) -> ChangeDetectionResponse:
@@ -163,13 +216,25 @@ async def detect_uploaded_images(
         t1_tensor = torch.from_numpy(t1_np).permute(2, 0, 1)
         t2_tensor = torch.from_numpy(t2_np).permute(2, 0, 1)
 
+        if model_name not in ["snunet_cd_sar"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Model '{model_name}' is not allowed or has no trained checkpoint."
+            )
+
         model_service = ModelService.get_instance()
-        prob_map, binary_mask = model_service.predict_change_rgb(
-            t1_tensor=t1_tensor,
-            t2_tensor=t2_tensor,
-            model_name=model_name,
-            threshold=threshold,
-        )
+        try:
+            prob_map, binary_mask = model_service.predict_change_rgb(
+                t1_tensor=t1_tensor,
+                t2_tensor=t2_tensor,
+                model_name=model_name,
+                threshold=threshold,
+            )
+        except ValueError as ve:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(ve),
+            )
 
         regions, _ = extract_changed_regions(
             binary_mask=binary_mask,
@@ -181,11 +246,11 @@ async def detect_uploaded_images(
         heatmap_rgb = generate_heatmap_image(prob_map, colormap_name="turbo")
         overlay_rgb = generate_overlay_image((t2_np * 255).astype(np.uint8), binary_mask)
 
-        t1_b64 = array_to_base64_png((t1_np * 255).astype(np.uint8))
-        t2_b64 = array_to_base64_png((t2_np * 255).astype(np.uint8))
+        t1_b64 = array_to_base64_jpeg((t1_np * 255).astype(np.uint8))
+        t2_b64 = array_to_base64_jpeg((t2_np * 255).astype(np.uint8))
         mask_b64 = array_to_base64_png(mask_rgb)
-        heatmap_b64 = array_to_base64_png(heatmap_rgb)
-        overlay_b64 = array_to_base64_png(overlay_rgb)
+        heatmap_b64 = array_to_base64_jpeg(heatmap_rgb)
+        overlay_b64 = array_to_base64_jpeg(overlay_rgb)
 
         total_px = binary_mask.size
         changed_px = int(np.sum(binary_mask > 0))
@@ -210,6 +275,9 @@ async def detect_uploaded_images(
             execution_time_sec=elapsed,
         )
 
+    except HTTPException:
+        # Preserve deliberate refusals (400 unknown model, 503 missing checkpoint).
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -290,19 +358,33 @@ async def detect_sar_changes_from_upload(
             # Mask generation should match input shape, but just in case
             pass
 
-        # Visualization
-        t1_rgb = sar_dualpol_to_rgb(t1_np)
-        t2_rgb = sar_dualpol_to_rgb(t2_np)
-        
+        # Visualization (display-only; never affects the inference outputs above)
+        # Default previews: colorized "satellite-style" SAR (readable, natural
+        # earth tones). Grayscale and dual-pol false color are optional layers.
+        t1_color = sar_to_colorized(t1_np)
+        t2_color = sar_to_colorized(t2_np)
+        t1_gray = sar_to_grayscale(t1_np)
+        t2_gray = sar_to_grayscale(t2_np)
+        t1_fc = sar_dualpol_to_rgb(t1_np)
+        t2_fc = sar_dualpol_to_rgb(t2_np)
+
         mask_rgb = generate_change_mask_image(binary_mask)
         heatmap_rgb = generate_heatmap_image(prob_map, colormap_name="turbo")
-        overlay_rgb = generate_overlay_image(t2_rgb, binary_mask)
+        # Overlay: highlight detected changes over the readable colorized background.
+        overlay_rgb = generate_overlay_image(t2_color, binary_mask)
+        # "Highlight Changes": labeled severity-colored boxes over colorized T2.
+        boxes_rgb = draw_change_boxes(t2_color, regions)
 
-        t1_b64 = array_to_base64_png(t1_rgb)
-        t2_b64 = array_to_base64_png(t2_rgb)
+        t1_b64 = array_to_base64_jpeg(t1_color)
+        t2_b64 = array_to_base64_jpeg(t2_color)
+        t1_gray_b64 = array_to_base64_jpeg(t1_gray)
+        t2_gray_b64 = array_to_base64_jpeg(t2_gray)
+        t1_fc_b64 = array_to_base64_jpeg(t1_fc)
+        t2_fc_b64 = array_to_base64_jpeg(t2_fc)
         mask_b64 = array_to_base64_png(mask_rgb)
-        heatmap_b64 = array_to_base64_png(heatmap_rgb)
-        overlay_b64 = array_to_base64_png(overlay_rgb)
+        heatmap_b64 = array_to_base64_jpeg(heatmap_rgb)
+        overlay_b64 = array_to_base64_jpeg(overlay_rgb)
+        boxes_b64 = array_to_base64_jpeg(boxes_rgb)
 
         total_px = binary_mask.size
         changed_px = int(np.sum(binary_mask > 0))
@@ -321,12 +403,20 @@ async def detect_sar_changes_from_upload(
             regions=regions,
             t1_preview_base64=t1_b64,
             t2_preview_base64=t2_b64,
+            t1_grayscale_base64=t1_gray_b64,
+            t2_grayscale_base64=t2_gray_b64,
+            t1_false_color_base64=t1_fc_b64,
+            t2_false_color_base64=t2_fc_b64,
             change_mask_base64=mask_b64,
             confidence_heatmap_base64=heatmap_b64,
             overlay_base64=overlay_b64,
+            change_boxes_base64=boxes_b64,
             execution_time_sec=elapsed,
         )
 
+    except HTTPException:
+        # Preserve deliberate refusals rather than masking them as a 500.
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

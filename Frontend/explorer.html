@@ -401,12 +401,15 @@
                         <div id="mask-debug-caption" class="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none hidden">
                             <span class="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff453a]/60 text-[#ff453a] font-mono text-[10px] uppercase tracking-widest px-3 py-1">MODEL 3 — BINARY CHANGE MASK</span>
                         </div>
-                        <div class="absolute top-4 left-4 flex gap-2 pointer-events-auto">
-                            <button id="view-t1" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50">T1</button>
-                            <button id="view-t2" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50">T2</button>
+                        <div class="absolute top-4 left-4 flex gap-2 pointer-events-auto flex-wrap">
+                            <button id="view-t1" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T1)">T1</button>
+                            <button id="view-t2" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T2)">T2</button>
+                            <button id="view-optical" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="True-color optical basemap (coordinate runs only)">Optical</button>
+                            <button id="view-falsecolor" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Dual-polarization false-color (VV/VH/ratio)">False Color</button>
                             <button id="view-heatmap" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50">Heatmap</button>
                             <button id="view-mask" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a]/50 px-3 py-1 text-xs font-mono text-[#ff453a] hover:text-[#ff453a] hover:border-[#ff453a]" title="Exact Model 3 binary change mask from the API">Binary Mask</button>
                             <button id="view-overlay" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-primary/50 px-3 py-1 text-xs font-mono text-primary">Overlay</button>
+                            <button id="view-boxes" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000]/50 px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000]" title="Highlight major changed areas with labeled boxes">Highlight</button>
                         </div>
                     </div>
                 </div>
@@ -728,6 +731,13 @@
                 const livePreviews = {
                     t1: toDataURL(data.t1_preview_base64),
                     t2: toDataURL(data.t2_preview_base64),
+                    grayscaleT1: toDataURL(data.t1_grayscale_base64),
+                    grayscaleT2: toDataURL(data.t2_grayscale_base64),
+                    falseColorT1: toDataURL(data.t1_false_color_base64),
+                    falseColorT2: toDataURL(data.t2_false_color_base64),
+                    optical: toDataURL(data.optical_base64),
+                    opticalBoxes: toDataURL(data.optical_boxes_base64),
+                    boxes: toDataURL(data.change_boxes_base64),
                     mask: toDataURL(data.change_mask_base64),
                     heatmap: toDataURL(data.confidence_heatmap_base64),
                     overlay: toDataURL(data.overlay_base64)
@@ -766,11 +776,14 @@
                 // Image viewer — only wire the views that actually have a preview.
                 const resultImg = document.getElementById('result-img');
                 const views = {
-                    't1':      { src: livePreviews.t1,      btn: document.getElementById('view-t1') },
-                    't2':      { src: livePreviews.t2,      btn: document.getElementById('view-t2') },
-                    'heatmap': { src: livePreviews.heatmap, btn: document.getElementById('view-heatmap') },
-                    'mask':    { src: livePreviews.mask,    btn: document.getElementById('view-mask') },
-                    'overlay': { src: livePreviews.overlay, btn: document.getElementById('view-overlay') }
+                    't1':         { src: livePreviews.t1,           btn: document.getElementById('view-t1') },
+                    't2':         { src: livePreviews.t2,           btn: document.getElementById('view-t2') },
+                    'optical':    { src: livePreviews.optical,      btn: document.getElementById('view-optical') },
+                    'falsecolor': { src: livePreviews.falseColorT2, btn: document.getElementById('view-falsecolor') },
+                    'heatmap':    { src: livePreviews.heatmap,      btn: document.getElementById('view-heatmap') },
+                    'mask':       { src: livePreviews.mask,         btn: document.getElementById('view-mask') },
+                    'overlay':    { src: livePreviews.overlay,      btn: document.getElementById('view-overlay') },
+                    'boxes':      { src: livePreviews.opticalBoxes || livePreviews.boxes, btn: document.getElementById('view-boxes') }
                 };
                 const inactiveCls = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50';
                 const activeCls   = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-primary/50 px-3 py-1 text-xs font-mono text-primary';
@@ -778,6 +791,9 @@
                 // The Binary Mask toggle keeps a distinct coral identity (matches the mask color).
                 const maskInactiveCls = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a]/50 px-3 py-1 text-xs font-mono text-[#ff453a] hover:border-[#ff453a]';
                 const maskActiveCls   = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a] px-3 py-1 text-xs font-mono text-[#ff453a] font-bold';
+                // The Highlight (boxes) toggle keeps a distinct amber identity.
+                const boxesInactiveCls = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000]/50 px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000]';
+                const boxesActiveCls   = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000] px-3 py-1 text-xs font-mono text-[#ffb000] font-bold';
                 const maskCaption = document.getElementById('mask-debug-caption');
 
                 const setView = (v) => {
@@ -799,6 +815,8 @@
                         if (!val.src) { val.btn.className = disabledCls; return; }
                         if (k === 'mask') {
                             val.btn.className = (k === v) ? maskActiveCls : maskInactiveCls;
+                        } else if (k === 'boxes') {
+                            val.btn.className = (k === v) ? boxesActiveCls : boxesInactiveCls;
                         } else {
                             val.btn.className = (k === v) ? activeCls : inactiveCls;
                         }
@@ -819,8 +837,8 @@
                     }
                 });
 
-                // Default to overlay; fall back to the first available preview.
-                const preferred = ['overlay', 'mask', 'heatmap', 't2', 't1'].find(k => views[k] && views[k].src);
+                // Default to the highlighted changes; fall back to overlay, then any available preview.
+                const preferred = ['boxes', 'overlay', 'mask', 'heatmap', 't2', 't1'].find(k => views[k] && views[k].src);
                 if (preferred) {
                     setView(preferred);
                 } else {

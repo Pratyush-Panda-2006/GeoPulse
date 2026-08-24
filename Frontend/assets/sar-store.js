@@ -60,6 +60,10 @@
             previews_available: {
                 t1: !!data.t1_preview_base64,
                 t2: !!data.t2_preview_base64,
+                grayscale: !!data.t2_grayscale_base64,
+                falsecolor: !!data.t2_false_color_base64,
+                optical: !!data.optical_base64,
+                boxes: !!(data.change_boxes_base64 || data.optical_boxes_base64),
                 mask: !!data.change_mask_base64,
                 heatmap: !!data.confidence_heatmap_base64,
                 overlay: !!data.overlay_base64

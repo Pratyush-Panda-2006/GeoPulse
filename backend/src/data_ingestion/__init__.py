@@ -6,13 +6,14 @@ Provides clients for fetching Sentinel-1 SAR imagery from the
 Copernicus Data Space Ecosystem (CDSE) Processing API.
 """
 
-from data_ingestion.sentinel_client import (
+from src.data_ingestion.sentinel_client import (
     CDSEAuthManager,
     SentinelHubClient,
     SentinelAPIError,
     SentinelSceneNotFoundError,
     fetch_sentinel1_pair,
 )
+from src.data_ingestion.optical_client import fetch_optical_basemap
 
 __all__ = [
     "CDSEAuthManager",
@@ -20,4 +21,5 @@ __all__ = [
     "SentinelAPIError",
     "SentinelSceneNotFoundError",
     "fetch_sentinel1_pair",
+    "fetch_optical_basemap",
 ]

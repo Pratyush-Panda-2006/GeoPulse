@@ -42,21 +42,6 @@ class ModelService:
     def _load_default_models(self) -> None:
         """Pre-instantiate standard model architectures for fast inference."""
         try:
-            # Siamese U-Net for SAR (in_channels=2)
-            sar_siamese = SiameseUNet(in_channels=2, num_classes=1)
-            sar_siamese.eval().to(self.device)
-            self._models["siamese_unet_sar"] = sar_siamese
-
-            # Siamese U-Net for RGB (in_channels=3)
-            rgb_siamese = SiameseUNet(in_channels=3, num_classes=1)
-            rgb_siamese.eval().to(self.device)
-            self._models["siamese_unet_rgb"] = rgb_siamese
-
-            # SNUNet-CD (in_channels=3 for RGB)
-            snunet = SNUNetCD(in_channels=3, num_classes=1)
-            snunet.eval().to(self.device)
-            self._models["snunet_cd"] = snunet
-
             # SNUNet-CD SAR Model 3
             try:
                 snunet_sar = SNUNetCD(in_channels=2, num_classes=1)
@@ -130,18 +115,9 @@ class ModelService:
         t2_tensor = t2_tensor.to(self.device, dtype=torch.float32)
 
         # Select model
-        if "snunet" in model_name.lower():
-            key = "snunet_cd_sar"
-        else:
-            key = "siamese_unet_sar"
-            
-        model = self._models.get(key)
+        model = self._models.get(model_name)
         if model is None:
-            if "snunet" in model_name.lower():
-                raise RuntimeError("Model 3 SAR (snunet_cd_sar) was not successfully loaded from a checkpoint. Refusing to run inference with random weights.")
-            else:
-                model = SiameseUNet(in_channels=2, num_classes=1).eval().to(self.device)
-            self._models[key] = model
+            raise ValueError(f"Model '{model_name}' is not loaded or has no valid trained checkpoint.")
 
         logits = model(t1_tensor, t2_tensor)
         probs = torch.sigmoid(logits)
@@ -171,16 +147,9 @@ class ModelService:
         t1_tensor = t1_tensor.to(self.device, dtype=torch.float32)
         t2_tensor = t2_tensor.to(self.device, dtype=torch.float32)
 
-        if "snunet" in model_name.lower():
-            model = self._models.get("snunet_cd")
-            if model is None:
-                model = SNUNetCD(in_channels=3, num_classes=1).eval().to(self.device)
-                self._models["snunet_cd"] = model
-        else:
-            model = self._models.get("siamese_unet_rgb")
-            if model is None:
-                model = SiameseUNet(in_channels=3, num_classes=1).eval().to(self.device)
-                self._models["siamese_unet_rgb"] = model
+        model = self._models.get(model_name)
+        if model is None:
+            raise ValueError(f"Model '{model_name}' is not loaded or has no valid trained checkpoint.")
 
         logits = model(t1_tensor, t2_tensor)
         probs = torch.sigmoid(logits)

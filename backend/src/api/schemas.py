@@ -65,6 +65,7 @@ class ChangedRegion(BaseModel):
     centroid_xy: Tuple[float, float]
     bbox_xy: Tuple[int, int, int, int]  # (min_row, min_col, max_row, max_col)
     geo_bbox: Optional[Tuple[float, float, float, float]] = None # (min_lon, min_lat, max_lon, max_lat)
+    geo_centroid: Optional[Tuple[float, float]] = None # (lon, lat)
     mean_change_prob: float
     severity: str = Field("Medium", description="Severity level: Low, Medium, High, Critical, Uncertain")
     label: str = Field("Unclassified Change", description="Interpreted change classification label")
@@ -86,8 +87,8 @@ class DetectSentinelRequest(BaseModel):
         description="Tile resolution in pixels (height, width)"
     )
     model_name: str = Field(
-        "siamese_unet",
-        description="Model architecture to use: 'siamese_unet' or 'snunet_cd'"
+        "snunet_cd_sar",
+        description="Model architecture to use: 'snunet_cd_sar'"
     )
     threshold: float = Field(
         0.5,
@@ -115,9 +116,16 @@ class ChangeDetectionResponse(BaseModel):
     regions: List[ChangedRegion]
     t1_preview_base64: Optional[str] = None
     t2_preview_base64: Optional[str] = None
+    t1_grayscale_base64: Optional[str] = None
+    t2_grayscale_base64: Optional[str] = None
+    t1_false_color_base64: Optional[str] = None
+    t2_false_color_base64: Optional[str] = None
+    optical_base64: Optional[str] = None
+    optical_boxes_base64: Optional[str] = None
     change_mask_base64: str
     confidence_heatmap_base64: str
     overlay_base64: Optional[str] = None
+    change_boxes_base64: Optional[str] = None
     execution_time_sec: float
 
 

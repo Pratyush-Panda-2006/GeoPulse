@@ -254,7 +254,7 @@ def _build_request_body(
         JSON-serialisable request payload.
     """
     from_date, to_date = date_range
-    width, height = output_resolution
+    height, width = output_resolution
 
     return {
         "input": {

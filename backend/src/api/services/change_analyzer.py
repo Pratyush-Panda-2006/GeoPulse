@@ -109,10 +109,13 @@ def extract_changed_regions(
 
         # Geo-referencing if bbox is available
         geo_bbox = None
+        geo_centroid = None
         if bbox is not None:
             c1_lon, c1_lat = pixel_to_geo_coords(max_row, min_col, bbox, (h, w)) # SW
             c2_lon, c2_lat = pixel_to_geo_coords(min_row, max_col, bbox, (h, w)) # NE
             geo_bbox = (c1_lon, c1_lat, c2_lon, c2_lat)
+            c_lon, c_lat = pixel_to_geo_coords(global_centroid_r, global_centroid_c, bbox, (h, w))
+            geo_centroid = (c_lon, c_lat)
 
         approx_area_km2 = (
             round(area_px * pixel_area_km2, 6)
@@ -146,6 +149,7 @@ def extract_changed_regions(
                 centroid_xy=(round(global_centroid_c, 2), round(global_centroid_r, 2)),
                 bbox_xy=(min_row, min_col, max_row, max_col),
                 geo_bbox=geo_bbox,
+                geo_centroid=geo_centroid,
                 mean_change_prob=round(mean_prob, 4),
                 severity=severity,
                 label=label,
