@@ -126,9 +126,30 @@
         });
     }
 
+    /* --------------------------- API base configuration ---------------------- */
+    // Single source of truth for the backend origin used by all suite pages.
+    // Priority:  1) ?api= query param   2) localStorage['nrsc_api_base']   3) default
+    var API_BASE_KEY = 'nrsc_api_base';
+    var API_BASE_DEFAULT = 'http://127.0.0.1:8000';
+
+    function getApiBase() {
+        try {
+            var q = new URLSearchParams(global.location.search).get('api');
+            if (q) return q.replace(/\/+$/, '');
+        } catch (e) { /* ignore */ }
+        try {
+            var stored = global.localStorage.getItem(API_BASE_KEY);
+            if (stored) return stored.replace(/\/+$/, '');
+        } catch (e) { /* ignore */ }
+        return API_BASE_DEFAULT;
+    }
+
     /* ------------------------------ Public API ------------------------------ */
 
     var SARStore = {
+        /** Resolve the backend origin (see API base configuration above). */
+        getApiBase: getApiBase,
+
         /**
          * Persist COMPACT metadata to sessionStorage. Synchronous and may throw
          * (quota / storage disabled) — callers MUST wrap this in try/catch and

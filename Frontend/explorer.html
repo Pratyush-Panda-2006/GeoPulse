@@ -692,13 +692,15 @@
             formData.append('image_t1', t1File);
             formData.append('image_t2', t2File);
             formData.append('threshold', sensSlider ? sensSlider.value : 0.95);
+            formData.append('min_region_area_px', '10');
 
             // Start sweep animation looping
             const sweepAnim = sweep.animate([{ left: '0%' }, { left: '100%' }], { duration: 2400, iterations: Infinity });
             let hasError = false;
 
             try {
-                const res = await fetch('http://127.0.0.1:8001/api/v1/detect/change-detection', {
+                const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
+                const res = await fetch(apiBase + '/api/v1/detect/change-detection', {
                     method: 'POST',
                     body: formData
                 });
