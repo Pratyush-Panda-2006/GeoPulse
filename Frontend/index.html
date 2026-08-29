@@ -156,6 +156,11 @@
             border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
         
+        @keyframes pulse-marker {
+            0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.3); box-shadow: 0 0 25px rgba(78,222,163,0.8); }
+        }
+        
         .pulse-border {
             animation: pulse-border-anim 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
         }
@@ -212,7 +217,7 @@
     </div>
 
     <!-- TopNavBar (Global Nav) -->
-    <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3 h-toolbar-width">
+    <nav class="fixed top-0 left-0 right-0 z-[9999] flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3 h-toolbar-width">
         <a href="index.html" class="font-headline-md text-[18px] md:text-[20px] text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse"></span>
             <span>GeoPulse</span>
@@ -403,7 +408,7 @@
         <!-- Level 0 Canvas: Interactive Map Area -->
         <div class="flex-1 relative bg-surface-container-lowest map-cursor overflow-hidden ml-[-1px]">
             <!-- Satellite Basemap Layer -->
-            <div class="absolute inset-0 bg-cover bg-center opacity-70" data-alt="High-resolution tactical map of India, displaying accurate international and state borders outlined in glowing cyan/emerald vector lines." data-location="India" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBipvc13muhDU84O-GEV1lXzNJLdVGGZMDHVYs-ClBsbz5_jsoOw7toHUCCNDpUhEWbA62Y2u7JH1f7RVxYSACdkqxkyURQhw5rMILekseMAJwpo3DNKIEP0RZaljGWZFJNSt0KRZmgrnDH_v1y_7ZhS7R_yDJLcJE15D_FE7FH9VckUK2UQ2bxrysnNF9PxvA9iGUAQdVFAo5ZDqGpBf7IC_7uHftsW-kXq3fAtNFHNA0YwQUMcbD'); filter: grayscale(100%) contrast(1.2) brightness(0.8);">
+            <div class="absolute inset-0 bg-cover bg-center opacity-70 transition-opacity duration-1000" id="generic-basemap" data-alt="High-resolution tactical map of India, displaying accurate international and state borders outlined in glowing cyan/emerald vector lines." data-location="India" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBipvc13muhDU84O-GEV1lXzNJLdVGGZMDHVYs-ClBsbz5_jsoOw7toHUCCNDpUhEWbA62Y2u7JH1f7RVxYSACdkqxkyURQhw5rMILekseMAJwpo3DNKIEP0RZaljGWZFJNSt0KRZmgrnDH_v1y_7ZhS7R_yDJLcJE15D_FE7FH9VckUK2UQ2bxrysnNF9PxvA9iGUAQdVFAo5ZDqGpBf7IC_7uHftsW-kXq3fAtNFHNA0YwQUMcbD'); filter: grayscale(100%) contrast(1.2) brightness(0.8);">
                 <!-- Map Overlay Gradient for better UI contrast -->
                 <div class="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/50 to-transparent pointer-events-none"></div>
             </div>
@@ -411,8 +416,10 @@
             <!-- Interactive Drawing Overlay (Bounding Box Demo) -->
             <div class="absolute inset-0 pointer-events-none z-10" id="result-overlay-container" style="display: none;">
                 <div class="absolute inset-0 flex items-center justify-center p-8">
-                    <div class="relative w-full h-full flex items-center justify-center">
+                    <div class="relative max-w-full max-h-full inline-flex items-center justify-center">
                         <img id="result-img" class="max-w-full max-h-full object-contain border border-primary/50 shadow-[0_0_30px_rgba(78,222,163,0.2)]" src="" alt="Result Overlay" />
+                        <!-- Neon Marker Overlay -->
+                        <div id="marker-overlay" class="absolute inset-0 pointer-events-none border border-transparent"></div>
                         <!-- DEBUG caption: only shown while the exact backend binary mask is displayed -->
                         <div id="mask-debug-caption" class="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none hidden">
                             <span class="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff453a]/60 text-[#ff453a] font-mono text-[10px] uppercase tracking-widest px-3 py-1">MODEL 3 — BINARY CHANGE MASK</span>
@@ -522,7 +529,7 @@
             <div class="absolute top-0 left-0 w-1 h-full bg-primary/40 shadow-[0_0_20px_rgba(78,222,163,0.8)] z-20 pointer-events-none hidden" id="radar-sweep"></div>
             
             <!-- Terminal Log Overlay -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 bg-[#0a0a0a]/90 border border-primary/30 p-4 font-mono text-[10px] text-primary z-30 hidden backdrop-blur-xl" id="terminal-overlay">
+            <div class="absolute bottom-6 right-6 w-72 max-h-80 overflow-y-auto bg-[#0a0a0a]/90 border border-primary/30 p-4 font-mono text-[10px] text-primary z-30 hidden backdrop-blur-xl" id="terminal-overlay">
                 <div class="flex justify-between mb-2 border-b border-primary/20 pb-1">
                     <span class="tracking-widest uppercase">System Log</span>
                     <span class="animate-pulse">_</span>
@@ -639,7 +646,23 @@
             demoInputs.classList.remove('hidden');
             liveInputs.classList.add('hidden');
             uploadInputs.classList.add('hidden');
+            loadDemoPreview();
         });
+
+        // Instant Preview Logic for Demo Scenes (Removed TIFF preview because browsers don't support it)
+        const loadDemoPreview = async () => {
+            const genericBasemap = document.getElementById('generic-basemap');
+            const demoBox = document.getElementById('demo-bbox');
+            const resultImg = document.getElementById('result-img');
+            const overlayContainer = document.getElementById('result-overlay-container');
+            
+            if (genericBasemap) genericBasemap.style.opacity = '0.15';
+            if (demoBox) demoBox.style.display = 'none';
+            if (resultImg) resultImg.removeAttribute('src'); // clear broken image
+            if (overlayContainer) overlayContainer.style.display = 'none'; // hide until backend returns PNG
+        };
+
+        document.getElementById('demo-scene-select').addEventListener('change', loadDemoPreview);
 
         // Drag and Drop Logic
         const setupDropzone = (dropzoneId, inputId, labelId) => {
@@ -654,6 +677,17 @@
                     label.innerText = input.files[0].name;
                     dropzone.classList.add('border-primary');
                     dropzone.classList.replace('bg-surface-container-low/30', 'bg-primary/5');
+                    
+                    // Removed instant preview for Upload mode because browsers can't render raw TIFFs natively.
+                    const genericBasemap = document.getElementById('generic-basemap');
+                    const demoBox = document.getElementById('demo-bbox');
+                    const resultImg = document.getElementById('result-img');
+                    const overlayContainer = document.getElementById('result-overlay-container');
+                    
+                    if (genericBasemap) genericBasemap.style.opacity = '0.15';
+                    if (demoBox) demoBox.style.display = 'none';
+                    if (resultImg) resultImg.removeAttribute('src');
+                    if (overlayContainer) overlayContainer.style.display = 'none';
                 }
             });
 
@@ -674,6 +708,19 @@
                     label.innerText = input.files[0].name;
                     dropzone.classList.add('border-primary');
                     dropzone.classList.replace('bg-surface-container-low/30', 'bg-primary/5');
+                    
+                    if (inputId === 't1-file') {
+                        // Removed instant preview for Upload mode because browsers can't render raw TIFFs natively.
+                        const genericBasemap = document.getElementById('generic-basemap');
+                        const demoBox = document.getElementById('demo-bbox');
+                        const resultImg = document.getElementById('result-img');
+                        const overlayContainer = document.getElementById('result-overlay-container');
+                        
+                        if (genericBasemap) genericBasemap.style.opacity = '0.15';
+                        if (demoBox) demoBox.style.display = 'none';
+                        if (resultImg) resultImg.removeAttribute('src');
+                        if (overlayContainer) overlayContainer.style.display = 'none';
+                    }
                 }
             });
         };
@@ -690,8 +737,7 @@
 
             let t1File, t2File;
 
-            // Show terminal log early
-            terminal.classList.remove('hidden');
+            // Terminal log overlay is intentionally kept hidden as per user request.
             logContent.innerHTML = ''; // clear old logs
 
             const addLog = (msg, level) => {
@@ -746,7 +792,23 @@
                 }
             }
 
-            addLog('Sending payload to inference engine...');
+            addLog('SCANNING...', 'info');
+
+            // Pre-detection visual setup (Cinematic Phase 1)
+            const genericBasemap = document.getElementById('generic-basemap');
+            const overlayContainer = document.getElementById('result-overlay-container');
+            const resultImg = document.getElementById('result-img');
+            const markerOverlay = document.getElementById('marker-overlay');
+            const demoBox = document.getElementById('demo-bbox');
+            
+            if (genericBasemap) genericBasemap.style.opacity = '0.15';
+            if (demoBox) demoBox.style.display = 'none';
+            if (markerOverlay) markerOverlay.innerHTML = '';
+            
+            // Note: We cannot display t1File instantly because browsers do not support rendering TIFF files in <img> tags.
+            // The image will be revealed as a PNG returned by the backend after scanning completes.
+            if (resultImg) resultImg.removeAttribute('src');
+            if (overlayContainer) overlayContainer.style.display = 'none';
             
             const formData = new FormData();
             formData.append('image_t1', t1File);
@@ -759,7 +821,7 @@
             let hasError = false;
 
             try {
-                const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
+                const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : window.location.protocol + '//' + window.location.hostname + ':8000';
                 const res = await fetch(apiBase + '/api/v1/detect/change-detection', {
                     method: 'POST',
                     body: formData
@@ -774,7 +836,6 @@
 
                 // Successful API + inference -> success (green) state.
                 addLog('Inference Complete.', 'success');
-                addLog(`Detected ${data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 0)} clusters.`, 'success');
 
                 /* ---------------------------------------------------------------
                  * STEP 1 — RENDER THE REAL RESULTS FIRST.
@@ -805,11 +866,9 @@
                     overlay: toDataURL(data.overlay_base64)
                 };
 
-                // Remove the fake demo bounding box; reveal the real result panels.
-                const demoBox = document.getElementById('demo-bbox');
-                if (demoBox) demoBox.style.display = 'none';
-                const overlayContainer = document.getElementById('result-overlay-container');
-                if (overlayContainer) overlayContainer.style.display = 'block';
+                // Ensure overlay container is visible
+                const overlayContainerNode = document.getElementById('result-overlay-container');
+                if (overlayContainerNode) overlayContainerNode.style.display = 'block';
                 const resultsPanel = document.getElementById('results-panel');
                 if (resultsPanel) resultsPanel.classList.remove('hidden');
 
@@ -871,6 +930,15 @@
                         resultImg.style.imageRendering = 'auto';
                         if (maskCaption) maskCaption.classList.add('hidden');
                     }
+                    
+                    const mo = document.getElementById('marker-overlay');
+                    if (mo) {
+                        if (v === 'mask' || v === 'boxes') {
+                            mo.style.display = 'none';
+                        } else {
+                            mo.style.display = 'block';
+                        }
+                    }
                     Object.keys(views).forEach(k => {
                         const val = views[k];
                         if (!val.btn) return;
@@ -899,12 +967,58 @@
                     }
                 });
 
-                // Default to the highlighted changes; fall back to overlay, then any available preview.
-                const preferred = ['boxes', 'overlay', 'mask', 'heatmap', 't2', 't1'].find(k => views[k] && views[k].src);
+                // Default to T2 (or T1) to show the markers as the primary layer.
+                const preferred = ['t2', 't1', 'overlay'].find(k => views[k] && views[k].src);
                 if (preferred) {
                     setView(preferred);
                 } else {
                     addLog('No preview imagery returned by API (showing metrics only).', 'warn');
+                }
+
+                // Cinematic Phase 2: Sequential Reveal
+                if (Array.isArray(data.regions) && data.regions.length > 0) {
+                    addLog('CHANGE SIGNAL DETECTED', 'info');
+                    setTimeout(() => {
+                        const imgW = resultImg.naturalWidth || resultImg.width;
+                        const imgH = resultImg.naturalHeight || resultImg.height;
+                        const mo = document.getElementById('marker-overlay');
+                        
+                        data.regions.forEach((region, i) => {
+                            setTimeout(() => {
+                                const pctX = (region.centroid_xy[0] / imgW) * 100;
+                                const pctY = (region.centroid_xy[1] / imgH) * 100;
+                                
+                                const marker = document.createElement('div');
+                                marker.className = 'absolute w-3 h-3 bg-primary rounded-full shadow-[0_0_15px_rgba(78,222,163,1)] opacity-0 pointer-events-auto cursor-pointer hover:scale-125 transition-transform';
+                                marker.style.top = `${pctY}%`;
+                                marker.style.left = `${pctX}%`;
+                                marker.style.animation = 'pulse-marker 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1)';
+                                
+                                marker.onclick = () => {
+                                    addLog(`Region ${region.region_id} Selected (Area: ${region.area_px}px, ${region.severity})`, 'info');
+                                };
+                                
+                                if (mo) mo.appendChild(marker);
+                                
+                                requestAnimationFrame(() => {
+                                    marker.style.transition = 'opacity 0.4s ease-out, transform 0.2s';
+                                    marker.classList.remove('opacity-0');
+                                });
+                                
+                                addLog(`REGION 0${region.region_id} LOCKED`, 'success');
+                                
+                                if (i === data.regions.length - 1) {
+                                    setTimeout(() => {
+                                        addLog('ANALYSIS COMPLETE', 'success');
+                                        setTimeout(() => terminal.classList.add('hidden'), 5000);
+                                    }, 500);
+                                }
+                            }, i * 400); // 400ms stagger between regions
+                        });
+                    }, 300); // Allow image dimensions to settle
+                } else {
+                    addLog('ANALYSIS COMPLETE: No regions detected.', 'success');
+                    setTimeout(() => terminal.classList.add('hidden'), 5000);
                 }
 
                 /* ---------------------------------------------------------------
@@ -938,7 +1052,8 @@
             } finally {
                 sweepAnim.cancel();
                 sweep.classList.add('hidden');
-                if (!hasError) {
+                // The terminal hiding is now handled in the reveal sequence loop, so we don't hide it instantly here if there was no error, unless it's a fallback.
+                if (hasError) {
                     setTimeout(() => terminal.classList.add('hidden'), 5000);
                 }
             }

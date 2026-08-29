@@ -130,7 +130,7 @@
     // Single source of truth for the backend origin used by all suite pages.
     // Priority:  1) ?api= query param   2) localStorage['nrsc_api_base']   3) default
     var API_BASE_KEY = 'nrsc_api_base';
-    var API_BASE_DEFAULT = 'http://127.0.0.1:8000';
+    var API_BASE_DEFAULT = global.location.protocol + '//' + global.location.hostname + ':8000';
 
     function getApiBase() {
         try {
