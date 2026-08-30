@@ -205,6 +205,7 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
                     job_id=job_id,
                     geometry=geometry,
                     properties={
+                        "region_id": region.region_id,
                         "area_px": region.area_px,
                         "approx_area_sq_km": region.approx_area_sq_km,
                         "mean_change_prob": region.mean_change_prob,
@@ -485,15 +486,24 @@ def get_job_detections_geojson(job_id: int):
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
 
+        detections = session.query(Detection).filter(Detection.job_id == job_id).all()
+
         features = []
-        for det in job.detections:
+        for det in detections:
             if not det.geometry:
                 continue
+            props = dict(det.properties or {})
+            
+            # Canonical Phase 7 vector properties
+            props["region_id"] = props.get("region_id")
+            props["class"] = "change"
+            props["confidence"] = props.get("mean_change_prob")
+            props["area_sq_km"] = props.get("approx_area_sq_km")
             
             features.append({
                 "type": "Feature",
                 "geometry": det.geometry,
-                "properties": det.properties or {}
+                "properties": props
             })
             
         return {

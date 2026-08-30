@@ -142,7 +142,12 @@ def test_geojson_endpoint(mock_db):
                         [[1.0, 1.0], [2.0, 1.0], [2.0, 2.0], [1.0, 2.0], [1.0, 1.0]]
                     ]
                 },
-                properties={"severity": "High"}
+                properties={
+                    "region_id": 1,
+                    "severity": "High",
+                    "mean_change_prob": 0.85,
+                    "approx_area_sq_km": 1.5,
+                }
             ),
             # Invalid/empty detection geometry
             DummyDetection(
@@ -153,6 +158,7 @@ def test_geojson_endpoint(mock_db):
     )
     
     mock_session.query.return_value.get.return_value = mock_job
+    mock_session.query.return_value.filter.return_value.all.return_value = mock_job.detections
     
     res = client.get("/detect/1/detections.geojson")
     assert res.status_code == 200
@@ -166,4 +172,16 @@ def test_geojson_endpoint(mock_db):
     assert feat["geometry"]["type"] == "Polygon"
     assert feat["geometry"]["coordinates"][0][0] == [1.0, 1.0] # Closed ring check
     assert feat["geometry"]["coordinates"][0][-1] == [1.0, 1.0]
-    assert feat["properties"]["severity"] == "High"
+    assert "geometry" in feat
+    
+    props = feat["properties"]
+    assert props["severity"] == "High"
+    
+    # Verify Phase 7 Canonical Vector properties
+    assert props["region_id"] == 1
+    assert props["class"] == "change"
+    assert props["confidence"] == 0.85
+    assert props["area_sq_km"] == 1.5
+    
+    # Ensure backward compatibility field remains
+    assert props["mean_change_prob"] == 0.85
