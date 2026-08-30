@@ -44,6 +44,7 @@
 
         return {
             version: 1,
+            job_id: data.job_id != null ? data.job_id : null,
             status: data.status || 'success',
             model: data.model_used != null ? data.model_used : null,
             threshold: data.threshold != null ? data.threshold : null,

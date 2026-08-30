@@ -180,6 +180,15 @@
             outline: none;
         }
         
+        input[type="date"].glass-input {
+            color: #e2e2e2 !important;
+            background-color: #171918 !important;
+        }
+        input[type="date"].glass-input::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+        
         .map-cursor {
             cursor: crosshair;
         }
@@ -683,12 +692,8 @@
 
         // 2. Radar Sweep Trigger
         runBtn.addEventListener('click', async () => {
-            if (currentMode === 'live') {
-                alert('Live API connection requires CDSE_CLIENT_ID. Please use UPLOAD or DEMO mode.');
-                return;
-            }
-
             let t1File, t2File;
+            let sentinelPayload = null;
 
             // Show terminal log early
             terminal.classList.remove('hidden');
@@ -706,7 +711,39 @@
                 logContent.scrollTop = logContent.scrollHeight;
             };
 
-            if (currentMode === 'upload') {
+            if (currentMode === 'live') {
+                addLog('Initializing Live Sentinel-1 Intelligence...');
+                
+                // Get dates from the DOM (or fallback)
+                const liveInputsDiv = document.getElementById('live-inputs');
+                const dateInputs = liveInputsDiv ? liveInputsDiv.querySelectorAll('input[type="date"]') : [];
+                const t1Date = dateInputs[0] ? dateInputs[0].value : '2023-10-01';
+                const t2Date = dateInputs[1] ? dateInputs[1].value : '2023-10-15';
+                
+                // Construct Date ranges using a 5-day window for robust fetching
+                const d1 = new Date(t1Date);
+                const d1End = new Date(d1); d1End.setDate(d1.getDate() + 5);
+                const d2 = new Date(t2Date);
+                const d2End = new Date(d2); d2End.setDate(d2.getDate() + 5);
+                const fmtDate = (d) => d.toISOString().split('T')[0];
+
+                // Attempt to read resolution/model selects, falling back if not found
+                const selects = document.querySelectorAll('select.glass-input');
+                const resVal = selects.length > 1 ? parseInt(selects[1].value) : 512;
+                
+                let modelStr = selects.length > 2 ? selects[2].value : 'snunet';
+                if (modelStr === 'snunet') modelStr = 'snunet_cd_sar';
+                
+                sentinelPayload = {
+                    bbox: { min_lon: 77.10, min_lat: 28.50, max_lon: 77.30, max_lat: 28.70 },
+                    date_range_t1: [fmtDate(d1), fmtDate(d1End)],
+                    date_range_t2: [fmtDate(d2), fmtDate(d2End)],
+                    resolution: [resVal, resVal],
+                    model_name: modelStr,
+                    threshold: parseFloat(sensSlider ? sensSlider.value : 0.95),
+                    min_region_area_px: 10
+                };
+            } else if (currentMode === 'upload') {
                 const t1Input = document.getElementById('t1-file');
                 const t2Input = document.getElementById('t2-file');
                 
@@ -748,22 +785,36 @@
 
             addLog('Sending payload to inference engine...');
             
-            const formData = new FormData();
-            formData.append('image_t1', t1File);
-            formData.append('image_t2', t2File);
-            formData.append('threshold', sensSlider ? sensSlider.value : 0.95);
-            formData.append('min_region_area_px', '10');
-
             // Start sweep animation looping
             const sweepAnim = sweep.animate([{ left: '0%' }, { left: '100%' }], { duration: 2400, iterations: Infinity });
             let hasError = false;
 
             try {
                 const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
-                const res = await fetch(apiBase + '/api/v1/detect/change-detection', {
-                    method: 'POST',
-                    body: formData
-                });
+                
+                let fetchUrl, fetchOpts;
+                if (currentMode === 'live') {
+                    fetchUrl = apiBase + '/api/v1/detect/sentinel';
+                    fetchOpts = {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(sentinelPayload)
+                    };
+                } else {
+                    const formData = new FormData();
+                    formData.append('image_t1', t1File);
+                    formData.append('image_t2', t2File);
+                    formData.append('threshold', sensSlider ? sensSlider.value : 0.95);
+                    formData.append('min_region_area_px', '10');
+
+                    fetchUrl = apiBase + '/api/v1/detect/change-detection';
+                    fetchOpts = {
+                        method: 'POST',
+                        body: formData
+                    };
+                }
+                
+                const res = await fetch(fetchUrl, fetchOpts);
                 
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));

@@ -314,7 +314,7 @@
                                 <span class="material-symbols-outlined text-[16px] group-hover:text-primary transition-colors" data-icon="picture_as_pdf">picture_as_pdf</span> PDF
                             </button>
                             <div class="w-px h-4 bg-outline/30"></div>
-                            <button onclick="alert('Generating GeoJSON vector bounds...')" class="px-3 py-1.5 hover:bg-surface-variant text-outline hover:text-primary transition-colors font-mono text-[10px] uppercase tracking-widest flex items-center gap-1 group">
+                            <button id="export-geojson" class="px-3 py-1.5 hover:bg-surface-variant text-outline hover:text-primary transition-colors font-mono text-[10px] uppercase tracking-widest flex items-center gap-1 group">
                                 <span class="material-symbols-outlined text-[16px] group-hover:text-primary transition-colors" data-icon="public">public</span> GeoJSON
                             </button>
                             <div class="w-px h-4 bg-outline/30"></div>
@@ -522,6 +522,25 @@
                             window.location.href = 'studio.html';
                         }
                     });
+                });
+            }
+
+            // GeoJSON Export Logic
+            const geojsonBtn = document.getElementById('export-geojson');
+            if (geojsonBtn) {
+                geojsonBtn.addEventListener('click', () => {
+                    if (metadata.job_id) {
+                        const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
+                        const url = `${apiBase}/api/v1/detect/${metadata.job_id}/detections.geojson`;
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `detections_${metadata.job_id}.geojson`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    } else {
+                        alert('No job ID found for the current inference result. GeoJSON export is unavailable.');
+                    }
                 });
             }
             } catch (err) {
