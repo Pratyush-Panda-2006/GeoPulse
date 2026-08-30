@@ -116,18 +116,30 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
             t1_asset = session.query(SARAsset).filter_by(scene_id=t1_scene.id, time_label="T1").first()
             t2_asset = session.query(SARAsset).filter_by(scene_id=t2_scene.id, time_label="T2").first()
 
+            t2_transform = None
+            t2_crs = None
+
             if t1_asset and t2_asset:
                 t1_bytes = download_bytes(t1_asset.storage_key)
                 t2_bytes = download_bytes(t2_asset.storage_key)
                 t1_np, t2_np = load_sar_pair_for_inference(t1_bytes, t2_bytes, is_linear=False, return_tensors=False)
+                
+                from src.preprocessing.sar_loader import extract_geotiff_metadata
+                geo_meta = extract_geotiff_metadata(t2_bytes)
+                t2_transform = geo_meta.get("transform")
+                t2_crs = geo_meta.get("crs")
             else:
                 # Fallback to direct download if assets aren't explicitly saved
-                t1_np, t2_np, _, _ = fetch_sentinel1_pair(
+                t1_np, t2_np, _, t2_meta = fetch_sentinel1_pair(
                     bbox=req.bbox.to_list(),
                     date_t1_range=req.date_range_t1,
                     date_t2_range=req.date_range_t2,
                     output_resolution=req.resolution,
                 )
+                
+                t2_raster_meta = t2_meta.get("raster_metadata", {})
+                t2_transform = t2_raster_meta.get("transform")
+                t2_crs = t2_raster_meta.get("crs")
 
             # Resolve/create SARScene records
             t1_scene = _get_or_create_scene(session, t1_meta)
@@ -152,7 +164,9 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
                 model_name=req.model_name,
                 threshold=req.threshold,
                 min_region_area_px=req.min_region_area_px,
-                bbox=req.bbox.to_list()
+                bbox=req.bbox.to_list(),
+                transform=t2_transform,
+                crs=t2_crs,
             )
 
             job.status = "completed"
@@ -170,21 +184,26 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
 
             # Persist each Detection
             for region in result.regions:
+                # Only save geometries if we have valid geo_bbox coordinates
+                if region.geo_bbox:
+                    # Valid GeoJSON Polygon must be a closed ring
+                    coords = [
+                        [
+                            [region.geo_bbox[0], region.geo_bbox[1]],
+                            [region.geo_bbox[2], region.geo_bbox[1]],
+                            [region.geo_bbox[2], region.geo_bbox[3]],
+                            [region.geo_bbox[0], region.geo_bbox[3]],
+                            [region.geo_bbox[0], region.geo_bbox[1]],
+                        ]
+                    ]
+                    geometry = {"type": "Polygon", "coordinates": coords}
+                else:
+                    # No fallback invalid geometry; just leave it null if missing (should not happen with good input)
+                    geometry = None
+                
                 detection = Detection(
                     job_id=job_id,
-                    geometry={
-                        "type": "Polygon",
-                        # We use the geo_bbox if available, otherwise just default to empty/placeholder
-                        "coordinates": [
-                            [
-                                [region.geo_bbox[0], region.geo_bbox[1]],
-                                [region.geo_bbox[2], region.geo_bbox[1]],
-                                [region.geo_bbox[2], region.geo_bbox[3]],
-                                [region.geo_bbox[0], region.geo_bbox[3]],
-                                [region.geo_bbox[0], region.geo_bbox[1]],
-                            ]
-                        ] if region.geo_bbox else []
-                    },
+                    geometry=geometry,
                     properties={
                         "area_px": region.area_px,
                         "approx_area_sq_km": region.approx_area_sq_km,
@@ -217,7 +236,12 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
         # None on any failure so the optical layer is simply omitted.
         optical_b64 = None
         optical_boxes_b64 = None
-        optical_rgb = fetch_optical_basemap(req.bbox.to_list(), t2_np.shape[1:])
+        optical_rgb = fetch_optical_basemap(
+            req.bbox.to_list(),
+            t2_np.shape[1:],
+            target_crs=t2_crs,
+            target_transform=t2_transform
+        )
         if optical_rgb is not None:
             optical_b64 = array_to_base64_jpeg(optical_rgb)
             optical_boxes_b64 = array_to_base64_jpeg(draw_change_boxes(optical_rgb, result.regions))
@@ -441,3 +465,40 @@ async def detect_sar_changes_from_upload(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"SAR Inference on uploaded images failed: {e}",
         )
+
+
+@router.get(
+    "/{job_id}/detections.geojson",
+    summary="Get job detections as canonical GeoJSON FeatureCollection",
+)
+def get_job_detections_geojson(job_id: int):
+    """
+    Returns valid GeoJSON representation of all detections for a specific job.
+    """
+    db.init_db()
+    if db.SessionLocal is None:
+        raise HTTPException(status_code=500, detail="Database is not configured")
+    
+    session: Session = db.SessionLocal()
+    try:
+        job = session.query(ChangeDetectionJob).get(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        features = []
+        for det in job.detections:
+            if not det.geometry:
+                continue
+            
+            features.append({
+                "type": "Feature",
+                "geometry": det.geometry,
+                "properties": det.properties or {}
+            })
+            
+        return {
+            "type": "FeatureCollection",
+            "features": features
+        }
+    finally:
+        session.close()

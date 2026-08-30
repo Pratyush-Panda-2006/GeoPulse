@@ -60,7 +60,7 @@ def test_detect_upload_refuses_untrained_model():
 
 @patch("src.api.routers.detect.fetch_sentinel1_pair")
 def test_detect_sentinel_with_trained_model(mock_fetch):
-    mock_fetch.return_value = (np.zeros((2, 16, 16), dtype=np.float32), np.zeros((2, 16, 16), dtype=np.float32))
+    mock_fetch.return_value = (np.zeros((2, 16, 16), dtype=np.float32), np.zeros((2, 16, 16), dtype=np.float32), {}, {})
     req_data = {
         "bbox": {"min_lon": 0, "min_lat": 0, "max_lon": 1, "max_lat": 1},
         "model_name": "snunet_cd_sar"
@@ -201,8 +201,8 @@ def test_draw_change_boxes_empty_regions_is_noop():
 
 
 def test_fetch_optical_basemap_returns_rgb_on_success():
-    """With a mocked HTTP image response, the optical fetcher decodes to an
-    (H, W, 3) uint8 array resized to the requested grid."""
+    """With a mocked HTTP image response and provided geospatial metadata, the optical fetcher decodes to an
+    (H, W, 3) uint8 array resized to the requested grid via rasterio."""
     from src.data_ingestion import optical_client
 
     buf = io.BytesIO()
@@ -211,7 +211,21 @@ def test_fetch_optical_basemap_returns_rgb_on_success():
                      headers={"Content-Type": "image/jpeg"})
 
     with patch.object(optical_client.requests, "get", return_value=fake):
-        out = optical_client.fetch_optical_basemap([0.0, 0.0, 1.0, 1.0], (48, 40))
+        # Phase 7: Naive PIL resize without CRS/transform is now disallowed. We must provide
+        # real target coordinates to ensure rasterio doesn't skip it and return None.
+        import rasterio
+        from rasterio.crs import CRS
+        from rasterio.transform import from_bounds
+        
+        target_crs = CRS.from_epsg(4326)
+        target_transform = from_bounds(0.0, 0.0, 1.0, 1.0, 48, 40)
+        
+        out = optical_client.fetch_optical_basemap(
+            [0.0, 0.0, 1.0, 1.0], 
+            (48, 40),
+            target_crs=target_crs,
+            target_transform=target_transform
+        )
 
     assert out is not None
     assert out.shape == (48, 40, 3)

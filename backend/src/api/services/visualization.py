@@ -301,21 +301,6 @@ def _build_ramp_lut(anchors: list[tuple[float, tuple[int, int, int]]], n: int = 
     return np.clip(lut, 0, 255).astype(np.uint8)
 
 
-# Natural terrain ramp (warm/desert-leaning): shadow & water at the low end,
-# olive/khaki through the mid backscatter range, sand -> bright urban at the top.
-# VH cross-pol adds a green lift on top of this for vegetation (see sar_to_colorized).
-_SATELLITE_LUT = _build_ramp_lut([
-    (0.00, (20, 30, 40)),
-    (0.12, (40, 52, 50)),
-    (0.28, (74, 80, 62)),
-    (0.45, (112, 108, 76)),
-    (0.62, (152, 138, 98)),
-    (0.78, (190, 172, 130)),
-    (0.90, (218, 204, 172)),
-    (1.00, (246, 244, 236)),
-])
-
-
 def sar_to_colorized(
     sar_array: np.ndarray,
     lee_size: int = 5,
@@ -329,24 +314,58 @@ def sar_to_colorized(
     Render a colorized "satellite-style" SAR image from a normalized dual-pol
     array (2, H, W) in [0, 1]. Returns (H, W, 3) uint8.
 
-    The VV intensity drives an earth-tone LUT; the VH cross-pol adds a subtle
-    green lift for vegetation-like volume scattering. Display-only and fully
-    out-of-place — see the module note above on why this is colorized radar,
-    not true optical color.
+    The VV intensity drives an adaptive earth-tone LUT derived from the scene's
+    own cross-pol statistics. The VH cross-pol adds a subtle green lift for
+    vegetation-like volume scattering. Display-only and fully out-of-place — see
+    the module note above on why this is colorized radar, not true optical color.
     """
     enhanced, valid = _sar_enhanced_gray01(
         sar_array, lee_size=lee_size, clahe_tiles=clahe_tiles,
         clahe_clip=clahe_clip, pmin=pmin, pmax=pmax,
     )
 
+    vv_raw = np.clip(np.nan_to_num(sar_array[0].astype(np.float32), nan=0.0), 0.0, 1.0)
+    vh_raw = np.clip(np.nan_to_num(sar_array[1].astype(np.float32), nan=0.0), 0.0, 1.0)
+
+    # Build scene-adaptive palette
+    if np.any(valid):
+        vv_valid = vv_raw[valid]
+        vh_valid = vh_raw[valid]
+        
+        vv_med = float(np.median(vv_valid))
+        vh_med = float(np.median(vh_valid))
+        
+        # Cross-pol ratio indicates volume scattering (vegetation)
+        cross_ratio = vh_med / (vv_med + 1e-5)
+        
+        # ~0.15 is bare/water/urban, ~0.6+ is dense vegetation
+        veg_weight = np.clip((cross_ratio - 0.15) / 0.45, 0.0, 1.0)
+        
+        c0 = (1.0 - veg_weight) * np.array([15, 25, 35]) + veg_weight * np.array([10, 30, 20])
+        c1 = (1.0 - veg_weight) * np.array([55, 50, 45]) + veg_weight * np.array([35, 60, 45])
+        c2 = (1.0 - veg_weight) * np.array([150, 130, 100]) + veg_weight * np.array([80, 140, 70])
+        c3 = (1.0 - veg_weight) * np.array([210, 190, 150]) + veg_weight * np.array([160, 190, 110])
+        c4 = np.array([250, 245, 240])
+
+        anchors = [
+            (0.00, tuple(c0.astype(int))),
+            (0.20, tuple(c1.astype(int))),
+            (0.50, tuple(c2.astype(int))),
+            (0.80, tuple(c3.astype(int))),
+            (1.00, tuple(c4.astype(int))),
+        ]
+        scene_lut = _build_ramp_lut(anchors, n=256)
+    else:
+        # Fallback to grayscale if completely empty/invalid
+        scene_lut = np.stack([np.arange(256)]*3, axis=-1).astype(np.uint8)
+
     idx = np.clip((enhanced * 255.0).astype(np.int32), 0, 255)
-    rgb = _SATELLITE_LUT[idx].astype(np.float32)  # (H, W, 3)
+    rgb = scene_lut[idx].astype(np.float32)  # (H, W, 3)
 
     # Subtle vegetation-like green lift from strong VH cross-pol backscatter.
-    if veg_boost > 0.0:
-        vh = np.nan_to_num(sar_array[1].astype(np.float32), nan=0.0, posinf=1.0, neginf=0.0)
-        vh = np.clip(vh, 0.0, 1.0)
-        vlo, vhi = np.percentile(vh[valid] if np.any(valid) else vh, (5.0, 95.0))
+    if veg_boost > 0.0 and np.any(valid):
+        vh = vh_raw
+        vlo, vhi = np.percentile(vh[valid], (5.0, 95.0))
         vh_n = np.clip((vh - vlo) / (vhi - vlo), 0.0, 1.0) if vhi > vlo else vh
         # Only lift mid-tones (avoid tinting water/shadow or blown-out urban).
         mid = enhanced * (1.0 - enhanced) * 4.0  # peaks at 0.5, 0 at extremes

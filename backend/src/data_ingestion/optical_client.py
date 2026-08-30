@@ -36,7 +36,7 @@ from __future__ import annotations
 import io
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import requests
@@ -61,19 +61,23 @@ def _is_disabled() -> bool:
 def fetch_optical_basemap(
     bbox: list[float],
     size_hw: tuple[int, int],
+    target_crs: Any = None,
+    target_transform: Any = None,
     timeout: int = _REQUEST_TIMEOUT_S,
 ) -> Optional[np.ndarray]:
     """
-    Fetch a true-color optical basemap for ``bbox`` sized to ``size_hw``.
+    Fetch a true-color optical basemap for ``bbox`` aligned to a specific raster grid.
 
     Parameters
     ----------
     bbox : list[float]
-        Area of interest as ``[west, south, east, north]`` in EPSG:4326 —
-        the same convention used by :func:`fetch_sentinel1_pair`.
+        Area of interest as ``[west, south, east, north]`` in EPSG:4326.
     size_hw : tuple[int, int]
-        Target ``(height, width)`` in pixels. Should match the SAR array so
-        the optical layer aligns with the SAR previews / change boxes.
+        Target ``(height, width)`` in pixels.
+    target_crs : rasterio.crs.CRS, optional
+        Target coordinate reference system of the SAR array.
+    target_transform : affine.Affine, optional
+        Target affine transform of the SAR array.
     timeout : int
         Per-request timeout in seconds.
 
@@ -81,7 +85,7 @@ def fetch_optical_basemap(
     -------
     Optional[np.ndarray]
         ``(H, W, 3)`` uint8 RGB image, or ``None`` if the basemap could not
-        be fetched for any reason (never raises).
+        be fetched or accurately reprojected (never raises).
     """
     if _is_disabled():
         logger.info("Optical basemap disabled via OPTICAL_BASEMAP_DISABLED.")
@@ -129,13 +133,44 @@ def fetch_optical_basemap(
         if arr.ndim != 3 or arr.shape[2] != 3:
             return None
 
-        # Resize to the exact requested grid if the provider snapped dimensions.
-        if arr.shape[0] != int(size_hw[0]) or arr.shape[1] != int(size_hw[1]):
-            img2 = img.resize((int(size_hw[1]), int(size_hw[0])), Image.Resampling.BILINEAR)
-            arr = np.asarray(img2, dtype=np.uint8)
+        # Geographic Alignment / Reprojection (Phase 7 Requirement)
+        # If target metadata is available, strictly reproject. 
+        if target_crs is not None and target_transform is not None:
+            try:
+                from rasterio.warp import reproject, Resampling
+                from rasterio.crs import CRS
+                from rasterio.transform import from_bounds
+                
+                src_crs = CRS.from_epsg(4326)
+                # Ensure correct bounds order: west, south, east, north
+                src_transform = from_bounds(west, south, east, north, arr.shape[1], arr.shape[0])
+                
+                dst_arr = np.zeros((3, int(size_hw[0]), int(size_hw[1])), dtype=np.uint8)
+                src_arr = arr.transpose(2, 0, 1)  # C, H, W
+                
+                reproject(
+                    source=src_arr,
+                    destination=dst_arr,
+                    src_transform=src_transform,
+                    src_crs=src_crs,
+                    dst_transform=target_transform,
+                    dst_crs=target_crs,
+                    resampling=Resampling.bilinear
+                )
+                
+                arr = dst_arr.transpose(1, 2, 0)  # H, W, C
+            except Exception as exc:
+                logger.warning("Optical alignment/reprojection failed: %s", exc)
+                return None  # No naive resize fallback permitted for geographic alignment.
+        else:
+            # If no target transform is supplied (e.g., non-georeferenced mock data), return None 
+            # or skip? The user asked to avoid PIL resize as geographic alignment mechanism.
+            # We can return None if they strictly want geographic alignment.
+            logger.warning("Optical alignment skipped: Missing target CRS/transform.")
+            return None
 
         logger.info(
-            "Optical basemap fetched: bbox=%s size=%dx%d", bbox, arr.shape[1], arr.shape[0]
+            "Optical basemap aligned: bbox=%s size=%dx%d", bbox, arr.shape[1], arr.shape[0]
         )
         return arr
     except Exception as exc:  # noqa: BLE001 — display-only, must never propagate

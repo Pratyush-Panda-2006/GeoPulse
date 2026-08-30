@@ -583,6 +583,13 @@ def fetch_sentinel1_pair(
     t1_norm = normalize_sar_tensor(t1_raw, is_linear=False)
     t2_norm = normalize_sar_tensor(t2_raw, is_linear=False)
 
+    # ── Extract geospatial metadata for alignment ─────────────────────────────
+    try:
+        from src.preprocessing.sar_loader import extract_geotiff_metadata
+        t2_meta["raster_metadata"] = extract_geotiff_metadata(t2_bytes)
+    except Exception as exc:
+        logger.warning("Could not extract geodata from T2: %s", exc)
+
     logger.info(
         "Pair ready: T1 %s  T2 %s  dtype=%s  range=[%.3f, %.3f]",
         t1_norm.shape, t2_norm.shape, t1_norm.dtype,

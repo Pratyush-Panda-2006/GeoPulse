@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 import time
 import torch
 import torch.nn.functional as F
@@ -50,6 +50,8 @@ def run_change_detection(
     threshold: float,
     min_region_area_px: int,
     bbox: Optional[List[float]] = None,
+    transform: Any = None,
+    crs: Any = None,
 ) -> InferenceResult:
     """
     Shared inference and visualization logic.
@@ -91,6 +93,8 @@ def run_change_detection(
         prob_map=prob_map,
         min_region_area_px=min_region_area_px,
         bbox=bbox,
+        transform=transform,
+        crs=crs,
     )
 
     # Calculate metrics

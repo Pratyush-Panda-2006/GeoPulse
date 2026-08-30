@@ -10,7 +10,7 @@ Intelligence & post-processing service for SAR Change Detection:
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 import numpy as np
 import scipy.ndimage as ndimage
 
@@ -38,18 +38,46 @@ def compute_approx_pixel_area_km2(bbox: List[float], image_shape: Tuple[int, int
 def pixel_to_geo_coords(
     row: float,
     col: float,
-    bbox: List[float],
+    bbox: Optional[List[float]],
     image_shape: Tuple[int, int],
+    transform: Any = None,
+    crs: Any = None,
 ) -> Tuple[float, float]:
     """
     Convert (row, col) pixel coordinate to (lon, lat) geographic coordinate.
+    If a real rasterio Affine transform is provided, it uses exact reprojection.
+    If the source CRS is not EPSG:4326, it reprojects to WGS84 lon/lat.
+    Otherwise, it linearly interpolates within the bbox (legacy fallback).
     """
-    min_lon, min_lat, max_lon, max_lat = bbox
-    h, w = image_shape
+    if transform is not None and crs is not None:
+        try:
+            import rasterio
+            from rasterio.warp import transform as warp_transform
+            from rasterio.crs import CRS
+            
+            x, y = rasterio.transform.xy(transform, row, col, offset="center")
+            
+            wgs84 = CRS.from_epsg(4326)
+            if crs != wgs84:
+                # rasterio.warp.transform returns (xs, ys)
+                lons, lats = warp_transform(crs, wgs84, [x], [y])
+                lon, lat = lons[0], lats[0]
+            else:
+                lon, lat = x, y
+                
+            return round(lon, 6), round(lat, 6)
+        except Exception:
+            pass
 
-    lon = min_lon + (col / max(w, 1)) * (max_lon - min_lon)
-    lat = max_lat - (row / max(h, 1)) * (max_lat - min_lat)  # Row 0 is at top (max_lat)
-    return round(lon, 6), round(lat, 6)
+    # Legacy bbox linear interpolation fallback
+    if bbox is not None and len(bbox) == 4:
+        min_lon, min_lat, max_lon, max_lat = bbox
+        h, w = image_shape
+        lon = min_lon + (col / max(w, 1)) * (max_lon - min_lon)
+        lat = max_lat - (row / max(h, 1)) * (max_lat - min_lat)  # Row 0 is at top (max_lat)
+        return round(lon, 6), round(lat, 6)
+        
+    return 0.0, 0.0
 
 
 def extract_changed_regions(
@@ -57,6 +85,8 @@ def extract_changed_regions(
     prob_map: np.ndarray,
     min_region_area_px: int = 10,
     bbox: Optional[List[float]] = None,
+    transform: Any = None,
+    crs: Any = None,
 ) -> Tuple[List[ChangedRegion], float]:
     """
     Extract discrete change regions using connected components analysis.
@@ -164,14 +194,14 @@ def extract_changed_regions(
         global_centroid_r = sum(g["sum_r"] for g in group) / area_px
         mean_prob = sum(g["sum_prob"] for g in group) / area_px
 
-        # Geo-referencing if bbox is available
+        # Geo-referencing if bbox or transform is available
         geo_bbox = None
         geo_centroid = None
-        if bbox is not None:
-            c1_lon, c1_lat = pixel_to_geo_coords(max_row, min_col, bbox, (h, w)) # SW
-            c2_lon, c2_lat = pixel_to_geo_coords(min_row, max_col, bbox, (h, w)) # NE
+        if bbox is not None or (transform is not None and crs is not None):
+            c1_lon, c1_lat = pixel_to_geo_coords(max_row, min_col, bbox, (h, w), transform, crs) # SW
+            c2_lon, c2_lat = pixel_to_geo_coords(min_row, max_col, bbox, (h, w), transform, crs) # NE
             geo_bbox = (c1_lon, c1_lat, c2_lon, c2_lat)
-            c_lon, c_lat = pixel_to_geo_coords(global_centroid_r, global_centroid_c, bbox, (h, w))
+            c_lon, c_lat = pixel_to_geo_coords(global_centroid_r, global_centroid_c, bbox, (h, w), transform, crs)
             geo_centroid = (c_lon, c_lat)
 
         approx_area_km2 = (

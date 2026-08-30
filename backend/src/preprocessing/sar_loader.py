@@ -217,6 +217,33 @@ def decode_geotiff_response(
     return arr
 
 
+def extract_geotiff_metadata(response_bytes: bytes) -> dict:
+    """
+    Extract spatial metadata (CRS, transform, bounds) from a GeoTIFF response.
+    Returns an empty dict if rasterio is unavailable or extraction fails.
+    """
+    try:
+        import rasterio
+        from rasterio.io import MemoryFile
+    except ImportError:
+        return {}
+
+    try:
+        with MemoryFile(response_bytes) as mem_file:
+            with mem_file.open() as dataset:
+                return {
+                    "transform": dataset.transform,
+                    "crs": dataset.crs,
+                    "bounds": dataset.bounds,
+                    "width": dataset.width,
+                    "height": dataset.height,
+                }
+    except Exception as exc:
+        logger.warning("Failed to extract GeoTIFF metadata: %s", exc)
+        return {}
+
+
+
 # ============================================================================
 # SAR normalization
 # ============================================================================
