@@ -11,7 +11,7 @@ from detection.siamese_resnet34_unet import SiameseResNet34UNet
 from detection.siamese_unet import SiameseUNet
 from detection.losses import BCEDiceLoss
 
-def test_model(model_class, name, sar_init_kwarg=False):
+def _test_model(model_class, name, sar_init_kwarg=False):
     print("=" * 60)
     print(f"TESTING {name} WITH 2-CHANNEL INPUT")
     print("=" * 60)
@@ -65,11 +65,11 @@ def test_model(model_class, name, sar_init_kwarg=False):
     print("=" * 60)
     print()
 
-def main():
-    test_model(SiameseUNet, "Siamese U-Net (Model 1)")
-    test_model(SiameseResNet34UNet, "Siamese ResNet34 U-Net (Model 2)", sar_init_kwarg=True)
-    test_model(SNUNetCD, "SNUNet-CD (Model 3)")
+def test_all_models():
+    _test_model(SiameseUNet, "Siamese U-Net (Model 1)")
+    _test_model(SiameseResNet34UNet, "Siamese ResNet34 U-Net (Model 2)", sar_init_kwarg=True)
+    _test_model(SNUNetCD, "SNUNet-CD (Model 3)")
     print("ALL 2-CHANNEL SYNTHETIC TESTS PASSED!")
 
 if __name__ == "__main__":
-    main()
+    test_all_models()

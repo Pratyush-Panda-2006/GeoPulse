@@ -41,6 +41,9 @@ class InferenceResult:
     confidence_heatmap_base64: str
     overlay_base64: str
     change_boxes_base64: str
+    
+    model_inference_ms: float
+    postprocessing_ms: float
 
 
 def run_change_detection(
@@ -76,13 +79,16 @@ def run_change_detection(
         t2_tensor = F.pad(t2_tensor, (0, pad_w, 0, pad_h))
 
     model_service = ModelService.get_instance()
+    t_start_inference = time.perf_counter()
     prob_map, binary_mask = model_service.predict_change_sar(
         t1_tensor=t1_tensor,
         t2_tensor=t2_tensor,
         model_name=model_name,
         threshold=threshold,
     )
+    model_inference_ms = (time.perf_counter() - t_start_inference) * 1000.0
     
+    t_start_postprocessing = time.perf_counter()
     # Crop back to original minimum dimensions
     if pad_h > 0 or pad_w > 0:
         prob_map = prob_map[:min_h, :min_w]
@@ -102,6 +108,7 @@ def run_change_detection(
     changed_px = int(np.sum(binary_mask > 0))
     change_pct = round((changed_px / total_px) * 100.0, 3) if total_px > 0 else 0.0
     mean_prob = float(np.mean(prob_map[binary_mask > 0])) if changed_px > 0 else 0.0
+    postprocessing_ms = (time.perf_counter() - t_start_postprocessing) * 1000.0
 
     # Visualization (display-only; never affects the inference outputs above)
     t1_color = sar_to_colorized(t1_np)
@@ -145,4 +152,6 @@ def run_change_detection(
         confidence_heatmap_base64=heatmap_b64,
         overlay_base64=overlay_b64,
         change_boxes_base64=boxes_b64,
+        model_inference_ms=model_inference_ms,
+        postprocessing_ms=postprocessing_ms,
     )

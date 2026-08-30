@@ -161,6 +161,9 @@ class CDSEAuthManager:
     def _refresh_token(self) -> None:
         logger.debug("Requesting new CDSE access token …")
 
+        connect_timeout = int(os.environ.get("CDSE_CONNECT_TIMEOUT_SEC", 30))
+        read_timeout = int(os.environ.get("CDSE_READ_TIMEOUT_SEC", 30))
+        
         response = requests.post(
             _TOKEN_URL,
             data={
@@ -168,7 +171,7 @@ class CDSEAuthManager:
                 "client_id": self._client_id,
                 "client_secret": self._client_secret,
             },
-            timeout=30,
+            timeout=(connect_timeout, read_timeout),
         )
 
         if response.status_code != 200:
@@ -339,12 +342,15 @@ def _post_with_retry(
             )
             time.sleep(wait)
 
+        connect_timeout = int(os.environ.get("CDSE_CONNECT_TIMEOUT_SEC", 30))
+        read_timeout = int(os.environ.get("CDSE_READ_TIMEOUT_SEC", 120))
+        
         try:
             response = requests.post(
                 url,
                 headers=headers,
                 json=body,
-                timeout=120,
+                timeout=(connect_timeout, read_timeout),
             )
         except requests.exceptions.Timeout as exc:
             last_exc = SentinelAPIError(0, f"Request timed out: {exc}")
@@ -532,9 +538,9 @@ def fetch_sentinel1_pair(
 
     Returns
     -------
-    tuple[np.ndarray, np.ndarray, dict, dict]
-        ``(t1_array, t2_array, t1_meta, t2_meta)`` - float32 arrays of shape ``(C, H, W)``
-        with values normalized to ``[0, 1]``, and their respective metadata dicts.
+    tuple[np.ndarray, np.ndarray, dict, dict, float, float, float]
+        ``(t1_array, t2_array, t1_meta, t2_meta, metadata_ms, download_ms, preprocessing_ms)``
+        with values normalized to ``[0, 1]``, their metadata dicts, and stage timings.
 
     Raises
     ------
@@ -554,19 +560,22 @@ def fetch_sentinel1_pair(
     client = SentinelHubClient(auth)
 
     # ── Fetch Metadata ────────────────────────────────────────────────────────
+    t_start_metadata = time.perf_counter()
     logger.info("Fetching T1 metadata …")
     t1_meta = client.fetch_scene_metadata(bbox, date_t1_range)
     
     logger.info("Fetching T2 metadata …")
     t2_meta = client.fetch_scene_metadata(bbox, date_t2_range)
+    metadata_ms = (time.perf_counter() - t_start_metadata) * 1000.0
 
-    # ── Fetch T1 ──────────────────────────────────────────────────────────────
+    # ── Fetch Tiles ───────────────────────────────────────────────────────────
+    t_start_download = time.perf_counter()
     logger.info("Fetching T1 tile …")
     t1_bytes = client.fetch_tile(bbox, t1_meta["acquisition_date"], output_resolution)
 
-    # ── Fetch T2 ──────────────────────────────────────────────────────────────
     logger.info("Fetching T2 tile …")
     t2_bytes = client.fetch_tile(bbox, t2_meta["acquisition_date"], output_resolution)
+    download_ms = (time.perf_counter() - t_start_download) * 1000.0
 
     # ── Optional: persist GeoTIFFs to disk ───────────────────────────────────
     if save_dir is not None:
@@ -577,16 +586,20 @@ def fetch_sentinel1_pair(
         logger.info("GeoTIFFs saved to %s", save_path)
 
     # ── Decode + normalize ────────────────────────────────────────────────────
+    t_start_preprocessing = time.perf_counter()
     t1_raw = decode_geotiff_response(t1_bytes)
     t2_raw = decode_geotiff_response(t2_bytes)
 
     t1_norm = normalize_sar_tensor(t1_raw, is_linear=False)
     t2_norm = normalize_sar_tensor(t2_raw, is_linear=False)
+    preprocessing_ms = (time.perf_counter() - t_start_preprocessing) * 1000.0
 
     # ── Extract geospatial metadata for alignment ─────────────────────────────
     try:
         from src.preprocessing.sar_loader import extract_geotiff_metadata
+        t_start_metadata_ext = time.perf_counter()
         t2_meta["raster_metadata"] = extract_geotiff_metadata(t2_bytes)
+        metadata_ms += (time.perf_counter() - t_start_metadata_ext) * 1000.0
     except Exception as exc:
         logger.warning("Could not extract geodata from T2: %s", exc)
 
@@ -596,4 +609,4 @@ def fetch_sentinel1_pair(
         t1_norm.min(), t1_norm.max(),
     )
 
-    return t1_norm, t2_norm, t1_meta, t2_meta
+    return t1_norm, t2_norm, t1_meta, t2_meta, metadata_ms, download_ms, preprocessing_ms

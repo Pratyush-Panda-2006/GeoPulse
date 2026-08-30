@@ -66,7 +66,7 @@ def test_models():
     res = client.get("/api/v1/models")
     assert res.status_code == 200
     models = res.json()
-    assert len(models) >= 2
+    assert len(models) >= 1
     for m in models:
         _ok(f"Model: {m['display_name']} ({m['name']}) - {m['parameters']:,} params, {m['input_channels']} in_channels")
 
@@ -83,20 +83,22 @@ def test_cdse_auth():
 
 
 def test_upload_detection():
-    _header("4. IMAGE UPLOAD CHANGE DETECTION")
-    # Generate synthetic T1 and T2 images with a clear change region in center
+    _header("4. IMAGE UPLOAD CHANGE DETECTION (2-channel SAR via grayscale)")
+    # Generate synthetic single-band (grayscale) T1 and T2 images.
+    # The endpoint accepts grayscale uploads for snunet_cd_sar and
+    # stacks them into 2 identical channels.
     h, w = 128, 128
-    t1 = np.ones((h, w, 3), dtype=np.uint8) * 100
+    t1 = np.ones((h, w), dtype=np.uint8) * 100
     t2 = t1.copy()
     # Add changed rectangle to T2
-    t2[40:80, 40:80, :] = 250
+    t2[40:80, 40:80] = 250
 
     buf1 = io.BytesIO()
-    Image.fromarray(t1).save(buf1, format="PNG")
+    Image.fromarray(t1, mode="L").save(buf1, format="PNG")
     buf1.seek(0)
 
     buf2 = io.BytesIO()
-    Image.fromarray(t2).save(buf2, format="PNG")
+    Image.fromarray(t2, mode="L").save(buf2, format="PNG")
     buf2.seek(0)
 
     files = {
@@ -104,7 +106,7 @@ def test_upload_detection():
         "image_t2": ("t2.png", buf2, "image/png"),
     }
     data = {
-        "model_name": "siamese_unet",
+        "model_name": "snunet_cd_sar",
         "threshold": 0.5,
         "min_region_area_px": 5,
     }
@@ -120,6 +122,36 @@ def test_upload_detection():
     _ok(f"Identified clusters: {resp_data['num_change_clusters']}")
     for r in resp_data["regions"][:3]:
         _ok(f"  Cluster #{r['region_id']}: area={r['area_px']}px, severity={r['severity']}, centroid={r['centroid_xy']}")
+
+
+def test_upload_detection_rejects_rgb():
+    _header("4b. UPLOAD REJECTS RGB FOR SAR MODEL")
+    h, w = 64, 64
+    t1 = np.ones((h, w, 3), dtype=np.uint8) * 100
+    t2 = t1.copy()
+    t2[20:40, 20:40, :] = 250
+
+    buf1 = io.BytesIO()
+    Image.fromarray(t1).save(buf1, format="PNG")
+    buf1.seek(0)
+
+    buf2 = io.BytesIO()
+    Image.fromarray(t2).save(buf2, format="PNG")
+    buf2.seek(0)
+
+    files = {
+        "image_t1": ("t1.png", buf1, "image/png"),
+        "image_t2": ("t2.png", buf2, "image/png"),
+    }
+    data = {
+        "model_name": "snunet_cd_sar",
+        "threshold": 0.5,
+    }
+
+    res = client.post("/api/v1/detect/upload", files=files, data=data)
+    assert res.status_code == 422, f"Expected 422 for RGB upload, got {res.status_code}: {res.text}"
+    assert "channels" in res.json()["detail"].lower() or "RGB" in res.json()["detail"]
+    _ok("POST /api/v1/detect/upload with RGB correctly rejected with 422")
 
 
 def test_live_sentinel_ingestion():

@@ -36,7 +36,8 @@ from __future__ import annotations
 import io
 import logging
 import os
-from typing import Any, Optional
+import time
+from typing import Any, Optional, Tuple
 
 import numpy as np
 import requests
@@ -63,8 +64,8 @@ def fetch_optical_basemap(
     size_hw: tuple[int, int],
     target_crs: Any = None,
     target_transform: Any = None,
-    timeout: int = _REQUEST_TIMEOUT_S,
-) -> Optional[np.ndarray]:
+    timeout: Optional[int] = None,
+) -> Tuple[Optional[np.ndarray], float, float]:
     """
     Fetch a true-color optical basemap for ``bbox`` aligned to a specific raster grid.
 
@@ -83,20 +84,23 @@ def fetch_optical_basemap(
 
     Returns
     -------
-    Optional[np.ndarray]
-        ``(H, W, 3)`` uint8 RGB image, or ``None`` if the basemap could not
-        be fetched or accurately reprojected (never raises).
+    Tuple[Optional[np.ndarray], float, float]
+        ``(image_array, fetch_ms, reproject_ms)`` where image is ``(H, W, 3)`` uint8 RGB,
+        or ``(None, 0.0, 0.0)`` if the basemap could not be fetched.
     """
+    if timeout is None:
+        timeout = int(os.environ.get("OPTICAL_TIMEOUT_SEC", _REQUEST_TIMEOUT_S))
+
     if _is_disabled():
         logger.info("Optical basemap disabled via OPTICAL_BASEMAP_DISABLED.")
-        return None
+        return None, 0.0, 0.0
 
     if not bbox or len(bbox) != 4:
-        return None
+        return None, 0.0, 0.0
 
     height, width = int(size_hw[0]), int(size_hw[1])
     if height <= 0 or width <= 0:
-        return None
+        return None, 0.0, 0.0
     # Clamp to the provider's export ceiling, preserving aspect ratio.
     if max(height, width) > _MAX_DIM:
         scale = _MAX_DIM / float(max(height, width))
@@ -114,29 +118,34 @@ def fetch_optical_basemap(
         "f": "image",
     }
 
+    fetch_ms = 0.0
+    reproject_ms = 0.0
     try:
+        t_start_fetch = time.perf_counter()
         resp = requests.get(export_url, params=params, timeout=timeout)
         if resp.status_code != 200:
             logger.warning(
                 "Optical basemap fetch failed: HTTP %s (%s)",
                 resp.status_code, resp.text[:200],
             )
-            return None
+            return None, 0.0, 0.0
         ctype = resp.headers.get("Content-Type", "")
         if "image" not in ctype:
             # ArcGIS returns a JSON error blob (200) when params are rejected.
             logger.warning("Optical basemap: non-image response (%s).", ctype)
-            return None
+            return None, 0.0, 0.0
 
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
         arr = np.asarray(img, dtype=np.uint8)
         if arr.ndim != 3 or arr.shape[2] != 3:
-            return None
+            return None, 0.0, 0.0
+        fetch_ms = (time.perf_counter() - t_start_fetch) * 1000.0
 
         # Geographic Alignment / Reprojection (Phase 7 Requirement)
         # If target metadata is available, strictly reproject. 
         if target_crs is not None and target_transform is not None:
             try:
+                t_start_reproject = time.perf_counter()
                 from rasterio.warp import reproject, Resampling
                 from rasterio.crs import CRS
                 from rasterio.transform import from_bounds
@@ -159,20 +168,21 @@ def fetch_optical_basemap(
                 )
                 
                 arr = dst_arr.transpose(1, 2, 0)  # H, W, C
+                reproject_ms = (time.perf_counter() - t_start_reproject) * 1000.0
             except Exception as exc:
                 logger.warning("Optical alignment/reprojection failed: %s", exc)
-                return None  # No naive resize fallback permitted for geographic alignment.
+                return None, fetch_ms, 0.0  # No naive resize fallback permitted for geographic alignment.
         else:
             # If no target transform is supplied (e.g., non-georeferenced mock data), return None 
             # or skip? The user asked to avoid PIL resize as geographic alignment mechanism.
             # We can return None if they strictly want geographic alignment.
             logger.warning("Optical alignment skipped: Missing target CRS/transform.")
-            return None
+            return None, fetch_ms, 0.0
 
         logger.info(
             "Optical basemap aligned: bbox=%s size=%dx%d", bbox, arr.shape[1], arr.shape[0]
         )
-        return arr
+        return arr, fetch_ms, reproject_ms
     except Exception as exc:  # noqa: BLE001 — display-only, must never propagate
         logger.warning("Optical basemap fetch error (non-fatal): %s", exc)
-        return None
+        return None, 0.0, 0.0

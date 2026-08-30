@@ -25,7 +25,7 @@ def move_batch_to_device(batch, device):
     return image_a, image_b, target, valid_mask
 
 
-def test_model(model_name, model, batch, criterion, device):
+def _test_model(model_name, model, batch, criterion, device):
     print()
     print("-" * 70)
     print(f"TESTING: {model_name}")
@@ -108,7 +108,11 @@ def test_model(model_name, model, batch, criterion, device):
     print(f"✓ {model_name} real-data integration passed")
 
 
-def main():
+import pytest
+import os
+
+@pytest.mark.skipif(not os.path.exists(PROJECT_ROOT / "data" / "sar" / "tum_oscd" / "sar_patch_index.json"), reason="Real TUM SAR dataset not found")
+def test_all_real_models():
     print("=" * 70)
     print("REAL TUM SAR → MODEL INTEGRATION TEST")
     print("=" * 70)
@@ -211,4 +215,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    test_all_real_models()

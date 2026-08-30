@@ -33,7 +33,11 @@ from src.api.models import SARScene, ChangeDetectionJob, Detection
 import datetime as dt
 from src.api.services.visualization import (
     array_to_base64_jpeg,
+    array_to_base64_png,
     draw_change_boxes,
+    generate_change_mask_image,
+    generate_heatmap_image,
+    generate_overlay_image,
 )
 from src.preprocessing.sar_loader import load_sar_pair_for_inference
 from src.api.services.inference_service import run_change_detection
@@ -119,18 +123,30 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
             t2_transform = None
             t2_crs = None
 
+            metadata_extraction_ms = 0.0
+            download_ms = 0.0
+            preprocessing_ms = 0.0
+
             if t1_asset and t2_asset:
+                from src.preprocessing.sar_loader import extract_geotiff_metadata
+                
+                t_start_download = time.perf_counter()
                 t1_bytes = download_bytes(t1_asset.storage_key)
                 t2_bytes = download_bytes(t2_asset.storage_key)
-                t1_np, t2_np = load_sar_pair_for_inference(t1_bytes, t2_bytes, is_linear=False, return_tensors=False)
+                download_ms = (time.perf_counter() - t_start_download) * 1000.0
                 
-                from src.preprocessing.sar_loader import extract_geotiff_metadata
+                t_start_preprocessing = time.perf_counter()
+                t1_np, t2_np = load_sar_pair_for_inference(t1_bytes, t2_bytes, is_linear=False, return_tensors=False)
+                preprocessing_ms = (time.perf_counter() - t_start_preprocessing) * 1000.0
+                
+                t_start_metadata = time.perf_counter()
                 geo_meta = extract_geotiff_metadata(t2_bytes)
                 t2_transform = geo_meta.get("transform")
                 t2_crs = geo_meta.get("crs")
+                metadata_extraction_ms = (time.perf_counter() - t_start_metadata) * 1000.0
             else:
                 # Fallback to direct download if assets aren't explicitly saved
-                t1_np, t2_np, _, t2_meta = fetch_sentinel1_pair(
+                t1_np, t2_np, _, t2_meta, metadata_extraction_ms, download_ms, preprocessing_ms = fetch_sentinel1_pair(
                     bbox=req.bbox.to_list(),
                     date_t1_range=req.date_range_t1,
                     date_t2_range=req.date_range_t2,
@@ -172,14 +188,20 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
             job.status = "completed"
             job.change_percentage = result.change_percentage
             job.confidence = result.mean_change_probability
-            job.metrics = {
+            metrics_dict = {
                 "total_pixels": result.total_pixels,
                 "changed_pixels": result.changed_pixels,
                 "total_changed_area_sq_km": result.total_changed_area_sq_km,
                 "num_change_clusters": result.num_change_clusters,
                 "threshold": req.threshold,
                 "mean_change_probability": result.mean_change_probability,
+                "metadata_extraction_ms": metadata_extraction_ms,
+                "download_ms": download_ms,
+                "preprocessing_ms": preprocessing_ms,
+                "model_inference_ms": result.model_inference_ms,
+                "postprocessing_ms": result.postprocessing_ms,
             }
+            job.metrics = metrics_dict
             session.commit()
 
             # Persist each Detection
@@ -237,7 +259,7 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
         # None on any failure so the optical layer is simply omitted.
         optical_b64 = None
         optical_boxes_b64 = None
-        optical_rgb = fetch_optical_basemap(
+        optical_rgb, optical_fetch_ms, reprojection_ms = fetch_optical_basemap(
             req.bbox.to_list(),
             t2_np.shape[1:],
             target_crs=t2_crs,
@@ -247,7 +269,23 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
             optical_b64 = array_to_base64_jpeg(optical_rgb)
             optical_boxes_b64 = array_to_base64_jpeg(draw_change_boxes(optical_rgb, result.regions))
 
-        elapsed = round(time.perf_counter() - t0, 3)
+        elapsed_sec = time.perf_counter() - t0
+        total_ms = elapsed_sec * 1000.0
+        
+        # Update final metrics in DB (safe since we have job_id)
+        if job_id is not None:
+            # We must use a new session to update because the previous was closed in `finally:` block of `try`
+            with db.SessionLocal() as update_session:
+                final_job = update_session.query(ChangeDetectionJob).get(job_id)
+                if final_job and isinstance(final_job.metrics, dict):
+                    final_metrics = dict(final_job.metrics)
+                    final_metrics["optical_fetch_ms"] = optical_fetch_ms
+                    final_metrics["reprojection_ms"] = reprojection_ms
+                    final_metrics["total_ms"] = total_ms
+                    final_job.metrics = final_metrics
+                    update_session.commit()
+
+        elapsed = round(elapsed_sec, 3)
 
         return ChangeDetectionResponse(
             job_id=job_id,
@@ -311,25 +349,91 @@ async def detect_uploaded_images(
         t1_bytes = await image_t1.read()
         t2_bytes = await image_t2.read()
 
-        pil_t1 = Image.open(io.BytesIO(t1_bytes)).convert("RGB")
-        pil_t2 = Image.open(io.BytesIO(t2_bytes)).convert("RGB")
+        pil_t1 = Image.open(io.BytesIO(t1_bytes))
+        pil_t2 = Image.open(io.BytesIO(t2_bytes))
 
         # Standardize size (ensure same dimensions)
         if pil_t1.size != pil_t2.size:
             pil_t2 = pil_t2.resize(pil_t1.size, Image.Resampling.BILINEAR)
-
-        # Convert to tensor [3, H, W] in [0, 1]
-        t1_np = np.array(pil_t1, dtype=np.float32) / 255.0
-        t2_np = np.array(pil_t2, dtype=np.float32) / 255.0
-
-        t1_tensor = torch.from_numpy(t1_np).permute(2, 0, 1)
-        t2_tensor = torch.from_numpy(t2_np).permute(2, 0, 1)
 
         if model_name not in ["snunet_cd_sar"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Model '{model_name}' is not allowed or has no trained checkpoint."
             )
+
+        # ── Channel validation for snunet_cd_sar ──────────────────────────
+        t1_arr = np.array(pil_t1, dtype=np.float32)
+        t2_arr = np.array(pil_t2, dtype=np.float32)
+
+        # Determine channel count from the decoded arrays
+        if t1_arr.ndim == 2:
+            t1_channels = 1
+        else:
+            t1_channels = t1_arr.shape[2]
+
+        if t2_arr.ndim == 2:
+            t2_channels = 1
+        else:
+            t2_channels = t2_arr.shape[2]
+
+        if model_name == "snunet_cd_sar":
+            for label, ch in [("T1", t1_channels), ("T2", t2_channels)]:
+                if ch == 3:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=(
+                            f"{label} image has {ch} channels (RGB). "
+                            f"Model 'snunet_cd_sar' requires exactly 2 channels "
+                            f"(VV/VH SAR bands). Upload a 2-band GeoTIFF or two "
+                            f"single-band grayscale images instead."
+                        ),
+                    )
+                if ch not in (1, 2):
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=(
+                            f"{label} image has {ch} channels. "
+                            f"Model 'snunet_cd_sar' requires exactly 2 channels (VV/VH)."
+                        ),
+                    )
+
+        # Normalize to [0, 1] float32
+        # Determine max value based on dtype for proper normalization
+        if t1_arr.max() > 1.0:
+            t1_arr = t1_arr / 255.0
+        if t2_arr.max() > 1.0:
+            t2_arr = t2_arr / 255.0
+
+        # Build tensors with correct channel layout
+        if t1_channels == 1:
+            # Grayscale: stack into 2 identical channels for snunet_cd_sar
+            t1_tensor = torch.from_numpy(np.stack([t1_arr, t1_arr], axis=0))
+        elif t1_channels == 2:
+            t1_tensor = torch.from_numpy(t1_arr).permute(2, 0, 1)
+        else:
+            # 3+ channels (non-SAR models, future use)
+            t1_tensor = torch.from_numpy(t1_arr).permute(2, 0, 1)
+
+        if t2_channels == 1:
+            t2_tensor = torch.from_numpy(np.stack([t2_arr, t2_arr], axis=0))
+        elif t2_channels == 2:
+            t2_tensor = torch.from_numpy(t2_arr).permute(2, 0, 1)
+        else:
+            t2_tensor = torch.from_numpy(t2_arr).permute(2, 0, 1)
+
+        # Build a preview-friendly numpy array for visualization (grayscale -> pseudo-RGB)
+        if t1_channels <= 2:
+            ch0_t1 = t1_arr if t1_arr.ndim == 2 else t1_arr[:, :, 0]
+            t1_np = np.stack([ch0_t1, ch0_t1, ch0_t1], axis=-1)
+        else:
+            t1_np = t1_arr
+
+        if t2_channels <= 2:
+            ch0_t2 = t2_arr if t2_arr.ndim == 2 else t2_arr[:, :, 0]
+            t2_np = np.stack([ch0_t2, ch0_t2, ch0_t2], axis=-1)
+        else:
+            t2_np = t2_arr
 
         model_service = ModelService.get_instance()
         try:

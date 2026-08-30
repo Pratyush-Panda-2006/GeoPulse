@@ -2,18 +2,24 @@ import hashlib
 import os
 
 import boto3
+from botocore.config import Config
 
 
 BUCKET_NAME = "geopulse-sar"
 
 
 def get_storage_client():
+    connect_timeout = int(os.environ.get("OBJECT_STORAGE_CONNECT_TIMEOUT_SEC", 10))
+    read_timeout = int(os.environ.get("OBJECT_STORAGE_READ_TIMEOUT_SEC", 60))
+    config = Config(connect_timeout=connect_timeout, read_timeout=read_timeout)
+    
     return boto3.client(
         "s3",
         endpoint_url=os.environ["AWS_ENDPOINT_URL_S3"],
         aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
         aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
         region_name=os.environ["AWS_REGION"],
+        config=config,
     )
 
 

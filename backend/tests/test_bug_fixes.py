@@ -58,15 +58,51 @@ def test_detect_upload_refuses_untrained_model():
     assert response.status_code == 400
     assert "not allowed or has no trained checkpoint" in response.text
 
-@patch("src.api.routers.detect.fetch_sentinel1_pair")
-def test_detect_sentinel_with_trained_model(mock_fetch):
-    mock_fetch.return_value = (np.zeros((2, 16, 16), dtype=np.float32), np.zeros((2, 16, 16), dtype=np.float32), {}, {})
+from src.api.services.inference_service import InferenceResult
+@patch("src.api.routers.detect.fetch_optical_basemap")
+@patch("src.api.routers.detect.run_change_detection")
+@patch("src.api.routers.detect.load_sar_pair_for_inference")
+@patch("src.storage.object_storage.download_bytes")
+@patch("src.api.routers.detect._get_or_create_scene")
+@patch("src.data_ingestion.sentinel_client.SentinelHubClient.fetch_scene_metadata")
+@patch("src.api.routers.detect.db")
+def test_detect_sentinel_with_trained_model(
+    mock_db, mock_fetch_meta, mock_get_scene, mock_download, mock_load, mock_run, mock_opt
+):
+    mock_session = MagicMock()
+    mock_session.__enter__ = MagicMock(return_value=mock_session)
+    mock_session.__exit__ = MagicMock(return_value=None)
+    mock_db.SessionLocal.return_value = mock_session
+
+    # Force storage reuse path by making the query return a mock asset
+    mock_asset = MagicMock()
+    mock_asset.storage_key = "fake_key"
+    mock_session.query.return_value.filter_by.return_value.first.return_value = mock_asset
+
+    mock_fetch_meta.return_value = {"id": "fake_scene", "acquisition_date": "2024-01-01T00:00:00Z"}
+    mock_get_scene.return_value = MagicMock(id=1)
+    mock_download.return_value = b"fake_bytes"
+    mock_load.return_value = (np.zeros((2, 16, 16), dtype=np.float32), np.zeros((2, 16, 16), dtype=np.float32))
+    
+    mock_run.return_value = InferenceResult(
+        change_percentage=10.0,
+        t1_preview_base64="b64", t2_preview_base64="b64",
+        t1_grayscale_base64="b64", t2_grayscale_base64="b64",
+        t1_false_color_base64="b64", t2_false_color_base64="b64",
+        change_mask_base64="b64", confidence_heatmap_base64="b64",
+        overlay_base64="b64", change_boxes_base64="b64",
+        total_pixels=256, changed_pixels=25, num_change_clusters=1,
+        total_changed_area_sq_km=None, regions=[], mean_change_probability=0.9,
+        model_inference_ms=0.0, postprocessing_ms=0.0
+    )
+    mock_opt.return_value = (None, 0.0, 0.0)
+
     req_data = {
         "bbox": {"min_lon": 0, "min_lat": 0, "max_lon": 1, "max_lat": 1},
         "model_name": "snunet_cd_sar"
     }
     response = client.post("/api/v1/detect/sentinel", json=req_data)
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
 
 def test_missing_model_3_checkpoint_refuses_inference():
     svc = ModelService.get_instance()
@@ -74,7 +110,7 @@ def test_missing_model_3_checkpoint_refuses_inference():
     original = svc._models.pop("snunet_cd_sar", None)
     
     img_bytes = io.BytesIO()
-    Image.new('RGB', (16, 16)).save(img_bytes, format='PNG')
+    Image.new('L', (16, 16)).save(img_bytes, format='PNG')
     files = {
         "image_t1": ("t1.png", img_bytes.getvalue(), "image/png"),
         "image_t2": ("t2.png", img_bytes.getvalue(), "image/png"),
@@ -228,8 +264,12 @@ def test_fetch_optical_basemap_returns_rgb_on_success():
         )
 
     assert out is not None
-    assert out.shape == (48, 40, 3)
-    assert out.dtype == np.uint8
+    assert isinstance(out, tuple)
+    assert len(out) == 3
+    arr, _, _ = out
+    assert arr is not None
+    assert arr.shape == (48, 40, 3)
+    assert arr.dtype == np.uint8
 
 
 def test_fetch_optical_basemap_returns_none_on_failure():
@@ -238,21 +278,21 @@ def test_fetch_optical_basemap_returns_none_on_failure():
 
     with patch.object(optical_client.requests, "get", side_effect=Exception("no network")):
         out = optical_client.fetch_optical_basemap([0.0, 0.0, 1.0, 1.0], (32, 32))
-    assert out is None
+    assert out == (None, 0.0, 0.0)
 
     # Non-image (JSON error) response also yields None.
     fake = MagicMock(status_code=200, content=b'{"error":"bad"}',
                      headers={"Content-Type": "application/json"}, text='{"error":"bad"}')
     with patch.object(optical_client.requests, "get", return_value=fake):
         out = optical_client.fetch_optical_basemap([0.0, 0.0, 1.0, 1.0], (32, 32))
-    assert out is None
+    assert out == (None, 0.0, 0.0)
 
 
 def test_fetch_optical_basemap_disabled_env(monkeypatch):
     from src.data_ingestion import optical_client
     monkeypatch.setenv("OPTICAL_BASEMAP_DISABLED", "1")
     out = optical_client.fetch_optical_basemap([0.0, 0.0, 1.0, 1.0], (32, 32))
-    assert out is None
+    assert out == (None, 0.0, 0.0)
 
 
 

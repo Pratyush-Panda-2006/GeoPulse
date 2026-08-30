@@ -48,7 +48,7 @@ def test_optical_basemap_reprojection_skips_pil_resize():
     
     with mock.patch("requests.get", return_value=mock_response):
         # 1. No target metadata -> return None (due to new logic where no fallback is allowed if geographic alignment is strictly expected, but wait - the new code says: if no target transform is supplied, it logs and returns None)
-        arr_none = fetch_optical_basemap(
+        arr_none, _, _ = fetch_optical_basemap(
             bbox=[0.0, 0.0, 1.0, 1.0],
             size_hw=(50, 50),
             target_crs=None,
@@ -57,7 +57,7 @@ def test_optical_basemap_reprojection_skips_pil_resize():
         assert arr_none is None, "Should skip and return None when missing transform"
 
         # 2. Provide invalid/mock transform to trigger rasterio error
-        arr_err = fetch_optical_basemap(
+        arr_err, _, _ = fetch_optical_basemap(
             bbox=[0.0, 0.0, 1.0, 1.0],
             size_hw=(50, 50),
             target_crs="invalid_crs",
@@ -74,7 +74,7 @@ def test_optical_basemap_reprojection_skips_pil_resize():
             target_crs = CRS.from_epsg(4326)
             target_transform = from_bounds(0.0, 0.0, 1.0, 1.0, 50, 50)
             
-            arr_success = fetch_optical_basemap(
+            arr_success, _, _ = fetch_optical_basemap(
                 bbox=[0.0, 0.0, 1.0, 1.0],
                 size_hw=(50, 50),
                 target_crs=target_crs,
