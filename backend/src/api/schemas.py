@@ -105,6 +105,7 @@ class DetectSentinelRequest(BaseModel):
 
 class ChangeDetectionResponse(BaseModel):
     """Full Change Intelligence analysis output."""
+    job_id: Optional[int] = None
     status: str = "success"
     model_used: str
     threshold: float

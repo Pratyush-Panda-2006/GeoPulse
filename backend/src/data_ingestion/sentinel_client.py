@@ -55,6 +55,7 @@ _TOKEN_URL = (
     "/auth/realms/CDSE/protocol/openid-connect/token"
 )
 _PROCESS_URL = "https://sh.dataspace.copernicus.eu/api/v1/process"
+_CATALOG_URL = "https://sh.dataspace.copernicus.eu/api/v1/catalog/1.0.0/search"
 
 # Back-off parameters for transient errors
 _MAX_RETRIES = 3
@@ -233,7 +234,8 @@ function evaluatePixel(sample) {
 
 def _build_request_body(
     bbox: list[float],
-    date_range: tuple[str, str],
+    time_from: str,
+    time_to: str,
     output_resolution: tuple[int, int],
 ) -> dict:
     """
@@ -243,8 +245,10 @@ def _build_request_body(
     ----------
     bbox : list[float]
         [west, south, east, north] in EPSG:4326.
-    date_range : tuple[str, str]
-        (from_date, to_date) strings in ISO-8601 format ("YYYY-MM-DD").
+    time_from : str
+        Start time in ISO-8601 format ("YYYY-MM-DDTHH:MM:SSZ").
+    time_to : str
+        End time in ISO-8601 format ("YYYY-MM-DDTHH:MM:SSZ").
     output_resolution : tuple[int, int]
         (width, height) in pixels of the output tile.
 
@@ -253,7 +257,6 @@ def _build_request_body(
     dict
         JSON-serialisable request payload.
     """
-    from_date, to_date = date_range
     height, width = output_resolution
 
     return {
@@ -267,8 +270,8 @@ def _build_request_body(
                     "type": "sentinel-1-grd",
                     "dataFilter": {
                         "timeRange": {
-                            "from": f"{from_date}T00:00:00Z",
-                            "to": f"{to_date}T23:59:59Z",
+                            "from": time_from,
+                            "to": time_to,
                         },
                         "acquisitionMode": "IW",
                         "polarization": "DV",
@@ -386,21 +389,64 @@ class SentinelHubClient:
     def __init__(self, auth: CDSEAuthManager) -> None:
         self._auth = auth
 
-    def fetch_tile(
+    def fetch_scene_metadata(
         self,
         bbox: list[float],
         date_range: tuple[str, str],
+    ) -> dict:
+        """
+        Query the STAC Catalog API to find the most recent Sentinel-1 GRD scene
+        in the specified date range and bounding box.
+        """
+        token = self._auth.get_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        
+        from_date, to_date = date_range
+        datetime_str = f"{from_date}T00:00:00Z/{to_date}T23:59:59Z"
+        
+        body = {
+            "collections": ["sentinel-1-grd"],
+            "bbox": bbox,
+            "datetime": datetime_str,
+            "limit": 1
+        }
+        
+        logger.info("Searching Catalog for %s in %s", bbox, datetime_str)
+        response = _post_with_retry(_CATALOG_URL, headers, body)
+        data = response.json()
+        
+        features = data.get("features", [])
+        if not features:
+            raise SentinelSceneNotFoundError(
+                f"No valid Sentinel-1 scene found in catalog for bbox={bbox} dates={date_range}."
+            )
+            
+        feature = features[0]
+        return {
+            "provider": "CDSE",
+            "scene_id": feature["id"],
+            "acquisition_date": feature["properties"]["datetime"],
+            "bbox": feature["bbox"]
+        }
+
+    def fetch_tile(
+        self,
+        bbox: list[float],
+        exact_datetime: str,
         output_resolution: tuple[int, int] = (512, 512),
     ) -> bytes:
         """
-        Fetch a Sentinel-1 GRD tile as raw GeoTIFF bytes.
+        Fetch a Sentinel-1 GRD tile as raw GeoTIFF bytes for an exact datetime.
 
         Parameters
         ----------
         bbox : list[float]
             [west, south, east, north] in EPSG:4326.
-        date_range : tuple[str, str]
-            (from_date, to_date) ISO-8601 strings.
+        exact_datetime : str
+            Exact ISO-8601 timestamp of the scene (e.g. from fetch_scene_metadata).
         output_resolution : tuple[int, int]
             (width, height) in pixels.
 
@@ -416,17 +462,25 @@ class SentinelHubClient:
         SentinelAPIError
             For HTTP-level failures.
         """
+        import datetime as dt
+
         token = self._auth.get_token()
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
             "Accept": "image/tiff",
         }
-        body = _build_request_body(bbox, date_range, output_resolution)
+
+        # Narrow timeRange to 1 minute around the exact datetime
+        acq = dt.datetime.fromisoformat(exact_datetime.replace("Z", "+00:00"))
+        t_from = (acq - dt.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        t_to = (acq + dt.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        body = _build_request_body(bbox, t_from, t_to, output_resolution)
 
         logger.info(
-            "Fetching S1 tile: bbox=%s  dates=%s → %s  res=%s",
-            bbox, date_range[0], date_range[1], output_resolution,
+            "Fetching S1 tile: bbox=%s  timeRange=[%s, %s]  res=%s",
+            bbox, t_from, t_to, output_resolution,
         )
 
         response = _post_with_retry(_PROCESS_URL, headers, body)
@@ -435,8 +489,7 @@ class SentinelHubClient:
         if len(content) < 128:
             raise SentinelSceneNotFoundError(
                 f"No valid Sentinel-1 scene found for bbox={bbox} "
-                f"dates={date_range}. "
-                "Try widening the date range or adjusting the bounding box."
+                f"exact_datetime={exact_datetime}."
             )
 
         logger.info("Tile fetched: %.1f KB", len(content) / 1024)
@@ -452,7 +505,7 @@ def fetch_sentinel1_pair(
     output_resolution: tuple[int, int] = (512, 512),
     save_dir: Optional[str | Path] = None,
     auth: Optional[CDSEAuthManager] = None,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, dict, dict]:
     """
     Fetch a Sentinel-1 SAR image pair for change-detection inference.
 
@@ -479,9 +532,9 @@ def fetch_sentinel1_pair(
 
     Returns
     -------
-    tuple[np.ndarray, np.ndarray]
-        ``(t1_array, t2_array)`` — float32 arrays of shape ``(C, H, W)``
-        with values normalized to ``[0, 1]``.
+    tuple[np.ndarray, np.ndarray, dict, dict]
+        ``(t1_array, t2_array, t1_meta, t2_meta)`` - float32 arrays of shape ``(C, H, W)``
+        with values normalized to ``[0, 1]``, and their respective metadata dicts.
 
     Raises
     ------
@@ -491,16 +544,6 @@ def fetch_sentinel1_pair(
         For unrecoverable HTTP-level API failures.
     EnvironmentError
         If CDSE credentials are not set.
-
-    Example
-    -------
-    >>> t1, t2 = fetch_sentinel1_pair(
-    ...     bbox=[72.0, 24.0, 73.0, 25.0],
-    ...     date_t1_range=("2024-01-01", "2024-01-15"),
-    ...     date_t2_range=("2024-06-01", "2024-06-15"),
-    ... )
-    >>> t1.shape
-    (2, 512, 512)
     """
     # Lazy import to avoid circular dependency
     from preprocessing.sar_loader import decode_geotiff_response, normalize_sar_tensor
@@ -510,13 +553,20 @@ def fetch_sentinel1_pair(
 
     client = SentinelHubClient(auth)
 
+    # ── Fetch Metadata ────────────────────────────────────────────────────────
+    logger.info("Fetching T1 metadata …")
+    t1_meta = client.fetch_scene_metadata(bbox, date_t1_range)
+    
+    logger.info("Fetching T2 metadata …")
+    t2_meta = client.fetch_scene_metadata(bbox, date_t2_range)
+
     # ── Fetch T1 ──────────────────────────────────────────────────────────────
     logger.info("Fetching T1 tile …")
-    t1_bytes = client.fetch_tile(bbox, date_t1_range, output_resolution)
+    t1_bytes = client.fetch_tile(bbox, t1_meta["acquisition_date"], output_resolution)
 
     # ── Fetch T2 ──────────────────────────────────────────────────────────────
     logger.info("Fetching T2 tile …")
-    t2_bytes = client.fetch_tile(bbox, date_t2_range, output_resolution)
+    t2_bytes = client.fetch_tile(bbox, t2_meta["acquisition_date"], output_resolution)
 
     # ── Optional: persist GeoTIFFs to disk ───────────────────────────────────
     if save_dir is not None:
@@ -530,8 +580,8 @@ def fetch_sentinel1_pair(
     t1_raw = decode_geotiff_response(t1_bytes)
     t2_raw = decode_geotiff_response(t2_bytes)
 
-    t1_norm = normalize_sar_tensor(t1_raw, is_linear=True)
-    t2_norm = normalize_sar_tensor(t2_raw, is_linear=True)
+    t1_norm = normalize_sar_tensor(t1_raw, is_linear=False)
+    t2_norm = normalize_sar_tensor(t2_raw, is_linear=False)
 
     logger.info(
         "Pair ready: T1 %s  T2 %s  dtype=%s  range=[%.3f, %.3f]",
@@ -539,4 +589,4 @@ def fetch_sentinel1_pair(
         t1_norm.min(), t1_norm.max(),
     )
 
-    return t1_norm, t2_norm
+    return t1_norm, t2_norm, t1_meta, t2_meta

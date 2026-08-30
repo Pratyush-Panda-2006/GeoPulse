@@ -44,3 +44,21 @@ async def get_health_status() -> HealthResponse:
         vram_used_gb=vram_used,
         loaded_models=loaded_models,
     )
+
+@router.get("/db-health", summary="Database Connection Health Check")
+async def get_db_health():
+    """
+    Checks if the backend can connect to the Neon Postgres database.
+    """
+    from src.api.db import init_db
+    from sqlalchemy import text
+    engine = init_db()
+    if not engine:
+        return {"status": "unhealthy", "message": "Database is not configured"}
+    try:
+        with engine.connect() as conn:
+            # Run a simple query to verify connection
+            res = conn.execute(text("SELECT 1")).scalar()
+            return {"status": "healthy", "message": f"Connected to database successfully. Test query returned {res}"}
+    except Exception as e:
+        return {"status": "unhealthy", "message": str(e)}

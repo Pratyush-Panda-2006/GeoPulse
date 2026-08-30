@@ -18,12 +18,13 @@ from fastapi.responses import RedirectResponse
 
 # Ensure repo root is loaded and .env is present
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-load_dotenv(REPO_ROOT / ".env")
+load_dotenv(REPO_ROOT / ".env", override=True)
 
 from src.api.routers.cdse import router as cdse_router
 from src.api.routers.detect import router as detect_router
 from src.api.routers.health import router as health_router
 from src.api.routers.models import router as models_router
+from src.api.routers.requests import router as requests_router
 from src.api.services.model_service import ModelService
 
 # Configure logging
@@ -83,6 +84,7 @@ app.include_router(health_router, prefix=API_V1_PREFIX)
 app.include_router(cdse_router, prefix=API_V1_PREFIX)
 app.include_router(detect_router, prefix=API_V1_PREFIX)
 app.include_router(models_router, prefix=API_V1_PREFIX)
+app.include_router(requests_router, prefix=API_V1_PREFIX)
 
 # Also expose /health at root level for load balancers
 app.include_router(health_router)

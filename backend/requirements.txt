@@ -18,3 +18,7 @@ requests           # HTTP client for CDSE OAuth + Processing API
 python-dotenv      # Load credentials from .env
 rasterio           # GeoTIFF decoding
 shapely            # BBox geometry helpers
+# ── Database ─────────────────────────────────────────────────────────────────
+psycopg2-binary
+SQLAlchemy
+alembic
