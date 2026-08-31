@@ -238,6 +238,18 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
                 session.add(detection)
             session.commit()
 
+        except ValueError as ve:
+            if job_id is not None:
+                try:
+                    session.rollback()
+                    failed_job = session.query(ChangeDetectionJob).get(job_id)
+                    if failed_job:
+                        failed_job.status = "failed"
+                        failed_job.metrics = {"error": str(ve)}
+                        session.commit()
+                except Exception:
+                    pass
+            raise HTTPException(status_code=400, detail=str(ve))
         except Exception as exc:
             if job_id is not None:
                 try:
@@ -248,8 +260,9 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
                         failed_job.metrics = {"error": str(exc)}
                         session.commit()
                 except Exception:
-                    session.rollback()
-            raise
+                    pass
+            raise HTTPException(status_code=500, detail=f"Change detection failed: {str(exc)}")
+
         finally:
             session.close()
 
