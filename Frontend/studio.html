@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>GeoPulse 3D Terrain Intelligence Studio - SAR Split Analysis</title>
+    <title>GeoPulse 3D Terrain Studio - Biome & Habitat Split Analysis</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
@@ -183,21 +183,75 @@
         .marker-bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
         .marker-br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
 
-        input[type=range]::-webkit-slider-thumb {
+        /* Range Slider Styling & Visibility Fix */
+        input[type="range"] {
             -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        /* WebKit / Blink Track */
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+        }
+
+        /* WebKit / Blink Thumb */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
             height: 16px;
-            width: 8px;
-            border-radius: 0;
-            background: theme('colors.primary');
+            width: 16px;
+            border-radius: 50%;
+            background: #22c55e;
             cursor: pointer;
             margin-top: -6px;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
         }
-        input[type=range]::-webkit-slider-runnable-track {
+        input[type="range"]:hover::-webkit-slider-thumb,
+        input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+            background: #4edea3;
+        }
+
+        /* Firefox Track */
+        input[type="range"]::-moz-range-track {
             width: 100%;
-            height: 4px;
+            height: 6px;
             cursor: pointer;
-            background: rgba(255,255,255,0.1);
-            border-radius: 0;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+        }
+
+        /* Firefox Thumb */
+        input[type="range"]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+        input[type="range"]:hover::-moz-range-thumb,
+        input[type="range"]:active::-moz-range-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+            background: #4edea3;
         }
 
         .split-slider-thumb {
@@ -253,7 +307,7 @@
     <div class="bg-error/20 border-b border-error text-error text-xs font-mono py-1 px-4 text-center z-50 flex justify-between items-center">
         <span class="flex items-center gap-1">
             <span class="material-symbols-outlined text-[14px]">warning</span>
-            SPECKLE NOISE &gt; THRESHOLD - RADIOMETRIC ENHANCEMENT ACTIVE
+            RADAR SPECKLE FILTER APPLIED — TERRAIN BACKSCATTER CALIBRATION ACTIVE
         </span>
         <a href="telemetry.html" class="underline text-error hover:text-white font-mono text-[10px]">Diagnostics & Telemetry →</a>
     </div>
@@ -286,10 +340,10 @@
                 <span class="uppercase tracking-widest lg:hidden">Active</span>
             </a>
             <div class="flex gap-3">
-                <a href="analytics.html" title="Cluster Alerts">
+                <a href="analytics.html" title="Disturbance Alerts">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
                 </a>
-                <a href="overview.html" title="Command Center Profile">
+                <a href="overview.html" title="Observatory Profile">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
                 </a>
             </div>
@@ -310,30 +364,30 @@
                 <!-- Toolbar Overlay -->
                 <div class="absolute top-4 left-4 z-30 flex gap-2">
                     <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 p-1 flex gap-1 items-center">
-                        <button id="view-t1" class="w-8 h-8 flex items-center justify-center bg-primary/20 text-primary border border-primary transition-colors hover:bg-primary/30" title="Satellite SAR (T1)">
+                        <button id="view-t1" class="w-8 h-8 flex items-center justify-center bg-primary/20 text-primary border border-primary transition-colors hover:bg-primary/30" title="Baseline SAR (T1 - Prior Acquisition)">
                             <span class="font-mono text-xs">T1</span>
                         </button>
-                        <button id="view-t2" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Satellite SAR (T2)">
+                        <button id="view-t2" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Observation SAR (T2 - Recent Acquisition)">
                             <span class="font-mono text-xs">T2</span>
                         </button>
-                        <button id="view-optical" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Optical (True Color, when available)">
+                        <button id="view-optical" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Optical (Sentinel-2 True Color Basemap)">
                             <span class="material-symbols-outlined text-[18px]">satellite_alt</span>
                         </button>
-                        <button id="view-falsecolor" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="False Color (Dual-Pol VV/VH)">
+                        <button id="view-falsecolor" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="False Color (Dual-Pol VV/VH Canopy Scatter)">
                             <span class="material-symbols-outlined text-[18px]">palette</span>
                         </button>
                         <div class="w-px h-6 bg-white/10 mx-1"></div>
-                        <button id="view-heatmap" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Confidence Heatmap">
+                        <button id="view-heatmap" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="Disturbance Probability Heatmap">
                             <span class="material-symbols-outlined text-[18px]">local_fire_department</span>
                         </button>
-                        <button id="view-mask" class="w-8 h-8 flex items-center justify-center text-[#ff453a] hover:bg-[#ff453a]/20 hover:text-[#ff453a] transition-colors" title="Binary Change Mask">
+                        <button id="view-mask" class="w-8 h-8 flex items-center justify-center text-[#ff453a] hover:bg-[#ff453a]/20 hover:text-[#ff453a] transition-colors" title="Binary Disturbance Mask">
                             <span class="material-symbols-outlined text-[18px]">category</span>
                         </button>
-                        <button id="view-overlay" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="T2 + Overlay">
+                        <button id="view-overlay" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-colors" title="T2 + Ecological Shift Overlay">
                             <span class="material-symbols-outlined text-[18px]">layers_clear</span>
                         </button>
                         <div class="w-px h-6 bg-white/10 mx-1"></div>
-                        <button id="view-boxes" class="h-8 px-2 flex items-center justify-center gap-1 text-[#ffb000] hover:bg-[#ffb000]/20 transition-colors" title="Highlight major changed areas with labeled boxes">
+                        <button id="view-boxes" class="h-8 px-2 flex items-center justify-center gap-1 text-[#ffb000] hover:bg-[#ffb000]/20 transition-colors" title="Highlight Major Disturbance Zones">
                             <span class="material-symbols-outlined text-[18px]">crop_free</span>
                             <span class="font-mono text-[10px] uppercase tracking-wider">Highlight</span>
                         </button>
@@ -348,7 +402,7 @@
                         <button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Zoom Out">
                             <span class="material-symbols-outlined text-[20px]">remove</span>
                         </button>
-                        <a href="explorer.html" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Return to Full Explorer">
+                        <a href="explorer.html" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Return to Biosphere Explorer">
                             <span class="material-symbols-outlined text-[20px]">my_location</span>
                         </a>
                     </div>
@@ -361,7 +415,7 @@
                         <div class="flex flex-col items-center gap-4 text-center">
                             <span class="material-symbols-outlined text-[48px] text-[#ff453a]">warning</span>
                             <h2 class="font-headline-md text-[#ff453a] uppercase tracking-widest">NO ACTIVE INFERENCE</h2>
-                            <p class="font-mono text-outline text-sm max-w-md">No valid SAR inference result found in memory. Please run live intelligence from the Explorer.</p>
+                            <p class="font-mono text-outline text-sm max-w-md">No valid SAR inference result found in memory. Please run live environmental audit from the Explorer.</p>
                             <a href="explorer.html" class="mt-4 px-6 py-2 bg-primary text-[#0a0a0a] font-ui-semibold uppercase tracking-widest hover:bg-primary-fixed-dim transition-colors">Go to Explorer</a>
                         </div>
                     </div>
@@ -383,8 +437,8 @@
 
                     <!-- Coordinate Readout -->
                     <div class="absolute bottom-4 right-4 bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 px-4 py-1 z-30 flex items-center gap-3">
-                        <span class="font-mono text-xs text-primary tracking-widest uppercase">18°56'43"N 72°57'58"E (MUMBAI PORT)</span>
-                        <a href="analytics.html" class="text-on-surface hover:text-primary text-xs underline font-mono">View Audit →</a>
+                        <span class="font-mono text-xs text-primary tracking-widest uppercase">18°56'43"N 72°57'58"E (WESTERN GHATS ECO-ZONE)</span>
+                        <a href="analytics.html" class="text-on-surface hover:text-primary text-xs underline font-mono">View Disturbance Audit →</a>
                     </div>
                 </div>
             </div>
@@ -406,24 +460,24 @@
                     <div class="flex flex-col gap-2">
                         <label class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2">Active Layer</label>
                         <select id="layer-select" class="bg-surface border border-white/10 text-on-surface font-mono text-sm focus:border-primary focus:ring-1 focus:ring-primary p-2 w-full appearance-none rounded-none">
-                            <option value="t1">Satellite SAR (T1)</option>
-                            <option value="t2" selected="">Satellite SAR (T2)</option>
+                            <option value="t1">Baseline SAR (T1)</option>
+                            <option value="t2" selected="">Observation SAR (T2)</option>
                             <option value="optical">Optical — True Color</option>
                             <option value="grayscale">SAR Grayscale (T2)</option>
-                            <option value="falsecolor">False Color (Dual-Pol)</option>
-                            <option value="heatmap">Confidence Heatmap</option>
-                            <option value="mask">Binary Change Mask</option>
-                            <option value="overlay">T2 + Overlay</option>
-                            <option value="boxes">Highlight Changes</option>
+                            <option value="falsecolor">False Color (Dual-Pol Canopy)</option>
+                            <option value="heatmap">Disturbance Heatmap</option>
+                            <option value="mask">Binary Disturbance Mask</option>
+                            <option value="overlay">T2 + Eco Overlay</option>
+                            <option value="boxes">Highlight Disturbance Zones</option>
                         </select>
                     </div>
-                    <!-- Inference Metrics -->
+                    <!-- Disturbance Metrics -->
                     <div class="flex flex-col gap-3">
-                        <label class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2">Inference Metrics</label>
+                        <label class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2">Disturbance Metrics</label>
                         <div class="flex flex-col gap-2 font-mono text-xs text-outline">
                             <div class="flex justify-between"><span class="uppercase">Threshold</span><span id="studio-threshold" class="text-on-surface">--</span></div>
-                            <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="studio-clusters" class="text-on-surface">--</span></div>
-                            <div class="flex justify-between"><span class="uppercase">Change %</span><span id="studio-change" class="text-primary font-bold">--</span></div>
+                            <div class="flex justify-between"><span class="uppercase">Disturbance Zones</span><span id="studio-clusters" class="text-on-surface">--</span></div>
+                            <div class="flex justify-between"><span class="uppercase">Surface Shift %</span><span id="studio-change" class="text-primary font-bold">--</span></div>
                             <div class="flex justify-between"><span class="uppercase">Changed Px</span><span id="studio-changed-px" class="text-primary font-bold">--</span></div>
                         </div>
                     </div>
@@ -453,7 +507,7 @@
                     </div>
                     <!-- Colormap Select -->
                     <div class="flex flex-col gap-3">
-                        <label class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2">Colormap (Heatmap)</label>
+                        <label class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2">Colormap (Disturbance Gradient)</label>
                         <div class="flex flex-col gap-2" id="colormap-radios">
                             <label class="flex items-center gap-3 cursor-pointer p-3 border border-primary/50 bg-primary/10 transition-colors">
                                 <input checked="" class="form-radio text-primary bg-background border-outline-variant focus:ring-primary focus:ring-offset-background" data-bg="linear-gradient(to top right, transparent, rgba(255,0,0,0.2), rgba(0,255,0,0.2))" data-filter="hue-rotate(0deg)" name="colormap" type="radio">
@@ -476,11 +530,11 @@
                     <div class="mt-auto flex flex-col gap-2">
                         <a href="analytics.html" class="w-full py-2 px-4 bg-primary text-[#0a0a0a] font-ui-semibold text-ui-semibold uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 text-center">
                             <span class="material-symbols-outlined text-[18px]">insights</span>
-                            Push to Analytics
+                            Push to Disturbance Audit
                         </a>
                         <a href="explorer.html" class="w-full py-2 px-4 border border-white/10 bg-surface text-on-surface font-ui-semibold text-ui-semibold uppercase tracking-widest hover:border-white/30 transition-colors flex items-center justify-center gap-2 text-center">
                             <span class="material-symbols-outlined text-[18px]">map</span>
-                            Back to Explorer
+                            Back to Biosphere Explorer
                         </a>
                     </div>
                 </div>
@@ -490,11 +544,11 @@
 
     <!-- Footer -->
     <footer class="absolute bottom-0 w-full py-2 px-margin border-t border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md flex flex-col sm:flex-row justify-between items-center gap-2 z-40">
-        <span class="font-mono text-xs text-outline tracking-widest uppercase">GeoPulse | All Rights Reserved</span>
+        <span class="font-mono text-xs text-outline tracking-widest uppercase">GeoPulse | Earth Observation &amp; Environmental Monitoring</span>
         <div class="flex gap-4 font-ui-semibold text-ui-semibold uppercase text-xs">
             <a class="text-outline hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
             <a class="text-outline hover:text-primary transition-colors" href="studio.html">[3D STUDIO]</a>
-            <a class="text-outline hover:text-primary transition-colors" href="analytics.html">[CLUSTER AUDIT]</a>
+            <a class="text-outline hover:text-primary transition-colors" href="analytics.html">[DISTURBANCE AUDIT]</a>
             <a class="text-outline hover:text-primary transition-colors" href="telemetry.html">[TELEMETRY]</a>
         </div>
     </footer>
@@ -703,7 +757,7 @@
 
                         const coordDisplay = document.querySelector('.absolute.bottom-4.right-4 span');
                         if (coordDisplay) {
-                            coordDisplay.innerText = `FOCUS: CLUSTER ${targetRegionId} | Px: ${cx.toFixed(0)}, ${cy.toFixed(0)}`;
+                            coordDisplay.innerText = `FOCUS: DISTURBANCE ZONE ${targetRegionId} | Px: ${cx.toFixed(0)}, ${cy.toFixed(0)}`;
                         }
                     };
                     focusImg.src = focusSrc;

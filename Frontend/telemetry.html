@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>GeoPulse - RISAT-2B Telemetry & System Status</title>
+    <title>GeoPulse - RISAT-2B / EOS-04 Environmental Telemetry &amp; System Status</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700;900&amp;family=Playfair+Display:wght@400;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
@@ -197,6 +197,69 @@
             50.1% { transform-origin: bottom; }
             100% { opacity: 0; transform: scaleY(0); transform-origin: bottom; }
         }
+
+        /* Range Slider Styling & Visibility Fix */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]:focus {
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+        input[type="range"]:hover::-webkit-slider-thumb,
+        input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+            background: #4edea3;
+        }
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+        }
+        input[type="range"]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+        input[type="range"]:hover::-moz-range-thumb,
+        input[type="range"]:active::-moz-range-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+            background: #4edea3;
+        }
     </style>
 </head>
 <body class="bg-background text-on-background min-h-screen flex flex-col relative antialiased selection:bg-primary/30 selection:text-primary">
@@ -226,10 +289,10 @@
                 <span class="uppercase tracking-widest lg:hidden">Active</span>
             </a>
             <div class="flex gap-3">
-                <a href="analytics.html" title="Cluster Alerts">
+                <a href="analytics.html" title="Disturbance Alerts">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
                 </a>
-                <a href="overview.html" title="Command Center Profile">
+                <a href="overview.html" title="Observatory Profile">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
                 </a>
             </div>
@@ -242,7 +305,7 @@
             <div class="flex flex-col items-center gap-4 text-center">
                 <span class="material-symbols-outlined text-[48px] text-[#ff453a]">warning</span>
                 <h2 class="font-headline-md text-[#ff453a] uppercase tracking-widest">NO ACTIVE INFERENCE</h2>
-                <p class="font-mono text-outline text-sm max-w-md">No valid SAR inference result found in memory. Please run live intelligence from the Explorer.</p>
+                <p class="font-mono text-outline text-sm max-w-md">No valid SAR inference result found in memory. Please run live environmental audit from the Explorer.</p>
                 <a href="explorer.html" class="mt-4 px-6 py-2 bg-primary text-[#0a0a0a] font-ui-semibold uppercase tracking-widest hover:bg-primary-fixed-dim transition-colors">Go to Explorer</a>
             </div>
         </div>
@@ -250,8 +313,8 @@
         <div id="telemetry-content">
             <header class="mb-10 border-b border-outline/15 pb-4 flex flex-wrap justify-between items-end gap-4">
                 <div>
-                    <h1 class="font-headline-lg text-headline-lg text-on-surface uppercase shadow-black drop-shadow-lg glitch-hover transition-all">RISAT-2B TELEMETRY HUB</h1>
-                    <p class="font-accent-italic text-accent-italic text-on-surface-variant mt-2 max-w-2xl">Real-time health, link lock &amp; CUDA compute telemetry for GeoPulse SAR Processing Engines.</p>
+                    <h1 class="font-headline-lg text-headline-lg text-on-surface uppercase shadow-black drop-shadow-lg glitch-hover transition-all">RISAT-2B / EOS-04 TELEMETRY HUB</h1>
+                    <p class="font-accent-italic text-accent-italic text-on-surface-variant mt-2 max-w-2xl">Real-time health, link lock &amp; CUDA compute telemetry for GeoPulse Earth Observation &amp; SAR Biome Processing Engines.</p>
                 </div>
                 <div class="flex gap-3">
                     <a href="explorer.html" class="bg-primary text-[#0a0a0a] px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest hover:bg-primary-fixed-dim transition-all flex items-center gap-1.5">
@@ -273,8 +336,8 @@
                     </div>
                     <div class="mb-4">
                         <span class="font-mono text-xs text-on-surface-variant block mb-1 uppercase tracking-widest">Active Link</span>
-                        <span class="font-headline-md text-headline-md text-on-surface font-mono">ISRO RISAT-2B</span>
-                        <span class="font-mono text-xs text-on-surface-variant block mt-2 uppercase tracking-widest">Station Lock: ISTRAC, Bengaluru</span>
+                        <span class="font-headline-md text-headline-md text-on-surface font-mono">ISRO RISAT-2B / EOS-04</span>
+                        <span class="font-mono text-xs text-on-surface-variant block mt-2 uppercase tracking-widest">Station Lock: ISTRAC Ground Station, Bengaluru</span>
                         <span class="font-mono text-xs text-on-surface-variant block mt-2 uppercase tracking-widest">Last Update: <span id="ist-time1">--:--:--</span> IST</span>
                     </div>
                 </div>
@@ -303,20 +366,20 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="bg-surface-container-low p-4 border border-outline/15 relative">
                             <span class="font-mono text-xs text-on-surface-variant block mb-2 uppercase tracking-widest">Framework</span>
-                            <span class="font-headline-md text-headline-md text-on-surface font-mono">PyTorch 2.x (SNUNet)</span>
+                            <span class="font-headline-md text-headline-md text-on-surface font-mono">PyTorch 2.x (SNUNet Bi-Temporal SAR)</span>
                         </div>
                         <div class="bg-surface-container-low p-4 border border-outline/15 relative">
                             <span class="font-mono text-xs text-on-surface-variant block mb-2 uppercase tracking-widest">Hardware Accelerator</span>
-                            <span class="font-headline-md text-headline-md text-on-surface font-mono">CUDA: NVIDIA RTX 3050</span>
+                            <span class="font-headline-md text-headline-md text-on-surface font-mono">CUDA: NVIDIA A100-SXM4</span>
                         </div>
                     </div>
                     <div class="mt-6 border-t border-outline/15 pt-4 border-dotted">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="font-mono text-xs text-on-surface-variant uppercase tracking-widest">GPU VRAM Usage</span>
-                            <span class="text-xl text-[#00fff9] font-jetbrains tracking-tight" id="vram-readout">1.3 GB / 6.0 GB</span>
+                            <span class="font-mono text-xs text-on-surface-variant uppercase tracking-widest">GPU VRAM / Memory Usage</span>
+                            <span class="text-xl text-[#00fff9] font-jetbrains tracking-tight" id="vram-readout">2.4 GB / 8.0 GB</span>
                         </div>
                         <div class="w-full bg-surface-container-highest border border-outline/15 h-3">
-                            <div class="bg-[#00fff9] h-full transition-all duration-300" id="gpu-bar" style="width: 21.7687%;"></div>
+                            <div class="bg-[#00fff9] h-full transition-all duration-300" id="gpu-bar" style="width: 30%;"></div>
                         </div>
                     </div>
                 </div>
@@ -352,7 +415,7 @@
             <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-8 mt-2 h-64 flex flex-col relative overflow-hidden bg-primary/5 border border-primary/20">
                 <div class="relative z-10 flex flex-col h-full">
                     <div class="flex items-center justify-between mb-4 border-b border-outline/15 pb-2">
-                        <h3 class="font-ui-semibold text-ui-semibold text-primary uppercase tracking-widest">Inference Results <span class="text-[10px] text-primary ml-2 font-bold">(REAL DATA)</span></h3>
+                        <h3 class="font-ui-semibold text-ui-semibold text-primary uppercase tracking-widest">Inference Results <span class="text-[10px] text-primary ml-2 font-bold">(REAL ECO-DATA)</span></h3>
                         <span class="material-symbols-outlined text-primary" data-icon="data_usage">data_usage</span>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 h-full">
@@ -373,19 +436,19 @@
                             <span class="font-['JetBrains_Mono'] text-lg text-[#10b981] uppercase" id="real-status">--</span>
                         </div>
                         <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
-                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Total Pixels</span>
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Total Surface Pixels</span>
                             <span class="font-['JetBrains_Mono'] text-lg text-on-surface" id="real-total-px">--</span>
                         </div>
                         <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
-                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Changed Pixels</span>
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Disturbed Pixels</span>
                             <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-changed-px">--</span>
                         </div>
                         <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
-                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Change %</span>
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Canopy / Surface Shift %</span>
                             <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-change-pct">--</span>
                         </div>
                         <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
-                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Clusters</span>
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Disturbance Zones</span>
                             <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-clusters">--</span>
                         </div>
                     </div>
@@ -399,12 +462,12 @@
     <footer class="w-full py-12 px-margin grid grid-cols-1 md:grid-cols-12 gap-gutter bg-surface-dim border-t border-outline/15 relative overflow-hidden z-40">
         <div class="col-span-1 md:col-span-6 flex flex-col justify-between">
             <div class="font-headline-md text-headline-md text-primary mb-4 glitch-hover transition-all">GeoPulse</div>
-            <p class="font-mono text-xs text-outline tracking-widest uppercase">All Rights Reserved</p>
+            <p class="font-mono text-xs text-outline tracking-widest uppercase">Earth Observation &amp; Environmental Monitoring</p>
         </div>
         <div class="col-span-1 md:col-span-6 flex justify-end gap-6 font-ui-semibold text-ui-semibold uppercase flex-wrap">
             <a class="text-outline hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
             <a class="text-outline hover:text-primary transition-colors" href="studio.html">[3D STUDIO]</a>
-            <a class="text-outline hover:text-primary transition-colors" href="analytics.html">[CLUSTER AUDIT]</a>
+            <a class="text-outline hover:text-primary transition-colors" href="analytics.html">[DISTURBANCE AUDIT]</a>
             <a class="text-outline hover:text-primary transition-colors" href="telemetry.html">[TELEMETRY]</a>
         </div>
     </footer>
@@ -480,11 +543,11 @@
             const gpuBar = document.getElementById('gpu-bar');
             const vramReadout = document.getElementById('vram-readout');
             if (gpuBar && vramReadout) {
-                let basePercent = 20 + (Math.random() * 15 - 5); 
+                let basePercent = 28 + (Math.random() * 8 - 4); 
                 basePercent = Math.max(5, Math.min(basePercent, 95));
                 gpuBar.style.width = `${basePercent}%`;
-                const currentVram = (basePercent / 100) * 6.0;
-                vramReadout.innerText = `${currentVram.toFixed(1)} GB / 6.0 GB`;
+                const currentVram = (basePercent / 100) * 8.0;
+                vramReadout.innerText = `${currentVram.toFixed(1)} GB / 8.0 GB`;
             }
         }, 800);
     </script>

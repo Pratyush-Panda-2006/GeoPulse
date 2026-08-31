@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>GeoPulse SAR Explorer - GeoPulse & Change Detection</title>
+    <title>GeoPulse Biosphere Explorer - SAR Earth Observation</title>
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
     <!-- Google Fonts: Bricolage Grotesque, Inter, Playfair Display, JetBrains Mono -->
@@ -210,6 +210,131 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: theme('colors.primary'); }
+
+        /* Range Slider Styling & Visibility Fix */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        /* WebKit / Blink Track */
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+        }
+
+        /* WebKit / Blink Thumb */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+        input[type="range"]:hover::-webkit-slider-thumb,
+        input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+            background: #4edea3;
+        }
+
+        /* Firefox Track */
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+        }
+
+        /* Firefox Thumb */
+        input[type="range"]::-moz-range-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+        input[type="range"]:hover::-moz-range-thumb,
+        input[type="range"]:active::-moz-range-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+            background: #4edea3;
+        }
+
+        /* Terminal Dynamic Progress Bar */
+        .terminal-progress-track {
+            width: 100%;
+            height: 6px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 9999px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
+        }
+        .terminal-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #22c55e, #4edea3);
+            border-radius: 9999px;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+            width: 0%;
+            transition: width 0.4s ease;
+            position: relative;
+        }
+
+        /* Pulsing Log Status Dot */
+        .log-pulse-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+            margin-right: 6px;
+            vertical-align: middle;
+            animation: log-pulse-anim 1.2s infinite ease-in-out;
+        }
+        @keyframes log-pulse-anim {
+            0%, 100% { transform: scale(0.85); opacity: 0.6; box-shadow: 0 0 4px #22c55e; }
+            50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 12px #22c55e; }
+        }
+
+        /* Terminal Blinking Block Cursor */
+        .terminal-cursor {
+            display: inline-block;
+            width: 6px;
+            height: 11px;
+            background-color: #22c55e;
+            box-shadow: 0 0 6px #22c55e;
+            margin-left: 4px;
+            vertical-align: middle;
+            animation: terminal-blink 0.8s infinite steps(2, start);
+        }
+        @keyframes terminal-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
     </style>
 </head>
 <body class="antialiased h-screen overflow-hidden font-body-md text-on-background selection:bg-primary/30 selection:text-primary flex relative flex-col">
@@ -241,10 +366,10 @@
                 <span class="text-primary uppercase tracking-widest lg:hidden">Active</span>
             </a>
             <div class="flex gap-3">
-                <a href="analytics.html" title="Notifications & Clusters" class="flex items-center">
+                <a href="analytics.html" title="Disturbance Alerts" class="flex items-center">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
                 </a>
-                <a href="overview.html" title="Command Center Profile" class="flex items-center">
+                <a href="overview.html" title="Observatory Profile" class="flex items-center">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
                 </a>
             </div>
@@ -260,7 +385,7 @@
             
             <!-- Panel Header -->
             <div class="px-6 py-5 border-b border-outline/15 flex justify-between items-center bg-surface-container-low/50">
-                <h2 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Acquisition Controls</h2>
+                <h2 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Biome Acquisition Controls</h2>
                 <span class="material-symbols-outlined text-outline text-sm">tune</span>
             </div>
 
@@ -296,11 +421,11 @@
                         </div>
                         <div id="live-inputs" class="flex flex-col gap-4">
                             <div class="flex flex-col gap-1.5">
-                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T1 Date (Baseline)</label>
+                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T1 Date (Baseline SAR)</label>
                                 <input class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2023-10-01">
                             </div>
                             <div class="flex flex-col gap-1.5">
-                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T2 Date (Current)</label>
+                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T2 Date (Observation SAR)</label>
                                 <input class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2023-10-15">
                             </div>
                         </div>
@@ -368,7 +493,7 @@
                             <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Detection Sensitivity</label>
                             <span class="font-mono text-sm text-primary" id="sens-val">0.95</span>
                         </div>
-                        <input id="sens-slider" class="w-full accent-primary h-1 bg-surface-variant rounded-none appearance-none cursor-pointer" max="1.0" min="0.1" step="0.05" type="range" value="0.95">
+                        <input id="sens-slider" class="w-full appearance-none bg-transparent cursor-pointer my-2" max="1.0" min="0.1" step="0.05" type="range" value="0.95">
                         <div class="flex justify-between font-mono text-[10px] text-outline uppercase tracking-widest mt-1">
                             <span>COARSE</span>
                             <span>FINE</span>
@@ -376,21 +501,21 @@
                     </div>
                 </section>
 
-                <!-- Quick Jump Locations -->
+                <!-- Saved Biome Presets -->
                 <section class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
-                        <h3 class="font-mono text-xs text-primary uppercase tracking-widest">Saved Vectors</h3>
+                        <h3 class="font-mono text-xs text-primary uppercase tracking-widest">Saved Biome Presets</h3>
                         <div class="h-px bg-outline/20 flex-1 ml-4"></div>
                     </div>
                     <div class="flex flex-col gap-2">
                         <button class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">location_on</span> New Delhi Command
+                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">forest</span> Western Ghats Rainforest Reserve
                         </button>
                         <button class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">location_on</span> Mumbai Port
+                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">water_drop</span> Sundarbans Mangrove Delta
                         </button>
                         <a href="studio.html" class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">view_in_ar</span> Mumbai 3D Terrain
+                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">view_in_ar</span> Western Ghats 3D Terrain
                         </a>
                     </div>
                 </section>
@@ -400,11 +525,11 @@
             <div class="p-6 border-t border-outline/15 bg-surface-container-low/50 mt-auto flex flex-col gap-3">
                 <button class="w-full bg-primary text-[#0a0a0a] font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-none flex items-center justify-center gap-2 hover:bg-primary-fixed-dim transition-colors pulse-border relative overflow-hidden group">
                     <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">satellite_alt</span>
-                    <span>Run Live Intelligence</span>
+                    <span>Analyze Surface Shift</span>
                     <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-[shine_1s_ease-in-out]"></div>
                 </button>
                 <a href="overview.html" class="w-full bg-surface-container-high border border-outline/30 hover:border-primary/50 text-outline hover:text-primary font-mono text-[11px] uppercase tracking-widest py-2 px-3 text-center transition-all">
-                    Defense Command Center →
+                    Eco-Intelligence Center →
                 </a>
             </div>
         </aside>
@@ -412,7 +537,7 @@
         <!-- Level 0 Canvas: Interactive Map Area -->
         <div class="flex-1 relative bg-surface-container-lowest map-cursor overflow-hidden ml-[-1px]">
             <!-- Satellite Basemap Layer -->
-            <div class="absolute inset-0 bg-cover bg-center opacity-70" data-alt="High-resolution tactical map of India, displaying accurate international and state borders outlined in glowing cyan/emerald vector lines." data-location="India" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBipvc13muhDU84O-GEV1lXzNJLdVGGZMDHVYs-ClBsbz5_jsoOw7toHUCCNDpUhEWbA62Y2u7JH1f7RVxYSACdkqxkyURQhw5rMILekseMAJwpo3DNKIEP0RZaljGWZFJNSt0KRZmgrnDH_v1y_7ZhS7R_yDJLcJE15D_FE7FH9VckUK2UQ2bxrysnNF9PxvA9iGUAQdVFAo5ZDqGpBf7IC_7uHftsW-kXq3fAtNFHNA0YwQUMcbD'); filter: grayscale(100%) contrast(1.2) brightness(0.8);">
+            <div class="absolute inset-0 bg-cover bg-center opacity-70" data-alt="High-resolution environmental map of India, displaying accurate international and biome regions outlined in glowing cyan/emerald vector lines." data-location="India" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBipvc13muhDU84O-GEV1lXzNJLdVGGZMDHVYs-ClBsbz5_jsoOw7toHUCCNDpUhEWbA62Y2u7JH1f7RVxYSACdkqxkyURQhw5rMILekseMAJwpo3DNKIEP0RZaljGWZFJNSt0KRZmgrnDH_v1y_7ZhS7R_yDJLcJE15D_FE7FH9VckUK2UQ2bxrysnNF9PxvA9iGUAQdVFAo5ZDqGpBf7IC_7uHftsW-kXq3fAtNFHNA0YwQUMcbD'); filter: grayscale(100%) contrast(1.2) brightness(0.8);">
                 <!-- Map Overlay Gradient for better UI contrast -->
                 <div class="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/50 to-transparent pointer-events-none"></div>
             </div>
@@ -424,17 +549,17 @@
                         <img id="result-img" class="max-w-full max-h-full object-contain border border-primary/50 shadow-[0_0_30px_rgba(78,222,163,0.2)]" src="" alt="Result Overlay" />
                         <!-- DEBUG caption: only shown while the exact backend binary mask is displayed -->
                         <div id="mask-debug-caption" class="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none hidden">
-                            <span class="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff453a]/60 text-[#ff453a] font-mono text-[10px] uppercase tracking-widest px-3 py-1">MODEL 3 — BINARY CHANGE MASK</span>
+                            <span class="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff453a]/60 text-[#ff453a] font-mono text-[10px] uppercase tracking-widest px-3 py-1">MODEL 3 — BINARY DISTURBANCE MASK</span>
                         </div>
                         <div class="absolute top-4 left-4 flex gap-2 pointer-events-auto flex-wrap">
-                            <button id="view-t1" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T1)">T1</button>
-                            <button id="view-t2" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T2)">T2</button>
-                            <button id="view-optical" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="True-color optical basemap (coordinate runs only)">Optical</button>
-                            <button id="view-falsecolor" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Dual-polarization false-color (VV/VH/ratio)">False Color</button>
-                            <button id="view-heatmap" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50">Heatmap</button>
-                            <button id="view-mask" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a]/50 px-3 py-1 text-xs font-mono text-[#ff453a] hover:text-[#ff453a] hover:border-[#ff453a]" title="Exact Model 3 binary change mask from the API">Binary Mask</button>
-                            <button id="view-overlay" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-primary/50 px-3 py-1 text-xs font-mono text-primary">Overlay</button>
-                            <button id="view-boxes" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000]/50 px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000]" title="Highlight major changed areas with labeled boxes">Highlight</button>
+                            <button id="view-t1" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Baseline SAR (T1)">T1</button>
+                            <button id="view-t2" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Observation SAR (T2)">T2</button>
+                            <button id="view-optical" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Sentinel-2 True Color Optical Basemap">Optical</button>
+                            <button id="view-falsecolor" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Dual-polarization false-color (VV/VH biomass scatter)">False Color</button>
+                            <button id="view-heatmap" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Disturbance Probability Heatmap">Heatmap</button>
+                            <button id="view-mask" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a]/50 px-3 py-1 text-xs font-mono text-[#ff453a] hover:text-[#ff453a] hover:border-[#ff453a]" title="Binary Disturbance Mask">Binary Mask</button>
+                            <button id="view-overlay" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-primary/50 px-3 py-1 text-xs font-mono text-primary" title="T2 + Eco Overlay">Overlay</button>
+                            <button id="view-boxes" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000]/50 px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000]" title="Highlight Major Disturbance Zones">Highlight</button>
                         </div>
                     </div>
                 </div>
@@ -450,7 +575,7 @@
                     <div class="container-marker marker-br border-primary"></div>
                     <!-- Bounding Box Metrics -->
                     <div class="bg-surface-container-highest/90 backdrop-blur-md border border-primary/50 text-primary font-mono text-xs px-2 py-1 rounded-none shadow-sm pointer-events-none absolute -top-8 right-0 flex items-center gap-2">
-                        <span>Area: 42.5 km²</span>
+                        <span>Biome Area: 42.5 km²</span>
                         <a href="studio.html" class="underline text-on-surface hover:text-primary pointer-events-auto text-[10px]">Open in 3D Studio</a>
                     </div>
                 </div>
@@ -465,13 +590,13 @@
                     <span class="material-symbols-outlined text-[20px]">remove</span>
                 </button>
                 <div class="h-px w-full bg-outline/20 my-1"></div>
-                <button class="w-10 h-10 bg-primary/20 backdrop-blur-md border border-primary rounded-none shadow-sm text-primary flex items-center justify-center hover:bg-primary/30 transition-colors pointer-events-auto" title="Draw Bounding Box">
+                <button class="w-10 h-10 bg-primary/20 backdrop-blur-md border border-primary rounded-none shadow-sm text-primary flex items-center justify-center hover:bg-primary/30 transition-colors pointer-events-auto" title="Draw Biome ROI Bounding Box">
                     <span class="material-symbols-outlined text-[20px]">crop_free</span>
                 </button>
                 <a href="studio.html" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="3D Terrain Studio">
                     <span class="material-symbols-outlined text-[20px]">view_in_ar</span>
                 </a>
-                <a href="analytics.html" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Cluster Analytics">
+                <a href="analytics.html" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Disturbance Analytics">
                     <span class="material-symbols-outlined text-[20px]">analytics</span>
                 </a>
             </div>
@@ -479,30 +604,30 @@
             <!-- Results Metrics Panel (Hidden by default) -->
             <div class="absolute left-6 top-6 w-64 bg-[#0a0a0a]/90 backdrop-blur-xl border border-primary/30 p-4 font-mono text-[10px] z-30 hidden" id="results-panel">
                 <div class="flex justify-between items-center mb-3 border-b border-primary/20 pb-2">
-                    <span class="text-primary tracking-widest uppercase font-ui-semibold text-xs">Analysis Complete</span>
+                    <span class="text-primary tracking-widest uppercase font-ui-semibold text-xs">Eco-Audit Complete</span>
                     <span class="material-symbols-outlined text-primary text-[16px]">check_circle</span>
                 </div>
                 <div class="flex flex-col gap-2 text-outline">
                     <div class="flex justify-between"><span class="uppercase">Execution Time</span><span id="metric-time" class="text-on-surface">-- s</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Total Pixels</span><span id="metric-total" class="text-on-surface">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Changed Pixels</span><span id="metric-changed" class="text-primary font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Change %</span><span id="metric-percent" class="text-primary font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="metric-clusters" class="text-on-surface">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Total Surface Pixels</span><span id="metric-total" class="text-on-surface">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Disturbed Pixels</span><span id="metric-changed" class="text-primary font-bold">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Canopy / Surface Shift %</span><span id="metric-percent" class="text-primary font-bold">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Disturbance Zones</span><span id="metric-clusters" class="text-on-surface">--</span></div>
                 </div>
             </div>
 
-            <!-- TEMPORARY DEBUG: Model 3 binary change mask inspection (hidden until a real result loads) -->
+            <!-- TEMPORARY DEBUG: Model 3 binary disturbance mask inspection (hidden until a real result loads) -->
             <div class="absolute left-6 bottom-6 w-72 bg-[#0a0a0a]/90 backdrop-blur-xl border border-[#ff453a]/40 p-4 font-mono text-[10px] z-30 hidden" id="mask-debug-panel">
                 <div class="flex justify-between items-center mb-3 border-b border-[#ff453a]/30 pb-2">
-                    <span class="text-[#ff453a] tracking-widest uppercase font-ui-semibold text-xs">Model 3 — Binary Change Mask</span>
+                    <span class="text-[#ff453a] tracking-widest uppercase font-ui-semibold text-xs">Model 3 — Binary Disturbance Mask</span>
                     <span class="text-[#ff453a] text-[9px] border border-[#ff453a]/50 px-1.5 py-0.5 tracking-widest">DEBUG</span>
                 </div>
                 <div class="flex flex-col gap-2 text-outline">
-                    <div class="flex justify-between"><span class="uppercase">Changed Pixels</span><span id="dbg-changed" class="text-[#ff453a] font-bold">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Disturbed Pixels</span><span id="dbg-changed" class="text-[#ff453a] font-bold">--</span></div>
                     <div class="flex justify-between"><span class="uppercase">Valid Pixels</span><span id="dbg-valid" class="text-on-surface">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Change</span><span id="dbg-change" class="text-[#ff453a] font-bold">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Surface Shift %</span><span id="dbg-change" class="text-[#ff453a] font-bold">--</span></div>
                     <div class="flex justify-between"><span class="uppercase">Threshold</span><span id="dbg-threshold" class="text-on-surface">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="dbg-clusters" class="text-on-surface">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Disturbance Zones</span><span id="dbg-clusters" class="text-on-surface">--</span></div>
                 </div>
                 <div class="mt-3 pt-2 border-t border-[#ff453a]/20 text-[9px] text-outline/70 leading-tight">
                     Exact mask from POST /detect/change-detection · not recomputed client-side
@@ -531,12 +656,16 @@
             <div class="absolute top-0 left-0 w-1 h-full bg-primary/40 shadow-[0_0_20px_rgba(78,222,163,0.8)] z-20 pointer-events-none hidden" id="radar-sweep"></div>
             
             <!-- Terminal Log Overlay -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 bg-[#0a0a0a]/90 border border-primary/30 p-4 font-mono text-[10px] text-primary z-30 hidden backdrop-blur-xl" id="terminal-overlay">
-                <div class="flex justify-between mb-2 border-b border-primary/20 pb-1">
-                    <span class="tracking-widest uppercase">System Log</span>
-                    <span class="animate-pulse">_</span>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 max-w-[90vw] bg-[#0a0a0a]/95 border border-primary/40 p-4 font-mono text-[10px] text-primary z-30 hidden backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.8)]" id="terminal-overlay">
+                <div class="flex justify-between mb-2 border-b border-primary/20 pb-1 items-center">
+                    <span class="tracking-widest uppercase font-semibold text-primary">System Log</span>
+                    <span class="animate-pulse font-bold text-primary">_</span>
                 </div>
-                <div class="flex flex-col gap-1" id="log-content"></div>
+                <!-- Dynamic Progress Bar -->
+                <div class="terminal-progress-track mb-3" id="log-progress-track">
+                    <div class="terminal-progress-fill" id="log-progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="flex flex-col gap-1.5 max-h-56 overflow-y-auto custom-scrollbar" id="log-content"></div>
             </div>
 
             <!-- Map HUD Reticle -->
@@ -556,12 +685,12 @@
     <!-- Footer -->
     <footer class="bg-[#0a0a0a] border-t border-outline/15 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-3 z-50 relative shrink-0">
         <div class="text-outline font-mono text-xs uppercase tracking-widest">
-            GeoPulse | All Rights Reserved
+            GeoPulse | Earth Observation &amp; Environmental Monitoring
         </div>
         <div class="flex gap-4 text-outline font-mono text-xs uppercase tracking-widest">
             <a class="hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
             <a class="hover:text-primary transition-colors" href="studio.html">[3D STUDIO]</a>
-            <a class="hover:text-primary transition-colors" href="analytics.html">[CLUSTER AUDIT]</a>
+            <a class="hover:text-primary transition-colors" href="analytics.html">[DISTURBANCE AUDIT]</a>
             <a class="hover:text-primary transition-colors" href="telemetry.html">[TELEMETRY]</a>
         </div>
     </footer>
@@ -709,10 +838,27 @@
                 else div.className = 'text-primary/80';
                 logContent.appendChild(div);
                 logContent.scrollTop = logContent.scrollHeight;
+                return div;
             };
 
+            const progressFill = document.getElementById('log-progress-fill');
+            const setProgress = (percent, durationSec = 0.4, easing = 'ease') => {
+                if (!progressFill) return;
+                progressFill.style.transition = `width ${durationSec}s ${easing}`;
+                progressFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+            };
+
+            // Reset progress bar on new run
+            if (progressFill) {
+                progressFill.style.transition = 'none';
+                progressFill.style.background = 'linear-gradient(90deg, #10b981, #22c55e, #4edea3)';
+                progressFill.style.boxShadow = '0 0 8px rgba(34, 197, 94, 0.6)';
+                progressFill.style.width = '0%';
+            }
+
             if (currentMode === 'live') {
-                addLog('Initializing Live Sentinel-1 Intelligence...');
+                addLog('Initializing Live Sentinel-1 Earth Observation...');
+                setProgress(20, 0.6);
                 
                 // Get dates from the DOM (or fallback)
                 const liveInputsDiv = document.getElementById('live-inputs');
@@ -743,12 +889,13 @@
                     threshold: parseFloat(sensSlider ? sensSlider.value : 0.95),
                     min_region_area_px: 10
                 };
+                setProgress(40, 0.5);
             } else if (currentMode === 'upload') {
                 const t1Input = document.getElementById('t1-file');
                 const t2Input = document.getElementById('t2-file');
                 
                 if (!t1Input.files.length || !t2Input.files.length) {
-                    alert('Please select both T1 and T2 images for intelligence sweep.');
+                    alert('Please select both T1 and T2 images for surface shift audit.');
                     terminal.classList.add('hidden');
                     return;
                 }
@@ -756,13 +903,16 @@
                 t1File = t1Input.files[0];
                 t2File = t2Input.files[0];
                 
-                addLog('Initializing Upload Uplink...');
+                addLog('Initializing Radiometric Terrain Flattening...');
+                setProgress(40, 0.5);
             } else if (currentMode === 'demo') {
                 const scene = document.getElementById('demo-scene-select').value;
                 // We assume demo_samples folder is hosted at /assets/demo_samples/
                 const baseUrl = `assets/demo_samples/${scene}`;
                 
-                addLog(`Downloading Demo Scene: ${scene}...`);
+                addLog(`Downloading Demo Biome Scene: ${scene}...`);
+                // 0% to ~25%: Downloading/fetching scene tiles
+                setProgress(25, 0.8, 'ease-out');
                 try {
                     const [t1Res, t2Res] = await Promise.all([
                         fetch(`${baseUrl}/t1.tif`),
@@ -776,14 +926,30 @@
                     
                     t1File = new File([t1Blob], 't1.tif', { type: 'image/tiff' });
                     t2File = new File([t2Blob], 't2.tif', { type: 'image/tiff' });
-                    addLog('Demo scene acquired successfully.', 'success');
+                    // 25% to ~40%: Scene acquired confirmation
+                    setProgress(40, 0.4);
+                    addLog('Demo biome scene acquired successfully.', 'success');
                 } catch (e) {
+                    if (progressFill) {
+                        progressFill.style.background = '#ef4444';
+                        progressFill.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.6)';
+                    }
                     addLog(e.message, 'error');
                     return;
                 }
             }
 
-            addLog('Sending payload to inference engine...');
+            // Active inference line with pulsating dot and blinking block cursor
+            const inferenceLine = document.createElement('div');
+            inferenceLine.className = 'text-primary font-semibold flex items-center flex-wrap gap-1 mt-1';
+            inferenceLine.innerHTML = `<span class="log-pulse-dot"></span><span>> [INFERENCE] CANOPY DISTURBANCE DETECTION...</span><span class="terminal-cursor"></span>`;
+            logContent.appendChild(inferenceLine);
+            logContent.scrollTop = logContent.scrollHeight;
+
+            // 40% to ~90%: Active model execution smoothly progressing across the ~11.5s inference window
+            setTimeout(() => {
+                setProgress(90, 11.5, 'cubic-bezier(0.1, 0.7, 0.1, 1)');
+            }, 60);
             
             // Start sweep animation looping
             const sweepAnim = sweep.animate([{ left: '0%' }, { left: '100%' }], { duration: 2400, iterations: Infinity });
@@ -823,9 +989,17 @@
                 
                 const data = await res.json();
 
-                // Successful API + inference -> success (green) state.
-                addLog('Inference Complete.', 'success');
-                addLog(`Detected ${data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 0)} clusters.`, 'success');
+                // 90% to 100%: Finalizing and rendering the ECO-AUDIT COMPLETE card and overlay mask
+                setProgress(100, 0.35, 'ease-out');
+
+                // State Clean-Up: stop pulsing and blinking on active inference line
+                inferenceLine.className = 'text-primary font-bold';
+                inferenceLine.innerHTML = `> [INFERENCE] CANOPY DISTURBANCE DETECTION COMPLETE`;
+
+                // Final success audit log entries
+                const clustersCount = data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 0);
+                addLog(`[AUDIT COMPLETE] ${clustersCount} Disturbance Zones Identified.`, 'success');
+                addLog('Eco-Audit Complete.', 'success');
 
                 /* ---------------------------------------------------------------
                  * STEP 1 — RENDER THE REAL RESULTS FIRST.
@@ -985,6 +1159,15 @@
             } catch (error) {
                 // Only reached on actual API / inference failure.
                 hasError = true;
+                if (progressFill) {
+                    progressFill.style.transition = 'width 0.2s ease';
+                    progressFill.style.background = '#ef4444';
+                    progressFill.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.6)';
+                }
+                if (inferenceLine) {
+                    inferenceLine.className = 'text-red-400 font-bold mt-1';
+                    inferenceLine.innerHTML = `> [INFERENCE] FAILED`;
+                }
                 addLog(error && error.message ? error.message : 'Unknown inference error', 'error');
             } finally {
                 sweepAnim.cancel();
@@ -997,8 +1180,8 @@
 
         // 3. Vector Transitions
         const locations = {
-            'New Delhi Command': { lat: '28.6139° N', lng: '77.2090° E', pos: 'center' },
-            'Mumbai Port': { lat: '18.9440° N', lng: '72.8359° E', pos: 'bottom left' }
+            'Western Ghats Rainforest Reserve': { lat: '14.1200° N', lng: '75.4500° E', pos: 'center' },
+            'Sundarbans Mangrove Delta': { lat: '21.9497° N', lng: '89.1833° E', pos: 'bottom right' }
         };
         document.querySelectorAll('aside button.group').forEach(btn => {
             btn.addEventListener('click', () => {
