@@ -70,8 +70,7 @@ Thumbs.db
 .ruff_cache/
 .ipynb_checkpoints/
 
-# Frontend demo assets
-Frontend/assets/demo_samples/
+
 
 # Local secrets
 .env.local
