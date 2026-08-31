@@ -1,0 +1,24 @@
+torch
+torchvision
+numpy
+scipy              # ndimage filtering (visualization) + region labeling (change_analyzer)
+Pillow
+matplotlib
+scikit-learn
+tqdm
+PyYAML
+
+# ── API server ───────────────────────────────────────────────────────────────
+fastapi            # REST framework (src/api)
+uvicorn            # ASGI server used by scripts/run_server.py
+python-multipart   # Multipart form parsing for image-upload endpoints
+
+# ── CDSE / Sentinel-1 SAR ingestion ──────────────────────────────────────────
+requests           # HTTP client for CDSE OAuth + Processing API
+python-dotenv      # Load credentials from .env
+rasterio           # GeoTIFF decoding
+shapely            # BBox geometry helpers
+# ── Database ─────────────────────────────────────────────────────────────────
+psycopg2-binary
+SQLAlchemy
+alembic

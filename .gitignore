@@ -1,11 +1,77 @@
-.venv/
-__pycache__/
-*.pyc
+# Environment / secrets
+.env
+.env.*
+!.env.example
 
-/data/
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache / compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Dataset / large generated data
+data/raw/
+data/sar/tum_oscd/multisensor_fusion_CD/
+data/sar/tum_oscd/oscd_labels/
+data/*.db
+
+# Model outputs / checkpoints
+archives/
 checkpoints/
 runs/
-*.zip
 
-# Local environment — never commit real credentials
-.env
+# Temporary / scratch files
+tmp/
+temp/
+scratch/
+*.tmp
+*.log
+
+# Local test / debug artifacts
+plan_db.md
+bug_report.md
+start.py
+test_db.py
+test_req.py
+
+# Agent / orchestration artifacts
+.agent/
+.agents/
+.claude/
+.swarm/
+.mcp.json
+CLAUDE.md
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Generated tooling output
+graphify-out/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+
+
+# Local secrets
+.env.local
+.env.*.local

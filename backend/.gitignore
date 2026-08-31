@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+
+/data/
+*.zip
+
+# Ignore all training runs by default
+runs/*
+!runs/2026-08-23_01-14-15_tum_oscd_sar_snunet_bce_tversky_scratch/
+runs/2026-08-23_01-14-15_tum_oscd_sar_snunet_bce_tversky_scratch/*
+!runs/2026-08-23_01-14-15_tum_oscd_sar_snunet_bce_tversky_scratch/checkpoints/
+runs/2026-08-23_01-14-15_tum_oscd_sar_snunet_bce_tversky_scratch/checkpoints/*
+!runs/2026-08-23_01-14-15_tum_oscd_sar_snunet_bce_tversky_scratch/checkpoints/best.pt
+
+# Other checkpoint directories
+checkpoints/
+
+# Local environment — never commit real credentials
+.env
