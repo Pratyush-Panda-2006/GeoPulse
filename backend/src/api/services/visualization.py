@@ -480,8 +480,9 @@ def draw_change_boxes(
     if base_rgb.dtype != np.uint8:
         base_rgb = np.clip(base_rgb, 0, 255).astype(np.uint8)
 
-    img = Image.fromarray(base_rgb.copy(), mode="RGB")
-    draw = ImageDraw.Draw(img)
+    img = Image.fromarray(base_rgb.copy(), mode="RGB").convert("RGBA")
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
     h, w = base_rgb.shape[:2]
 
     font_size = max(13, int(round(min(h, w) / 42.0)))
@@ -491,14 +492,24 @@ def draw_change_boxes(
     if max_boxes is not None:
         items = items[:max_boxes]
 
+    label_bg = (20, 20, 20, 255) # Solid dark background
+    label_text = (255, 255, 255, 255) # Bright text
+
     for region in items:
+        sev = _region_field(region, "severity", "Medium").lower()
+        if sev in ("high", "critical"):
+            border_color = (255, 69, 58, 255)   # bright red
+        elif sev == "low":
+            border_color = (48, 209, 88, 255)   # bright green
+        else:
+            border_color = (255, 159, 10, 255)  # bright orange
+            
+        fill_color = (0, 0, 0, 100) # Dark semi-transparent fill
+
         bbox = _region_field(region, "bbox_xy")
         if not bbox or len(bbox) != 4:
             continue
         min_row, min_col, max_row, max_col = (int(v) for v in bbox)
-
-        severity = _region_field(region, "severity", "Medium")
-        color = SEVERITY_COLORS.get(severity, _DEFAULT_BOX_COLOR)
 
         x0 = max(0, min_col - padding)
         y0 = max(0, min_row - padding)
@@ -507,7 +518,7 @@ def draw_change_boxes(
         if x1 <= x0 or y1 <= y0:
             continue
 
-        draw.rectangle([x0, y0, x1, y1], outline=color, width=thickness)
+        draw.rectangle([x0, y0, x1, y1], outline=border_color, fill=fill_color, width=thickness)
 
         if draw_labels and font is not None:
             rid = _region_field(region, "region_id", "")
@@ -526,10 +537,8 @@ def draw_change_boxes(
                 chip_y1 = y0 + (th + 2 * pad)
             chip_x0 = x0
             chip_x1 = min(w - 1, x0 + tw + 2 * pad)
-            draw.rectangle([chip_x0, chip_y0, chip_x1, chip_y1], fill=color)
-            # Dark text on bright chips, white on dark chips (luminance test).
-            lum = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
-            text_fill = (20, 20, 20) if lum > 140 else (255, 255, 255)
-            draw.text((chip_x0 + pad, chip_y0 + pad), text, fill=text_fill, font=font)
+            draw.rectangle([chip_x0, chip_y0, chip_x1, chip_y1], fill=label_bg)
+            draw.text((chip_x0 + pad, chip_y0 + pad), text, fill=label_text, font=font)
 
+    img = Image.alpha_composite(img, overlay).convert("RGB")
     return np.asarray(img, dtype=np.uint8)

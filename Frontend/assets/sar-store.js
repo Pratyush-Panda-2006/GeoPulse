@@ -37,13 +37,24 @@
      */
     function extractMetadata(data) {
         data = data || {};
-        var regions = Array.isArray(data.regions) ? data.regions : [];
+        
+        // Handle both old ChangeDetectionResponse and new AnalysisResult formats
+        var isAnalysisResult = !!data.summary;
+        var regions = isAnalysisResult ? (data.summary.regions || []) : (Array.isArray(data.regions) ? data.regions : []);
+        // Wait, AnalysisResult doesn't have regions at the top level? 
+        // Ah, Phase 10 returns detections_geojson instead of regions in AnalysisResult. 
+        // We will extract regions from detections_geojson if present.
+        if (isAnalysisResult && data.detections_geojson && data.detections_geojson.features) {
+            regions = data.detections_geojson.features.map(f => f.properties);
+        }
+
         var clusters = (typeof data.num_change_clusters === 'number')
             ? data.num_change_clusters
-            : regions.length;
+            : (isAnalysisResult && data.summary.num_regions != null ? data.summary.num_regions : regions.length);
 
         return {
             version: 1,
+            is_analysis_result: isAnalysisResult,
             job_id: data.job_id != null ? data.job_id : null,
             status: data.status || 'success',
             model: data.model_used != null ? data.model_used : null,
@@ -54,9 +65,10 @@
             changed_pixels: data.changed_pixels != null ? data.changed_pixels : null,
             change_percentage: data.change_percentage != null ? data.change_percentage : null,
             num_change_clusters: clusters,
-            total_changed_area_sq_km: data.total_changed_area_sq_km != null ? data.total_changed_area_sq_km : null,
+            total_changed_area_sq_km: data.total_changed_area_sq_km != null ? data.total_changed_area_sq_km : (isAnalysisResult ? data.summary.total_change_area_km2 : null),
             // Cluster / region metadata is small and useful cross-page.
             regions: regions,
+            nemotron_interpretations: data.nemotron_interpretations || null,
             // Flags telling other pages which previews IndexedDB should hold.
             previews_available: {
                 t1: !!data.t1_preview_base64,
@@ -199,9 +211,34 @@
             return idbGet().catch(function () { return null; });
         },
 
+        /**
+         * Persist Time-Series results to sessionStorage. 
+         */
+        saveTimeSeries: function (data) {
+            try {
+                sessionStorage.setItem('sar_timeseries', JSON.stringify(data));
+                return data;
+            } catch (e) {
+                return data; // Ignore quota errors
+            }
+        },
+
+        /**
+         * Read Time-Series results from sessionStorage.
+         */
+        loadTimeSeries: function () {
+            try {
+                var raw = sessionStorage.getItem('sar_timeseries');
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        },
+
         /** Clear all persisted result state. Best-effort, never throws. */
         clear: function () {
             try { sessionStorage.removeItem(SS_KEY); } catch (e) { /* ignore */ }
+            try { sessionStorage.removeItem('sar_timeseries'); } catch (e) { /* ignore */ }
             memoryPreviews = null;
             return idbDelete().catch(function () { /* ignore */ });
         }

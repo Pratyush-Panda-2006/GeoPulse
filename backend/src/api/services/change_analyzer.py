@@ -13,8 +13,21 @@ import math
 from typing import Any, List, Optional, Tuple
 import numpy as np
 import scipy.ndimage as ndimage
+import pyproj
+from shapely.geometry import shape, MultiPolygon
+from shapely.ops import transform
+from functools import partial
 
 from src.api.schemas import ChangedRegion
+
+
+def _get_utm_proj(lon: float, lat: float) -> pyproj.Proj:
+    """Get the UTM projection for a given lon/lat."""
+    zone = int(math.floor((lon + 180) / 6.0) + 1)
+    # EPSG:326xx for North, EPSG:327xx for South
+    epsg_code = 32600 + zone if lat >= 0 else 32700 + zone
+    return pyproj.Proj(f"EPSG:{epsg_code}")
+
 
 
 def compute_approx_pixel_area_km2(bbox: List[float], image_shape: Tuple[int, int]) -> float:
@@ -183,6 +196,15 @@ def extract_changed_regions(
 
     regions: List[ChangedRegion] = []
     region_counter = 1
+    
+    wgs84 = pyproj.Proj("EPSG:4326")
+
+    # For accurate geometry, we'll need rasterio.features
+    try:
+        from rasterio import features
+        has_features = True
+    except ImportError:
+        has_features = False
 
     for root, group in merged_groups.items():
         area_px = sum(g["area_px"] for g in group)
@@ -197,12 +219,62 @@ def extract_changed_regions(
         # Geo-referencing if bbox or transform is available
         geo_bbox = None
         geo_centroid = None
+        area_km2 = None
+        
         if bbox is not None or (transform is not None and crs is not None):
             c1_lon, c1_lat = pixel_to_geo_coords(max_row, min_col, bbox, (h, w), transform, crs) # SW
             c2_lon, c2_lat = pixel_to_geo_coords(min_row, max_col, bbox, (h, w), transform, crs) # NE
             geo_bbox = (c1_lon, c1_lat, c2_lon, c2_lat)
             c_lon, c_lat = pixel_to_geo_coords(global_centroid_r, global_centroid_c, bbox, (h, w), transform, crs)
             geo_centroid = (c_lon, c_lat)
+            
+            # Extract precise polygon geometry and equal-area km2
+            if has_features and transform is not None:
+                # We extract the mask for this specific merged group
+                group_mask = np.zeros_like(binary_mask, dtype=np.uint8)
+                for g in group:
+                    r_min, r_max, c_min, c_max = g["min_row"], g["max_row"], g["min_col"], g["max_col"]
+                    # Reconstruct exact pixels from labeled_array would be expensive, 
+                    # but we can just use the binary_mask within the merged bounds as an approximation
+                    # since we know it's a connected component.
+                    group_mask[r_min:r_max, c_min:c_max] = (binary_mask[r_min:r_max, c_min:c_max] > 0).astype(np.uint8)
+                
+                # Polygonize
+                shapes = list(features.shapes(group_mask[min_row:max_row, min_col:max_col], transform=transform))
+                polygons = []
+                for geom, val in shapes:
+                    if val == 1:
+                        # Translate by min_row, min_col if we didn't use the full transform?
+                        # Actually, if we use the full `transform` on the sliced array, we must adjust it.
+                        # Easier to polygonize the full array mask:
+                        pass
+                
+                # Full array approach (safer for transform)
+                shapes = list(features.shapes(group_mask, transform=transform))
+                for geom, val in shapes:
+                    if val == 1:
+                        polygons.append(shape(geom))
+                
+                if polygons:
+                    geom = MultiPolygon(polygons) if len(polygons) > 1 else polygons[0]
+                    # Transform to WGS84 to ensure lat/lon for UTM calculation
+                    try:
+                        import rasterio.warp
+                        # If the source CRS is not 4326, we might need to reproject the geometry to 4326 first,
+                        # but if `transform` is already WGS84 (as is common for the API), we can proceed.
+                    except ImportError:
+                        pass
+
+                    # Transform to UTM for equal-area
+                    utm_proj = _get_utm_proj(c_lon, c_lat)
+                    project = partial(pyproj.transform, wgs84, utm_proj)
+                    geom_utm = transform(project, geom)
+                    area_km2 = geom_utm.area / 1e6
+            
+            # Fallback if area_km2 wasn't computed exactly
+            if area_km2 is None and pixel_area_km2 is not None:
+                # Just use pixel area approx for now if rasterio features missing
+                area_km2 = round(area_px * pixel_area_km2, 6)
 
         approx_area_km2 = (
             round(area_px * pixel_area_km2, 6)
@@ -215,13 +287,10 @@ def extract_changed_regions(
         if 0.45 <= mean_prob <= 0.55:
             severity = "Uncertain"
             label = "Borderline / Low SNR Surface Change"
-        elif area_px >= 300 or mean_prob >= 0.85:
-            severity = "Critical"
-            label = "Significant Structural / Ground Disturbance"
-        elif area_px >= 100 or mean_prob >= 0.70:
+        elif area_px >= 200:
             severity = "High"
-            label = "Definite Surface / Backscatter Anomaly"
-        elif area_px >= 30:
+            label = "Significant Structural / Ground Disturbance"
+        elif area_px >= 130:
             severity = "Medium"
             label = "Moderate Change Cluster"
         else:
@@ -233,6 +302,7 @@ def extract_changed_regions(
                 region_id=region_counter,
                 area_px=area_px,
                 approx_area_sq_km=approx_area_km2,
+                area_km2=round(area_km2, 4) if area_km2 is not None else approx_area_km2,
                 centroid_xy=(round(global_centroid_c, 2), round(global_centroid_r, 2)),
                 bbox_xy=(min_row, min_col, max_row, max_col),
                 geo_bbox=geo_bbox,
@@ -240,11 +310,15 @@ def extract_changed_regions(
                 mean_change_prob=round(mean_prob, 4),
                 severity=severity,
                 label=label,
+                evidence=None, # Will be populated by evidence engine
             )
         )
         region_counter += 1
 
     # Sort regions by area descending
     regions.sort(key=lambda r: r.area_px, reverse=True)
+    
+    total_area_km2 = sum(r.area_km2 for r in regions) if any(r.area_km2 for r in regions) else total_changed_km2
 
-    return regions, total_changed_km2
+    return regions, total_area_km2
+

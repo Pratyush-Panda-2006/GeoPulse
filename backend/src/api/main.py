@@ -22,6 +22,7 @@ load_dotenv(REPO_ROOT / ".env", override=True)
 
 from src.api.routers.cdse import router as cdse_router
 from src.api.routers.detect import router as detect_router
+from src.api.routers.analyze import router as analyze_router
 from src.api.routers.health import router as health_router
 from src.api.routers.models import router as models_router
 from src.api.routers.requests import router as requests_router
@@ -83,6 +84,7 @@ API_V1_PREFIX = "/api/v1"
 app.include_router(health_router, prefix=API_V1_PREFIX)
 app.include_router(cdse_router, prefix=API_V1_PREFIX)
 app.include_router(detect_router, prefix=API_V1_PREFIX)
+app.include_router(analyze_router, prefix=API_V1_PREFIX)
 app.include_router(models_router, prefix=API_V1_PREFIX)
 app.include_router(requests_router, prefix=API_V1_PREFIX)
 

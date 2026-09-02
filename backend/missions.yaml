@@ -1,0 +1,27 @@
+missions:
+  deforestation:
+    name: "Deforestation & Logging"
+    description: "Detects canopy removal and logging roads."
+    caveats:
+      - "Seasonal leaf-off may cause false positives."
+    layers:
+      - "landcover"
+      - "ndvi"
+  mining:
+    name: "Illegal Mining"
+    description: "Detects soil excavation and heavy machinery."
+    caveats:
+      - "Riverbank erosion may look similar to alluvial mining."
+    layers:
+      - "dem"
+      - "surface_water"
+  disaster:
+    name: "Disaster Damage"
+    description: "Detects infrastructure destruction (earthquakes, floods, fires)."
+    caveats:
+      - "Rubble and intact buildings may have similar backscatter."
+    layers:
+      - "dem"
+      - "osm"
+      - "fire"
+      - "weather"

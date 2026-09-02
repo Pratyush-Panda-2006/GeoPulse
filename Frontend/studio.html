@@ -277,6 +277,7 @@
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="studio.html">STUDIO</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="analytics.html">ANALYTICS</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="explorer.html">EXPLORER</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="intelligence.html">Intelligence</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="telemetry.html">TELEMETRY</a>
         </div>
         <div class="flex gap-4 items-center">
@@ -386,6 +387,7 @@
                         <span class="font-mono text-xs text-primary tracking-widest uppercase">18°56'43"N 72°57'58"E (MUMBAI PORT)</span>
                         <a href="analytics.html" class="text-on-surface hover:text-primary text-xs underline font-mono">View Audit →</a>
                     </div>
+                    
                 </div>
             </div>
 
@@ -503,8 +505,36 @@
     <script>
         // Data Loading & Setup
         document.addEventListener('DOMContentLoaded', async () => {
-            const metadata = SARStore.loadMetadata();
-            const previews = await SARStore.loadPreviews();
+            let metadata = SARStore.loadMetadata();
+            let previews = await SARStore.loadPreviews();
+            
+            // Time-Series Override: if navigated from a specific pair in the series
+            const targetPairId = sessionStorage.getItem('target_pair');
+            if (targetPairId) {
+                const seriesData = SARStore.loadTimeSeries();
+                if (seriesData && seriesData.result) {
+                    const pair = seriesData.result.job_id != null && seriesData.result.job_id.toString() === targetPairId ? seriesData.result : null;
+                    if (pair) {
+                        metadata = {
+                            total_pixels: 512 * 512,
+                            changed_pixels: 0,
+                            change_percentage: pair.change_percentage,
+                            num_change_clusters: pair.num_change_clusters,
+                            regions: pair.regions,
+                            nemotron_interpretations: pair.nemotron_interpretations || null
+                        };
+                        
+                        previews = {
+                            t1: pair.t1_preview_base64 ? `data:image/jpeg;base64,${pair.t1_preview_base64}` : null,
+                            t2: pair.t2_preview_base64 ? `data:image/jpeg;base64,${pair.t2_preview_base64}` : null,
+                            mask: pair.change_mask_base64 ? `data:image/png;base64,${pair.change_mask_base64}` : null,
+                            heatmap: pair.confidence_heatmap_base64 ? `data:image/png;base64,${pair.confidence_heatmap_base64}` : null,
+                            overlay: pair.overlay_base64 ? `data:image/jpeg;base64,${pair.overlay_base64}` : null
+                        };
+                    }
+                }
+                sessionStorage.removeItem('target_pair'); // Clear it
+            }
 
             if (!metadata || !previews || !previews.t1 || !previews.t2) {
                 document.getElementById('no-inference-overlay').classList.remove('hidden');
@@ -661,7 +691,7 @@
             const targetRegionId = sessionStorage.getItem('target_cluster');
             if (targetRegionId) {
                 sessionStorage.removeItem('target_cluster'); // Clear it so it doesn't stick
-                const region = (metadata.regions || []).find(r => r.region_id != null && r.region_id.toString() === targetRegionId);
+                const region = (metadata.regions || []).find(r => r.region_id != null && String(r.region_id) === String(targetRegionId));
                 if (region && Array.isArray(region.centroid_xy)) {
                     // Show the highlighted (boxed) result so the change is obvious.
                     // Prefer boxes over true-color optical, else over satellite SAR.
@@ -707,6 +737,155 @@
                         }
                     };
                     focusImg.src = focusSrc;
+                    
+                    // --- POPULATE CHANGE INTELLIGENCE PANEL ---
+                    const intelPanel = document.getElementById('intel-panel');
+                    if (intelPanel) {
+                        intelPanel.classList.remove('hidden');
+                        intelPanel.classList.add('flex');
+                        
+                        document.getElementById('close-intel-panel').onclick = () => {
+                            intelPanel.classList.add('hidden');
+                            intelPanel.classList.remove('flex');
+                        };
+                        
+                        document.getElementById('intel-region-id').innerText = region.region_id || targetRegionId;
+                        document.getElementById('intel-severity').innerText = region.severity || 'Unknown';
+                        
+                        if (region.severity === 'High' || region.severity === 'Critical') {
+                            document.getElementById('intel-severity').className = 'font-bold text-[#ff453a]';
+                        } else if (region.severity === 'Low') {
+                            document.getElementById('intel-severity').className = 'font-bold text-[#4edea3]';
+                        } else {
+                            document.getElementById('intel-severity').className = 'font-bold text-[#ffb000]';
+                        }
+                        
+                        // coordinates / area / pixels
+                        const lon = region.geo_centroid ? region.geo_centroid[0] : null;
+                        const lat = region.geo_centroid ? region.geo_centroid[1] : null;
+                        document.getElementById('intel-coords').innerText = lat != null && lon != null ? `${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E` : '--';
+                        
+                        const areaKm2 = (region.area_km2 != null) ? region.area_km2 : region.approx_area_sq_km;
+                        if (areaKm2 != null) {
+                            const areaSqFt = areaKm2 * 10763910.4;
+                            document.getElementById('intel-area').innerText = `${Math.round(areaSqFt).toLocaleString()} SQ FT`;
+                        } else if (region.area_px != null) {
+                            document.getElementById('intel-area').innerText = `${region.area_px.toLocaleString()} PX (no geo)`;
+                        } else {
+                            document.getElementById('intel-area').innerText = '--';
+                        }
+                        
+                        document.getElementById('intel-changed-px').innerText = region.area_px != null ? region.area_px.toLocaleString() : '--';
+                        
+                        const prob = region.mean_change_prob !== undefined ? region.mean_change_prob : region.change_probability;
+                        document.getElementById('intel-prob').innerText = prob != null ? `${(prob * 100).toFixed(0)}%` : '--';
+                        
+                        // Nemotron — ALWAYS show the section
+                        const nemotronSection = document.getElementById('intel-nemotron-section');
+                        nemotronSection.classList.remove('hidden');
+                        const nemotronData = metadata.nemotron_interpretations || {};
+                        const nemotronKey = Object.keys(nemotronData).find(k => String(k) === String(targetRegionId));
+                        const nemotron = nemotronKey ? nemotronData[nemotronKey] : null;
+                        
+                        const labels = {
+                            'building_structure': 'Building / Structure',
+                            'road_highway_infrastructure': 'Road / Highway / Infrastructure',
+                            'mining_excavation': 'Mining / Excavation',
+                            'forest_vegetation_disturbance': 'Forest / Vegetation',
+                            'flood_water_expansion': 'Flood / Water Expansion',
+                            'agricultural_seasonal_change': 'Agricultural / Seasonal',
+                            'natural_terrain_geological_change': 'Natural Terrain / Geological',
+                            'fire_burn_disturbance': 'Fire / Burn',
+                            'other_known_change': 'Other Known Change',
+                            'unknown_uncertain': 'Unknown / Uncertain'
+                        };
+
+                        if (nemotron && nemotron.category) {
+                            document.getElementById('intel-nemo-type').innerText = labels[nemotron.category] || nemotron.category;
+                            document.getElementById('intel-nemo-conf').innerText = nemotron.visual_confidence != null ? `${(nemotron.visual_confidence * 100).toFixed(0)}%` : '--';
+                            document.getElementById('intel-nemo-source').innerText = 'Source: Nemotron';
+                            document.getElementById('intel-nemo-summary').innerText = nemotron.short_summary || '--';
+                            document.getElementById('intel-nemo-uncertainty').innerText = nemotron.uncertainty || 'None';
+                            
+                            const cuesList = document.getElementById('intel-nemo-cues');
+                            cuesList.innerHTML = '';
+                            if (nemotron.visual_cues) {
+                                nemotron.visual_cues.forEach(c => {
+                                    const li = document.createElement('li');
+                                    li.innerText = c;
+                                    cuesList.appendChild(li);
+                                });
+                            }
+                        } else {
+                            // FALLBACK: Best-fit visual classification
+                            let bestCategory = 'unknown_uncertain';
+                            let baseConfidence = 0.45;
+                            let cues = [];
+                            
+                            if (region.evidence && region.evidence.signals && region.evidence.signals.length > 0) {
+                                let hasBuilding = false, hasRoad = false, hasWater = false, hasCrop = false, hasForest = false, hasFire = false;
+                                region.evidence.signals.forEach(s => {
+                                    if (s.name.includes('Building') && s.value > 0) hasBuilding = true;
+                                    if (s.name.includes('Road') && s.value > 0) hasRoad = true;
+                                    if (s.name.includes('Water') && s.value > 0) hasWater = true;
+                                    if (s.name.includes('Cropland') && s.value > 0) hasCrop = true;
+                                    if (s.name.includes('Tree') && s.value > 0) hasForest = true;
+                                    if (s.name.includes('Fire') && s.value > 0) hasFire = true;
+                                });
+                                
+                                if (hasBuilding) { bestCategory = 'building_structure'; baseConfidence = 0.65; cues.push('Proximity to OSM building footprints'); }
+                                else if (hasRoad) { bestCategory = 'road_highway_infrastructure'; baseConfidence = 0.60; cues.push('Proximity to OSM road networks'); }
+                                else if (hasWater) { bestCategory = 'flood_water_expansion'; baseConfidence = 0.70; cues.push('Detected near known surface water extents'); }
+                                else if (hasCrop) { bestCategory = 'agricultural_seasonal_change'; baseConfidence = 0.65; cues.push('Located in dominant cropland area'); }
+                                else if (hasForest) { bestCategory = 'forest_vegetation_disturbance'; baseConfidence = 0.65; cues.push('Located in consistent tree cover'); }
+                                else if (hasFire) { bestCategory = 'fire_burn_disturbance'; baseConfidence = 0.75; cues.push('Correlates with recent FIRMS active fire data'); }
+                            }
+                            
+                            if (bestCategory === 'unknown_uncertain') {
+                                cues.push('Insufficient contextual evidence for specific categorization');
+                            }
+                            
+                            const finalConf = baseConfidence;
+                            
+                            let errorReason = '';
+                            if (nemotron && nemotron.status) {
+                                const statusLabels = { 'skipped_non_high': 'Skipped (Non-HIGH Region)', 'skipped_small_crop': 'Skipped (Too Small)', 'call_limit_reached': 'API Limit Reached', 'unavailable': 'API Unavailable' };
+                                errorReason = statusLabels[nemotron.status] || nemotron.status;
+                            } else {
+                                errorReason = 'Not analyzed';
+                            }
+                            
+                            document.getElementById('intel-nemo-type').innerText = labels[bestCategory] || bestCategory;
+                            document.getElementById('intel-nemo-conf').innerText = `${(finalConf * 100).toFixed(0)}%`;
+                            document.getElementById('intel-nemo-source').innerText = 'Source: Best-fit visual classification';
+                            document.getElementById('intel-nemo-summary').innerText = `Deterministic fallback classification applied. (Nemotron: ${errorReason})`;
+                            document.getElementById('intel-nemo-uncertainty').innerText = 'Moderate (Requires visual confirmation)';
+                            
+                            const cuesList = document.getElementById('intel-nemo-cues');
+                            cuesList.innerHTML = '';
+                            cues.forEach(c => {
+                                const li = document.createElement('li');
+                                li.innerText = c;
+                                cuesList.appendChild(li);
+                            });
+                        }
+                        
+                        // Context
+                        const contextSection = document.getElementById('intel-context-section');
+                        const contextContent = document.getElementById('intel-context-content');
+                        if (region.evidence && region.evidence.signals && region.evidence.signals.length > 0) {
+                            contextSection.classList.remove('hidden');
+                            contextContent.innerHTML = '';
+                            region.evidence.signals.forEach(s => {
+                                const d = document.createElement('div');
+                                d.className = 'flex justify-between items-center';
+                                d.innerHTML = `<span class="truncate pr-2">${s.name} <span class="text-outline text-[9px] ml-1">(${s.source})</span></span><span class="font-mono text-[#0566d9]">${s.normalized_value.toFixed(2)}</span>`;
+                                contextContent.appendChild(d);
+                            });
+                        } else {
+                            contextSection.classList.add('hidden');
+                        }
+                    }
                 }
             }
         });
@@ -788,5 +967,58 @@
             });
         });
     </script>
+    <!-- Change Intelligence Panel (Overlay) -->
+    <div id="intel-panel" class="fixed left-8 top-24 w-80 max-h-[calc(100vh-8rem)] bg-[#0a0a0a]/95 backdrop-blur-2xl border border-primary/50 shadow-[0_0_40px_rgba(0,0,0,0.8)] z-[9999] hidden flex-col font-mono text-on-surface">
+        <div class="flex justify-between items-center p-3 border-b border-primary/20 bg-primary/5 shrink-0">
+            <h3 class="text-primary tracking-widest uppercase font-ui-semibold text-[10px]">Change Intelligence</h3>
+            <button id="close-intel-panel" class="text-outline hover:text-primary"><span class="material-symbols-outlined text-[18px]">close</span></button>
+        </div>
+        <div class="p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
+            
+            <!-- MODEL 3 -->
+            <div class="flex flex-col gap-2">
+                <h4 class="text-[10px] uppercase text-outline tracking-widest border-b border-outline/20 pb-1">Model 3</h4>
+                <div class="flex flex-col gap-1 text-xs">
+                    <div class="flex justify-between"><span>Region ID</span><span id="intel-region-id" class="text-primary font-bold">--</span></div>
+                    <div class="flex justify-between"><span>Severity</span><span id="intel-severity" class="font-bold">--</span></div>
+                    <div class="flex justify-between"><span>Coordinates</span><span id="intel-coords">--</span></div>
+                    <div class="flex justify-between"><span>Changed Area</span><span id="intel-area">--</span></div>
+                    <div class="flex justify-between"><span>Changed Px</span><span id="intel-changed-px">--</span></div>
+                    <div class="flex justify-between"><span>Change Prob</span><span id="intel-prob" class="text-primary font-bold">--</span></div>
+                </div>
+            </div>
+
+            <!-- CHANGE TYPE -->
+            <div id="intel-nemotron-section" class="flex flex-col gap-2 hidden">
+                <h4 class="text-[10px] uppercase text-[#c487ff] tracking-widest border-b border-[#c487ff]/20 pb-1">Change Type</h4>
+                <div id="intel-nemo-data" class="flex flex-col gap-2 text-xs">
+                    <div class="flex flex-col gap-0.5">
+                        <span id="intel-nemo-type" class="text-[#c487ff] font-bold text-sm leading-tight">--</span>
+                        <div class="flex justify-between items-center text-[10px] uppercase tracking-wider text-outline mt-0.5">
+                            <span id="intel-nemo-source">Source: --</span>
+                            <span id="intel-nemo-conf" class="text-[#c487ff] font-mono font-bold text-xs">--</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1 mt-1">
+                        <span class="text-[10px] uppercase text-outline">Summary</span>
+                        <span id="intel-nemo-summary" class="text-on-surface/90 leading-tight">--</span>
+                    </div>
+                    <div class="flex flex-col gap-1 mt-1">
+                        <span class="text-[10px] uppercase text-outline">Visual Cues</span>
+                        <ul id="intel-nemo-cues" class="list-disc pl-4 text-[11px] text-on-surface/80 flex flex-col gap-0.5">
+                        </ul>
+                    </div>
+                    <div class="flex justify-between mt-1 items-start"><span>Uncertainty</span><span id="intel-nemo-uncertainty" class="text-yellow-500/80 text-right pl-2 text-[11px] leading-tight">--</span></div>
+                </div>
+            </div>
+
+            <!-- CONTEXT -->
+            <div id="intel-context-section" class="flex flex-col gap-2 hidden">
+                <h4 class="text-[10px] uppercase text-[#0566d9] tracking-widest border-b border-[#0566d9]/20 pb-1">Context</h4>
+                <div id="intel-context-content" class="flex flex-col gap-2 text-xs">
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

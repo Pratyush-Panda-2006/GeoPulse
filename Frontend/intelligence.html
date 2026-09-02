@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>GeoPulse SAR Explorer - GeoPulse & Change Detection</title>
+    <title>Intelligence - GeoPulse</title>
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
     <!-- Google Fonts: Bricolage Grotesque, Inter, Playfair Display, JetBrains Mono -->
@@ -230,8 +230,8 @@
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">Overview</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">Studio</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="analytics.html">Analytics</a>
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="explorer.html">Explorer</a>
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="intelligence.html">Intelligence</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="explorer.html">Explorer</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="intelligence.html">Intelligence</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="telemetry.html">Telemetry</a>
         </div>
         <div class="flex gap-4 items-center">
@@ -332,9 +332,23 @@
                                     <input id="live-t1-date" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2024-01-20">
                                 </div>
                                 <div class="flex flex-col gap-1.5">
-                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T2 Date (Current)</label>
-                                    <input id="live-t2-date" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2024-06-20">
-                                    <span class="font-mono text-[10px] text-outline/70">±7 days search window</span>
+                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T2 Date (Target)</label>
+                                    <input id="live-t2-date" type="date" value="2024-06-20" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" style="color-scheme: dark;">
+                                </div>
+                                <div class="flex flex-col gap-1.5 mt-2">
+                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Mission Profile</label>
+                                    <select id="live-mission" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
+                                        <option class="bg-[#0a0a0a] text-outline" value="general" selected>General Reconnaissance</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="disaster">Disaster Response</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="flood">Flood Assessment</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="deforestation">Deforestation Monitoring</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="mining">Surface Disturbance / Mining</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="infrastructure">Infrastructure Growth</option>
+                                    </select>
+                                </div>
+                                <div class="flex flex-col gap-1.5 mt-2">
+                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Event Date (Optional)</label>
+                                    <input id="live-event-date" type="date" placeholder="YYYY-MM-DD" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" style="color-scheme: dark;">
                                 </div>
                             </div>
 
@@ -499,22 +513,25 @@
 
             <!-- Interactive Drawing Overlay (Bounding Box Demo) -->
             <div class="absolute inset-0 pointer-events-none z-10" id="result-overlay-container" style="display: none;">
-                <div class="absolute inset-0 flex items-center justify-center p-8">
-                    <div class="relative w-full h-full flex items-center justify-center">
-                        <img id="result-img" class="max-w-full max-h-full object-contain border border-primary/50 shadow-[0_0_30px_rgba(78,222,163,0.2)]" src="" alt="Result Overlay" />
+                <div class="absolute top-4 left-4 flex gap-2 pointer-events-auto flex-wrap z-20">
+                    <button id="view-t1" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T1)">T1</button>
+                    <button id="view-t2" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T2)">T2</button>
+                    <button id="view-optical" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="True-color optical basemap (coordinate runs only)">Optical</button>
+                    <button id="view-falsecolor" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Dual-polarization false-color (VV/VH/ratio)">False Color</button>
+                    <button id="view-heatmap" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50">Heatmap</button>
+                    <button id="view-mask" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a]/50 px-3 py-1 text-xs font-mono text-[#ff453a] hover:text-[#ff453a] hover:border-[#ff453a]" title="Exact Model 3 binary change mask from the API">Binary Mask</button>
+                    <button id="view-overlay" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-primary/50 px-3 py-1 text-xs font-mono text-primary">Overlay</button>
+                    <button id="view-boxes" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000]/50 px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000]" title="Highlight major changed areas with labeled boxes">Highlight</button>
+                </div>
+                
+                <div class="absolute inset-0 flex items-center justify-center p-8 overflow-hidden pointer-events-auto" id="map-scroll-area">
+                    <div class="relative flex items-center justify-center" id="map-transform-layer" style="transform-origin: center center; transition: transform 0.1s ease-out;">
+                        <img id="result-img" class="max-w-full max-h-full border border-primary/50 shadow-[0_0_30px_rgba(78,222,163,0.2)]" style="max-width: 80vw; max-height: 80vh; object-fit: contain;" src="" alt="Result Overlay" />
+                        <svg id="geojson-layer" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="display: block;"></svg>
+                        
                         <!-- DEBUG caption: only shown while the exact backend binary mask is displayed -->
                         <div id="mask-debug-caption" class="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none hidden">
                             <span class="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff453a]/60 text-[#ff453a] font-mono text-[10px] uppercase tracking-widest px-3 py-1">MODEL 3 — BINARY CHANGE MASK</span>
-                        </div>
-                        <div class="absolute top-4 left-4 flex gap-2 pointer-events-auto flex-wrap">
-                            <button id="view-t1" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T1)">T1</button>
-                            <button id="view-t2" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T2)">T2</button>
-                            <button id="view-optical" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="True-color optical basemap (coordinate runs only)">Optical</button>
-                            <button id="view-falsecolor" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Dual-polarization false-color (VV/VH/ratio)">False Color</button>
-                            <button id="view-heatmap" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50">Heatmap</button>
-                            <button id="view-mask" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a]/50 px-3 py-1 text-xs font-mono text-[#ff453a] hover:text-[#ff453a] hover:border-[#ff453a]" title="Exact Model 3 binary change mask from the API">Binary Mask</button>
-                            <button id="view-overlay" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-primary/50 px-3 py-1 text-xs font-mono text-primary">Overlay</button>
-                            <button id="view-boxes" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000]/50 px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000]" title="Highlight major changed areas with labeled boxes">Highlight</button>
                         </div>
                     </div>
                 </div>
@@ -537,12 +554,18 @@
             </div>
 
             <!-- Floating Map Controls (Level 2 Overlays) -->
-            <div class="absolute right-6 top-6 flex flex-col gap-2">
-                <button class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Zoom In">
+            <div class="absolute right-6 top-6 flex flex-col gap-2 z-30">
+                <button id="btn-zoom-in" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Zoom In">
                     <span class="material-symbols-outlined text-[20px]">add</span>
                 </button>
-                <button class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Zoom Out">
+                <button id="btn-zoom-out" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Zoom Out">
                     <span class="material-symbols-outlined text-[20px]">remove</span>
+                </button>
+                <button id="btn-zoom-fit" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Fit to AOI">
+                    <span class="material-symbols-outlined text-[20px]">fit_screen</span>
+                </button>
+                <button id="btn-fullscreen" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Fullscreen">
+                    <span class="material-symbols-outlined text-[20px]">fullscreen</span>
                 </button>
                 <div class="h-px w-full bg-outline/20 my-1"></div>
                 <button class="w-10 h-10 bg-primary/20 backdrop-blur-md border border-primary rounded-none shadow-sm text-primary flex items-center justify-center hover:bg-primary/30 transition-colors pointer-events-auto" title="Draw Bounding Box">
@@ -571,20 +594,90 @@
                 </div>
             </div>
 
-            <!-- TEMPORARY DEBUG: Model 3 binary change mask inspection (hidden until a real result loads) -->
-            <div class="absolute left-6 bottom-6 w-72 bg-[#0a0a0a]/90 backdrop-blur-xl border border-[#ff453a]/40 p-4 font-mono text-[10px] z-30 hidden" id="mask-debug-panel">
-                <div class="flex justify-between items-center mb-3 border-b border-[#ff453a]/30 pb-2">
-                    <span class="text-[#ff453a] tracking-widest uppercase font-ui-semibold text-xs">Model 3 — Binary Change Mask</span>
-                    <span class="text-[#ff453a] text-[9px] border border-[#ff453a]/50 px-1.5 py-0.5 tracking-widest">DEBUG</span>
+            <!-- Evidence Panel (Phase 1.6) -->
+            <div id="evidence-panel" class="absolute bottom-6 left-6 w-[400px] max-w-[calc(100vw-300px)] bg-[#0a0a0a]/95 backdrop-blur-2xl border border-primary/50 shadow-2xl z-30 hidden flex flex-col font-mono">
+                <div class="flex justify-between items-center p-3 border-b border-primary/20 bg-primary/5">
+                    <div class="flex flex-col">
+                        <span class="text-primary tracking-widest uppercase font-ui-semibold text-[10px]">Contextual Evidence</span>
+                        <span id="evidence-mission" class="text-on-surface text-sm font-bold truncate">...</span>
+                    </div>
+                    <button id="close-evidence" class="text-outline hover:text-primary"><span class="material-symbols-outlined text-[18px]">close</span></button>
                 </div>
-                <div class="flex flex-col gap-2 text-outline">
-                    <div class="flex justify-between"><span class="uppercase">Changed Pixels</span><span id="dbg-changed" class="text-[#ff453a] font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Valid Pixels</span><span id="dbg-valid" class="text-on-surface">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Change</span><span id="dbg-change" class="text-[#ff453a] font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Threshold</span><span id="dbg-threshold" class="text-on-surface">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="dbg-clusters" class="text-on-surface">--</span></div>
+                
+                <!-- Interpretation Banner -->
+                <div id="evidence-interpretation-banner" class="p-3 border-b border-primary/20 flex flex-col gap-1">
+                    <div class="text-[10px] uppercase text-outline tracking-widest">Interpretation</div>
+                    <div id="evidence-interpretation" class="text-on-surface text-sm font-bold leading-tight">...</div>
                 </div>
-                <div class="mt-3 pt-2 border-t border-[#ff453a]/20 text-[9px] text-outline/70 leading-tight">
+                
+                <!-- Nemotron Vision Banner -->
+                <div id="nemotron-banner" class="p-3 border-b border-[#c487ff]/30 bg-[#c487ff]/5 hidden flex-col gap-2">
+                    <div class="flex justify-between items-center">
+                        <div class="text-[10px] uppercase text-[#c487ff] tracking-widest font-bold">Nemotron Vision Analysis</div>
+                        <span id="nemotron-confidence" class="text-[10px] bg-[#c487ff]/20 text-[#c487ff] px-2 py-0.5 font-bold">--% CONF</span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <div class="text-[10px] uppercase text-outline tracking-widest">Change Type</div>
+                        <div id="nemotron-type" class="text-on-surface text-sm font-bold leading-tight">...</div>
+                    </div>
+                    <div class="flex flex-col gap-1 mt-1">
+                        <div class="text-[10px] uppercase text-outline tracking-widest">Summary</div>
+                        <div id="nemotron-summary" class="text-on-surface text-xs leading-tight">...</div>
+                    </div>
+                    <div class="flex flex-col gap-1 mt-1">
+                        <div class="text-[10px] uppercase text-outline tracking-widest">Visual Cues</div>
+                        <ul id="nemotron-cues" class="text-[11px] text-on-surface/80 list-disc pl-4 flex flex-col gap-0.5">
+                            <!-- Populated via JS -->
+                        </ul>
+                    </div>
+                    <div class="flex flex-col gap-1 mt-1">
+                        <div class="text-[10px] uppercase text-outline tracking-widest">Uncertainty</div>
+                        <div id="nemotron-uncertainty" class="text-on-surface text-[11px] leading-tight text-yellow-500/80">...</div>
+                    </div>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="grid grid-cols-2 gap-px bg-primary/20 border-b border-primary/20">
+                    <div class="bg-[#0a0a0a] p-3 flex flex-col">
+                        <span class="text-[10px] uppercase text-outline tracking-widest">Evidence Score</span>
+                        <span id="evidence-score" class="text-xl text-primary font-bold">--</span>
+                    </div>
+                    <div class="bg-[#0a0a0a] p-3 flex flex-col">
+                        <span class="text-[10px] uppercase text-outline tracking-widest">Confidence</span>
+                        <span id="evidence-strength" class="text-xl text-primary font-bold">--</span>
+                    </div>
+                    <div class="bg-[#0a0a0a] p-3 flex flex-col">
+                        <span class="text-[10px] uppercase text-outline tracking-widest">Area</span>
+                        <span id="evidence-area" class="text-sm text-on-surface font-bold">-- km²</span>
+                    </div>
+                    <div class="bg-[#0a0a0a] p-3 flex flex-col">
+                        <span class="text-[10px] uppercase text-outline tracking-widest">Probability</span>
+                        <span id="evidence-prob" class="text-sm text-on-surface font-bold">--%</span>
+                    </div>
+                </div>
+                
+                <!-- Signals List -->
+                <div class="p-3 flex-1 overflow-y-auto max-h-[30vh]">
+                    <div class="text-[10px] uppercase text-outline tracking-widest mb-2">Signals</div>
+                    <div id="evidence-signals" class="flex flex-col gap-2">
+                        <!-- Populated via JS -->
+                    </div>
+                    
+                    <div class="text-[10px] uppercase text-outline tracking-widest mt-4 mb-2">Caveats</div>
+                    <ul id="evidence-caveats" class="text-[11px] text-yellow-500/80 list-disc pl-4 flex flex-col gap-1">
+                        <!-- Populated via JS -->
+                    </ul>
+                </div>
+                
+                <div class="p-2 border-t border-primary/20 bg-[#0a0a0a] text-[9px] text-outline/50 leading-tight">
+                    <span id="evidence-disclaimer">Detected change may include seasonal/agricultural surface changes. Contextual layers are supporting evidence, not proof of cause.</span>
+                </div>
+            </div>
+            
+            <!-- Timeline (Phase 1.6) -->
+            <div id="map-timeline" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#0a0a0a]/90 backdrop-blur-xl border border-outline/30 px-6 py-3 font-mono text-[10px] z-30 hidden flex items-center justify-between gap-8 pointer-events-auto shadow-2xl">
+                <!-- Timeline points populated dynamically -->
+            </div>
                     Exact mask from POST /detect/change-detection · not recomputed client-side
                 </div>
             </div>
@@ -628,9 +721,18 @@
                         <div id="hud-lat">X: 0.000</div>
                         <div id="hud-lng">Y: 0.000</div>
                     </div>
+        <!-- Environmental Context Sidebar (Phase 1.7) -->
+        <section class="w-[320px] shrink-0 bg-[#0a0a0a]/90 backdrop-blur-xl border-l border-outline/15 flex flex-col z-20 shadow-2xl relative custom-scrollbar overflow-y-auto hidden" id="context-sidebar">
+            <div class="flex flex-col p-4 gap-4">
+                <div class="flex justify-between items-center border-b border-primary/20 pb-2">
+                    <h2 class="font-headline-md text-xs text-primary uppercase tracking-widest">Environmental Context</h2>
+                </div>
+                
+                <div id="context-cards-container" class="flex flex-col gap-3 font-mono">
+                    <div class="text-[10px] text-outline/50 italic p-4 text-center">Run intelligence analysis to populate context layers.</div>
                 </div>
             </div>
-        </div>
+        </section>
     </main>
 
     <!-- Footer -->
@@ -796,6 +898,58 @@
             });
         }
 
+        modeUpload.addEventListener('click', () => {
+            currentMode = 'upload';
+            modeUpload.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeLive.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            uploadInputs.classList.remove('hidden');
+            liveInputs.classList.add('hidden');
+            demoInputs.classList.add('hidden');
+        });
+
+        modeDemo.addEventListener('click', () => {
+            currentMode = 'demo';
+            modeDemo.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeLive.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeUpload.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            demoInputs.classList.remove('hidden');
+            liveInputs.classList.add('hidden');
+            uploadInputs.classList.add('hidden');
+            
+            btnCheckAvail.classList.add('hidden');
+            runBtn.classList.remove('hidden');
+            document.getElementById('btn-run-text').innerText = "Run Demo Intelligence";
+        });
+        
+        modeUpload.addEventListener('click', () => {
+            currentMode = 'upload';
+            modeUpload.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeLive.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            uploadInputs.classList.remove('hidden');
+            liveInputs.classList.add('hidden');
+            demoInputs.classList.add('hidden');
+            
+            btnCheckAvail.classList.add('hidden');
+            runBtn.classList.remove('hidden');
+            document.getElementById('btn-run-text').innerText = "Run Upload Intelligence";
+        });
+        
+        modeLive.addEventListener('click', () => {
+            currentMode = 'live';
+            modeLive.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeUpload.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            liveInputs.classList.remove('hidden');
+            uploadInputs.classList.add('hidden');
+            demoInputs.classList.add('hidden');
+            
+            btnCheckAvail.classList.remove('hidden');
+            runBtn.classList.add('hidden');
+            document.getElementById('btn-run-text').innerText = "Run Live Intelligence";
+        });
+
         // Location Presets
         const LOCATION_PRESETS = {
             'india': { bbox: [77.10, 28.50, 77.30, 28.70] },
@@ -886,11 +1040,38 @@
                     threshold: parseFloat(sensSlider ? sensSlider.value : 0.95),
                     min_region_area_px: 10
                 };
-            } else {
+            } else if (isAvailability) {
                 return {
                     bbox: bbox,
                     date_range_t1: [fmtDate(d1Start), fmtDate(d1End)],
                     date_range_t2: [fmtDate(d2Start), fmtDate(d2End)],
+                    resolution: [resVal, resVal],
+                    model_name: modelStr,
+                    threshold: parseFloat(sensSlider ? sensSlider.value : 0.95),
+                    min_region_area_px: 10
+                };
+            } else {
+                // New Phase 10 AnalyzeRequest schema
+                const missionEl = document.getElementById('live-mission');
+                const eventDateEl = document.getElementById('live-event-date');
+                return {
+                    aoi: {
+                        type: "Polygon",
+                        coordinates: [[
+                            [bbox.min_lon, bbox.min_lat],
+                            [bbox.max_lon, bbox.min_lat],
+                            [bbox.max_lon, bbox.max_lat],
+                            [bbox.min_lon, bbox.max_lat],
+                            [bbox.min_lon, bbox.min_lat]
+                        ]]
+                    },
+                    period: {
+                        start: fmtDate(d1Start),
+                        end: fmtDate(d2End)
+                    },
+                    mission: missionEl ? missionEl.value : "general",
+                    event_date: (eventDateEl && eventDateEl.value) ? eventDateEl.value : null,
+                    mode: "live",
                     resolution: [resVal, resVal],
                     model_name: modelStr,
                     threshold: parseFloat(sensSlider ? sensSlider.value : 0.95),
@@ -1136,7 +1317,7 @@
                 
                 let fetchUrl, fetchOpts;
                 if (currentMode === 'live') {
-                    fetchUrl = apiBase + '/api/v1/detect/sentinel';
+                    fetchUrl = apiBase + '/api/v1/analyze/analyze';
                     fetchOpts = {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1166,8 +1347,11 @@
                 const data = await res.json();
 
                 // Successful API + inference -> success (green) state.
-                addLog('Inference Complete.', 'success');
-                addLog(`Detected ${data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 0)} clusters.`, 'success');
+                addLog('Intelligence Synthesized Successfully.', 'success');
+                const clustersCount = data.summary && data.summary.num_regions != null 
+                    ? data.summary.num_regions 
+                    : (data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 0));
+                addLog(`Detected ${clustersCount} clusters.`, 'success');
 
                 /* ---------------------------------------------------------------
                  * STEP 1 — RENDER THE REAL RESULTS FIRST.
@@ -1213,8 +1397,7 @@
                 setText('metric-total', fmtInt(data.total_pixels));
                 setText('metric-changed', fmtInt(data.changed_pixels));
                 setText('metric-percent', (typeof data.change_percentage === 'number') ? `${data.change_percentage}%` : '--');
-                setText('metric-clusters', (data.num_change_clusters != null) ? data.num_change_clusters
-                    : (Array.isArray(data.regions) ? data.regions.length : '--'));
+                setText('metric-clusters', clustersCount);
 
                 // TEMPORARY DEBUG readout — Model 3 binary change mask.
                 // All values come straight from the API response; the threshold shown
@@ -1300,6 +1483,14 @@
                     addLog('No preview imagery returned by API (showing metrics only).', 'warn');
                 }
 
+                // Render GeoJSON detections and Timeline (Phase 1.6)
+                if (data.detections_geojson) {
+                    renderGeoJSON(data.detections_geojson, sentinelPayload);
+                }
+                if (data.t1 && data.t2) {
+                    renderTimeline(data);
+                }
+
                 /* ---------------------------------------------------------------
                  * STEP 2 — LIGHTWEIGHT PERSISTENCE (never fatal).
                  * The live result is already on screen; storage is best-effort.
@@ -1347,13 +1538,374 @@
                 const name = btn.innerText.trim();
                 const loc = locations[name];
                 if (!loc) return;
-                const bg = map.querySelector('.bg-cover');
+                const bg = document.querySelector('.bg-cover');
                 bg.style.transition = 'all 1.8s cubic-bezier(0.16, 1, 0.3, 1)';
                 bg.style.backgroundPosition = loc.pos;
-                latDisplay.innerText = `LAT: ${loc.lat}`;
-                lngDisplay.innerText = `LNG: ${loc.lng}`;
+                // Assuming latDisplay and lngDisplay exist
+                const latDisplay = document.getElementById('lat-display');
+                const lngDisplay = document.getElementById('lng-display');
+                if (latDisplay) latDisplay.innerText = `LAT: ${loc.lat}`;
+                if (lngDisplay) lngDisplay.innerText = `LNG: ${loc.lng}`;
             });
         });
+
+        // 4. Map Interactions & Zoom/Pan
+        const scrollArea = document.getElementById('map-scroll-area');
+        const transformLayer = document.getElementById('map-transform-layer');
+        let currentScale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isPanning = false;
+        let startX, startY;
+
+        const updateTransform = () => {
+            if (transformLayer) transformLayer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentScale})`;
+        };
+
+        if (scrollArea && transformLayer) {
+            scrollArea.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomIntensity = 0.1;
+                const delta = e.deltaY > 0 ? -zoomIntensity : zoomIntensity;
+                currentScale = Math.min(Math.max(0.5, currentScale + delta), 5);
+                updateTransform();
+            });
+            scrollArea.addEventListener('mousedown', (e) => {
+                if (e.button !== 0 || e.target.tagName === 'BUTTON' || e.target.tagName === 'POLYGON') return;
+                isPanning = true;
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                scrollArea.style.cursor = 'grabbing';
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isPanning) return;
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                updateTransform();
+            });
+            window.addEventListener('mouseup', () => {
+                isPanning = false;
+                if (scrollArea) scrollArea.style.cursor = 'auto';
+            });
+            
+            document.getElementById('btn-zoom-in').onclick = () => { currentScale = Math.min(5, currentScale + 0.2); updateTransform(); };
+            document.getElementById('btn-zoom-out').onclick = () => { currentScale = Math.max(0.5, currentScale - 0.2); updateTransform(); };
+            document.getElementById('btn-zoom-fit').onclick = () => { currentScale = 1; translateX = 0; translateY = 0; updateTransform(); };
+            document.getElementById('btn-fullscreen').onclick = () => {
+                const mapCanvas = document.querySelector('.map-cursor');
+                if (!document.fullscreenElement) {
+                    mapCanvas.requestFullscreen().catch(err => console.log(err));
+                } else {
+                    document.exitFullscreen();
+                }
+            };
+        }
+
+        // 5. GeoJSON Rendering & Evidence Panel
+        const geojsonLayer = document.getElementById('geojson-layer');
+        const evidencePanel = document.getElementById('evidence-panel');
+        const contextSidebar = document.getElementById('context-sidebar');
+        const contextCardsContainer = document.getElementById('context-cards-container');
+        document.getElementById('close-evidence').onclick = () => {
+            evidencePanel.classList.add('hidden');
+            contextSidebar.classList.add('hidden');
+        };
+
+        const renderContextCards = (context) => {
+            contextCardsContainer.innerHTML = '';
+            
+            const makeCard = (title, icon, content) => {
+                const div = document.createElement('div');
+                div.className = 'bg-[#1a1a1a] border border-outline/20 p-3 flex flex-col gap-2 rounded-sm';
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 border-b border-outline/10 pb-1">
+                        <span class="material-symbols-outlined text-[14px] text-primary">${icon}</span>
+                        <span class="text-[10px] uppercase text-outline tracking-widest font-ui-semibold">${title}</span>
+                    </div>
+                    <div class="text-[10px] text-on-surface flex flex-col gap-1">
+                        ${content}
+                    </div>
+                `;
+                return div;
+            };
+            
+            const noData = '<span class="text-outline/50 italic">Data Unavailable</span>';
+
+            // Weather
+            let weatherContent = noData;
+            if (context && context.weather) {
+                weatherContent = `
+                    <div class="flex justify-between"><span>Rainfall:</span> <span class="text-primary">${context.weather.rainfall_class || '--'} (${(context.weather.total_precipitation_mm||0).toFixed(1)}mm)</span></div>
+                    <div class="flex justify-between"><span>Peak Day:</span> <span>${context.weather.peak_day || '--'}</span></div>
+                    <div class="flex justify-between"><span>Antecedent:</span> <span>${(context.weather.antecedent_rainfall_mm||0).toFixed(1)}mm</span></div>
+                `;
+            }
+            contextCardsContainer.appendChild(makeCard('Weather / Rainfall', 'rainy', weatherContent));
+
+            // Terrain
+            let terrainContent = noData;
+            if (context && context.dem) {
+                terrainContent = `
+                    <div class="flex justify-between"><span>Elevation:</span> <span>${(context.dem.mean_elevation_m||0).toFixed(1)}m</span></div>
+                    <div class="flex justify-between"><span>Slope:</span> <span>${(context.dem.mean_slope_deg||0).toFixed(1)}</span></div>
+                    <div class="flex justify-between"><span>Terrain:</span> <span>${context.dem.flat ? 'Flat' : 'Rugged'}</span></div>
+                `;
+            }
+            contextCardsContainer.appendChild(makeCard('Terrain / DEM', 'landscape', terrainContent));
+
+            // Fire
+            let fireContent = noData;
+            if (context && context.fire) {
+                fireContent = `
+                    <div class="flex justify-between"><span>Nearby Fire:</span> <span class="${context.fire.nearby ? 'text-[#ff453a] font-bold' : ''}">${context.fire.nearby ? 'Yes' : 'No'}</span></div>
+                    <div class="flex justify-between"><span>Hotspots:</span> <span>${context.fire.hotspot_count || 0}</span></div>
+                    ${context.fire.nearby ? `<div class="flex justify-between"><span>Nearest:</span> <span>${(context.fire.nearest_distance_km||0).toFixed(2)} km</span></div>` : ''}
+                `;
+            }
+            contextCardsContainer.appendChild(makeCard('Fire / Thermal', 'local_fire_department', fireContent));
+
+            // Land Cover
+            let lcContent = noData;
+            if (context && context.land_cover) {
+                lcContent = `
+                    <div class="flex justify-between mb-1"><span>Dominant:</span> <span class="text-primary font-bold truncate ml-2">${context.land_cover.dominant_class || '--'}</span></div>
+                    <div class="w-full bg-outline/20 h-1.5 rounded-full overflow-hidden flex">
+                        ${context.land_cover.histogram ? Object.entries(context.land_cover.histogram).slice(0,3).map(([k, v]) => {
+                            let w = v * 100;
+                            let bg = 'bg-primary';
+                            if (k.toLowerCase().includes('tree')) bg = 'bg-[#10b981]';
+                            else if (k.toLowerCase().includes('crop')) bg = 'bg-[#ffb000]';
+                            else if (k.toLowerCase().includes('water')) bg = 'bg-[#0566d9]';
+                            return `<div class="${bg}" style="width: ${w}%" title="${k}: ${w.toFixed(1)}%"></div>`;
+                        }).join('') : ''}
+                    </div>
+                `;
+            }
+            contextCardsContainer.appendChild(makeCard('Land Cover', 'forest', lcContent));
+            
+            // Surface Water
+            let waterContent = noData;
+            if (context && context.surface_water) {
+                waterContent = `
+                    <div class="flex justify-between"><span>Potential Flood:</span> <span class="text-[#0566d9]">${(context.surface_water.new_water_km2||0).toFixed(3)} km</span></div>
+                    <div class="flex justify-between"><span>Permanent Water:</span> <span>${(context.surface_water.permanent_water_km2||0).toFixed(3)} km</span></div>
+                `;
+            }
+            contextCardsContainer.appendChild(makeCard('Surface Water', 'water', waterContent));
+            
+            // OSM
+            let osmContent = noData;
+            if (context && context.osm) {
+                osmContent = `
+                    <div class="flex justify-between"><span>Roads:</span> <span>${context.osm.nearest_road_m != null ? context.osm.nearest_road_m.toFixed(0) + 'm' : '> 2000m'}</span></div>
+                    <div class="flex justify-between"><span>Waterbody:</span> <span>${context.osm.nearest_water_m != null ? context.osm.nearest_water_m.toFixed(0) + 'm' : 'N/A'}</span></div>
+                    <div class="flex justify-between"><span>Buildings (<500m):</span> <span>${context.osm.buildings_within_500m || 0}</span></div>
+                    <div class="flex justify-between"><span>Industrial:</span> <span class="${context.osm.industrial ? 'text-[#ffb000]' : ''}">${context.osm.industrial ? 'Yes' : 'No'}</span></div>
+                `;
+            }
+            contextCardsContainer.appendChild(makeCard('Infrastructure', 'factory', osmContent));
+        };
+
+        const showEvidencePanel = (props, nemotron) => {
+            evidencePanel.classList.remove('hidden');
+            contextSidebar.classList.remove('hidden');
+            
+            document.getElementById('evidence-mission').innerText = props.label || "Unclassified Change";
+            
+            // Nemotron Display
+            const nemoBanner = document.getElementById('nemotron-banner');
+            if (nemotron && nemotron.category) {
+                nemoBanner.classList.remove('hidden');
+                nemoBanner.classList.add('flex');
+                
+                const labels = {
+                    'building_structure': 'Building / Structure',
+                    'road_highway_infrastructure': 'Road / Highway / Infrastructure',
+                    'mining_excavation': 'Mining / Excavation',
+                    'forest_vegetation_disturbance': 'Forest / Vegetation',
+                    'flood_water_expansion': 'Flood / Water Expansion',
+                    'agricultural_seasonal_change': 'Agricultural / Seasonal',
+                    'natural_terrain_geological_change': 'Natural Terrain / Geological',
+                    'fire_burn_disturbance': 'Fire / Burn',
+                    'other_known_change': 'Other Known Change',
+                    'unknown_uncertain': 'Unknown / Uncertain'
+                };
+                
+                document.getElementById('nemotron-type').innerText = labels[nemotron.category] || nemotron.category;
+                document.getElementById('nemotron-confidence').innerText = `${(nemotron.visual_confidence * 100).toFixed(0)}% CONF`;
+                document.getElementById('nemotron-summary').innerText = nemotron.short_summary || '--';
+                
+                const cuesList = document.getElementById('nemotron-cues');
+                cuesList.innerHTML = '';
+                if (nemotron.visual_cues) {
+                    nemotron.visual_cues.forEach(cue => {
+                        const li = document.createElement('li');
+                        li.innerText = cue;
+                        cuesList.appendChild(li);
+                    });
+                }
+                
+                const uncLabel = document.getElementById('nemotron-uncertainty');
+                uncLabel.innerText = nemotron.uncertainty || 'None';
+            } else if (nemotron && nemotron.status && nemotron.status !== 'classified') {
+                nemoBanner.classList.remove('hidden');
+                nemoBanner.classList.add('flex');
+                document.getElementById('nemotron-type').innerText = nemotron.status === 'skipped_small_crop' ? 'Skipped (Too Small)' : 'Analysis Unavailable';
+                document.getElementById('nemotron-confidence').innerText = `--% CONF`;
+                document.getElementById('nemotron-summary').innerText = nemotron.error || 'Region was not analyzed by Nemotron.';
+                document.getElementById('nemotron-cues').innerHTML = '';
+                document.getElementById('nemotron-uncertainty').innerText = '--';
+            } else {
+                nemoBanner.classList.add('hidden');
+                nemoBanner.classList.remove('flex');
+            }
+            
+            // Interpretation
+            if (props.evidence) {
+                document.getElementById('evidence-interpretation-banner').classList.remove('hidden');
+                document.getElementById('evidence-interpretation').innerText = props.evidence.interpretation;
+                document.getElementById('evidence-score').innerText = props.evidence.evidence_score.toFixed(2);
+                document.getElementById('evidence-strength').innerText = props.evidence.evidence_strength;
+                
+                // Signals
+                const sigContainer = document.getElementById('evidence-signals');
+                sigContainer.innerHTML = '';
+                props.evidence.signals.forEach(s => {
+                    const d = document.createElement('div');
+                    d.className = 'flex justify-between items-center text-xs';
+                    d.innerHTML = `<span class="text-on-surface truncate pr-2">${s.name} <span class="text-outline text-[9px] ml-1">(${s.source})</span></span><span class="text-primary font-mono">${s.normalized_value.toFixed(2)}</span>`;
+                    sigContainer.appendChild(d);
+                });
+                
+                // Caveats
+                const cavContainer = document.getElementById('evidence-caveats');
+                cavContainer.innerHTML = '';
+                props.evidence.caveats.forEach(c => {
+                    const li = document.createElement('li');
+                    li.innerText = c;
+                    cavContainer.appendChild(li);
+                });
+            } else {
+                document.getElementById('evidence-interpretation-banner').classList.add('hidden');
+                document.getElementById('evidence-score').innerText = "--";
+                document.getElementById('evidence-strength').innerText = "--";
+                document.getElementById('evidence-signals').innerHTML = '<div class="text-[10px] text-outline/50">No contextual signals</div>';
+                document.getElementById('evidence-caveats').innerHTML = '';
+            }
+
+            document.getElementById('evidence-area').innerText = (props.area_km2 || props.approx_area_sq_km || 0).toFixed(2);
+            document.getElementById('evidence-prob').innerText = ((props.mean_change_prob || props.change_probability || 0) * 100).toFixed(0);
+            
+            // Populate Context Cards
+            renderContextCards(props.context);
+        };
+
+        const renderGeoJSON = (geojson, payload) => {
+            if (!geojsonLayer) return;
+            geojsonLayer.innerHTML = '';
+            
+            // Extract bounding box correctly depending on payload type (aoi or bbox)
+            let minLon, maxLon, minLat, maxLat;
+            if (payload.bbox) {
+                minLon = payload.bbox.min_lon; maxLon = payload.bbox.max_lon;
+                minLat = payload.bbox.min_lat; maxLat = payload.bbox.max_lat;
+            } else if (payload.aoi) {
+                const coords = payload.aoi.coordinates[0];
+                minLon = Math.min(...coords.map(c => c[0]));
+                maxLon = Math.max(...coords.map(c => c[0]));
+                minLat = Math.min(...coords.map(c => c[1]));
+                maxLat = Math.max(...coords.map(c => c[1]));
+            } else {
+                return; // cannot map
+            }
+
+            geojson.features.forEach(feature => {
+                if (feature.geometry.type !== 'Polygon') return;
+                const coords = feature.geometry.coordinates[0];
+                
+                const pointsStr = coords.map(c => {
+                    const x = ((c[0] - minLon) / (maxLon - minLon)) * 100;
+                    const y = ((maxLat - c[1]) / (maxLat - minLat)) * 100;
+                    return `${x},${y}`;
+                }).join(' ');
+
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                poly.setAttribute('points', pointsStr);
+                
+                let strokeColor = '#ffb000'; // Amber (Medium)
+                const props = feature.properties;
+                if (props.severity === 'High' || props.severity === 'Critical') strokeColor = '#ff453a';
+                if (props.severity === 'Low') strokeColor = '#4edea3'; // Green
+                
+                poly.setAttribute('fill', strokeColor);
+                poly.setAttribute('fill-opacity', '0.2');
+                poly.setAttribute('stroke', strokeColor);
+                poly.setAttribute('stroke-width', '0.3');
+                poly.setAttribute('vector-effect', 'non-scaling-stroke');
+                poly.style.cursor = 'pointer';
+                poly.style.pointerEvents = 'all';
+
+                poly.onmouseenter = () => poly.setAttribute('fill-opacity', '0.6');
+                poly.onmouseleave = () => poly.setAttribute('fill-opacity', '0.2');
+                
+                poly.onclick = (e) => {
+                    // Zoom to polygon logic
+                    // We can estimate the center and translate
+                    const cx = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
+                    const cy = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
+                    const cXpct = ((cx - minLon) / (maxLon - minLon)) * 100;
+                    const cYpct = ((maxLat - cy) / (maxLat - minLat)) * 100;
+                    
+                    // Simple center zoom
+                    currentScale = 3;
+                    translateX = (50 - cXpct) * (scrollArea.clientWidth / 100) * currentScale;
+                    translateY = (50 - cYpct) * (scrollArea.clientHeight / 100) * currentScale;
+                    updateTransform();
+                    
+                    let nemotron = null;
+                    if (payload && payload.nemotron_interpretations && props.region_id) {
+                        nemotron = payload.nemotron_interpretations[props.region_id];
+                    }
+                    showEvidencePanel(props, nemotron);
+                };
+                
+                geojsonLayer.appendChild(poly);
+            });
+        };
+
+        // 6. Timeline Rendering
+        const renderTimeline = (data) => {
+            const tl = document.getElementById('map-timeline');
+            if (!tl) return;
+            tl.innerHTML = '';
+            tl.classList.remove('hidden');
+
+            const makePoint = (label, acq, isTarget=false) => {
+                const div = document.createElement('div');
+                div.className = 'flex flex-col items-center gap-1 relative z-10 group';
+                div.innerHTML = `
+                    <div class="text-[9px] uppercase tracking-widest ${isTarget ? 'text-primary' : 'text-outline'}">${label}</div>
+                    <div class="w-3 h-3 rounded-full ${isTarget ? 'bg-primary border border-primary-container shadow-[0_0_10px_rgba(78,222,163,0.5)]' : 'bg-surface-variant border border-outline/50 group-hover:bg-primary/50'} cursor-pointer transition-colors" title="${acq.scene_id}"></div>
+                    <div class="text-[10px] text-on-surface">${acq.acquisition_date.split('T')[0]}</div>
+                `;
+                return div;
+            };
+
+            tl.appendChild(makePoint('T1 Base', data.t1, true));
+            
+            // Connecting line
+            const line = document.createElement('div');
+            line.className = 'absolute top-1/2 left-8 right-8 h-px bg-outline/20 -z-10';
+            tl.appendChild(line);
+
+            if (data.intermediate_acquisitions) {
+                data.intermediate_acquisitions.forEach((acq, idx) => {
+                    tl.appendChild(makePoint(`Inter ${idx+1}`, acq));
+                });
+            }
+
+            tl.appendChild(makePoint('T2 Target', data.t2, true));
+        };
     })();
     </script>
 </body>
