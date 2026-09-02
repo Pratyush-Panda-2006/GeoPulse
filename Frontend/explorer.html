@@ -221,28 +221,27 @@
     </div>
 
     <!-- TopNavBar (Global Nav) -->
-    <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3 h-toolbar-width">
+    <nav class="fixed top-0 left-0 right-0 z-[150] flex justify-between items-center bg-transparent border-transparent px-6 py-3 transition-all duration-300 hover:bg-[#0a0a0a]/80 hover:backdrop-blur-md">
         <a href="index.html" class="font-headline-md text-[18px] md:text-[20px] text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity">
             <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse"></span>
-            <span>GeoPulse</span>
+            <span>GEOPULSE</span>
         </a>
         <div class="hidden md:flex gap-6 lg:gap-8 items-center">
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">Overview</a>
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">Studio</a>
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="analytics.html">Analytics</a>
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="explorer.html">Explorer</a>
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="intelligence.html">Intelligence</a>
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="telemetry.html">Telemetry</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">OVERVIEW</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">STUDIO</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="analytics.html">ANALYTICS</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary !border-b-2 !border-solid !border-primary pb-1" href="explorer.html">EXPLORER</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="intelligence.html">INTELLIGENCE</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="telemetry.html">TELEMETRY</a>
         </div>
         <div class="flex gap-4 items-center">
-            <!-- System Status Pill linked to Telemetry -->
             <a href="telemetry.html" class="flex items-center gap-2 bg-primary/10 border border-primary/20 hover:border-primary/50 transition-all rounded-none px-3 py-1 font-mono text-xs text-primary" title="View Real-Time Telemetry Diagnostics">
                 <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
                 <span class="text-primary uppercase tracking-widest hidden lg:inline">CDSE Satellite Link: Connected</span>
                 <span class="text-primary uppercase tracking-widest lg:hidden">Active</span>
             </a>
             <div class="flex gap-3">
-                <a href="analytics.html" title="Notifications & Clusters" class="flex items-center">
+                <a href="analytics.html" title="Cluster Alerts" class="flex items-center">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
                 </a>
                 <a href="overview.html" title="Command Center Profile" class="flex items-center">
@@ -253,31 +252,29 @@
     </nav>
 
     <!-- Main Workspace Area -->
-    <main class="flex-1 flex pt-toolbar-width relative z-10 overflow-hidden">
+    <main class="flex-1 relative z-10 overflow-hidden pt-toolbar-width">
         <!-- Level 1 Panel: CDSE Acquisition Controls (Inner Sidebar) -->
-        <aside class="w-sidebar-width h-full bg-[#0a0a0a]/80 backdrop-blur-2xl border-r border-outline/15 flex flex-col z-20 shrink-0 relative">
-            <div class="container-marker marker-tr"></div>
-            <div class="container-marker marker-br"></div>
+        <aside class="absolute top-24 bottom-6 left-6 w-[340px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 flex flex-col z-20 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] overflow-hidden">
             
             <!-- Panel Header -->
-            <div class="px-6 py-5 border-b border-outline/15 flex justify-between items-center bg-surface-container-low/50">
-                <h2 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Acquisition Controls</h2>
-                <span class="material-symbols-outlined text-outline text-sm">tune</span>
+            <div class="px-6 py-5 border-b border-white/10 flex justify-between items-center bg-white/5 shadow-inner">
+                <h2 class="font-ui-semibold text-ui-semibold text-white uppercase tracking-widest drop-shadow-md">Acquisition Controls</h2>
+                <span class="material-symbols-outlined text-white/90 text-sm">tune</span>
             </div>
 
             <!-- Scrollable Controls Content -->
             <div class="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-8 custom-scrollbar min-h-0">
                 <!-- Quick App Launcher Strip -->
-                <section class="flex flex-col gap-2 p-3 bg-surface-container-low/60 border border-outline/20">
+                <section class="flex flex-col gap-2 p-3 bg-white/5 border border-white/10 rounded-xl shadow-inner">
                     <div class="flex items-center justify-between">
-                        <span class="font-mono text-[10px] text-primary uppercase tracking-widest">Connected Suites</span>
-                        <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+                        <span class="font-mono text-[10px] text-white/90 uppercase tracking-widest drop-shadow-sm">Connected Suites</span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(78,222,163,1)] animate-ping"></span>
                     </div>
                     <div class="grid grid-cols-2 gap-2 mt-1">
-                        <a href="studio.html" class="flex items-center justify-center gap-1.5 bg-surface-container-high border border-outline/20 hover:border-primary/50 text-[11px] font-mono text-on-surface hover:text-primary p-1.5 transition-all">
+                        <a href="studio.html" class="flex items-center justify-center gap-1.5 bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] text-[11px] font-mono text-white/90 hover:text-white p-1.5 transition-all rounded-lg">
                             <span class="material-symbols-outlined text-[14px]">view_in_ar</span> 3D Studio
                         </a>
-                        <a href="analytics.html" class="flex items-center justify-center gap-1.5 bg-surface-container-high border border-outline/20 hover:border-primary/50 text-[11px] font-mono text-on-surface hover:text-primary p-1.5 transition-all">
+                        <a href="analytics.html" class="flex items-center justify-center gap-1.5 bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] text-[11px] font-mono text-white/90 hover:text-white p-1.5 transition-all rounded-lg">
                             <span class="material-symbols-outlined text-[14px]">analytics</span> Analytics
                         </a>
                     </div>
@@ -286,76 +283,76 @@
                 <!-- Temporal Bounds (T1/T2) -->
                 <section class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
-                        <h3 class="font-mono text-xs text-primary uppercase tracking-widest">Temporal Bounds</h3>
-                        <div class="h-px bg-outline/20 flex-1 ml-4"></div>
+                        <h3 class="font-mono text-xs text-white/90 uppercase tracking-widest">Temporal Bounds</h3>
+                        <div class="h-px bg-white/20 flex-1 ml-4"></div>
                     </div>
                     <div class="flex flex-col gap-4" id="temporal-inputs">
                         <div class="flex justify-end gap-2 mb-[-8px]">
-                             <button id="mode-live" class="text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10">LIVE</button>
-                             <button id="mode-upload" class="text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary">UPLOAD</button>
-                             <button id="mode-demo" class="text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary">DEMO</button>
+                             <button id="mode-live" class="text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10 rounded">LIVE</button>
+                             <button id="mode-upload" class="text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 hover:text-primary hover:border-primary rounded transition-colors">UPLOAD</button>
+                             <button id="mode-demo" class="text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 hover:text-primary hover:border-primary rounded transition-colors">DEMO</button>
                         </div>
                         <div id="live-inputs" class="flex flex-col gap-4">
                             <!-- Location Selection -->
                             <div class="flex flex-col gap-1.5">
-                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Location</label>
-                                <select id="live-location-select" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
-                                    <option class="bg-[#0a0a0a] text-outline" value="india">India</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="uk">United Kingdom</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="us">United States</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="japan">Japan</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="australia">Australia</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="custom">Custom AOI</option>
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Location</label>
+                                <select id="live-location-select" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full appearance-none bg-black/20 border-white/10 text-white cursor-pointer hover:bg-black/40 transition-colors">
+                                    <option class="bg-black text-white/60" value="india">India</option>
+                                    <option class="bg-black text-white/60" value="uk">United Kingdom</option>
+                                    <option class="bg-black text-white/60" value="us">United States</option>
+                                    <option class="bg-black text-white/60" value="japan">Japan</option>
+                                    <option class="bg-black text-white/60" value="australia">Australia</option>
+                                    <option class="bg-black text-white/60" value="custom">Custom AOI</option>
                                 </select>
                             </div>
                             <!-- Custom AOI -->
                             <div id="live-custom-aoi" class="hidden flex flex-col gap-2">
-                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Custom Bounding Box</label>
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Custom Bounding Box</label>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input id="custom-min-lon" class="glass-input rounded-none px-2 py-1.5 font-mono text-xs w-full" type="number" step="any" placeholder="Min Lon">
-                                    <input id="custom-max-lon" class="glass-input rounded-none px-2 py-1.5 font-mono text-xs w-full" type="number" step="any" placeholder="Max Lon">
-                                    <input id="custom-min-lat" class="glass-input rounded-none px-2 py-1.5 font-mono text-xs w-full" type="number" step="any" placeholder="Min Lat">
-                                    <input id="custom-max-lat" class="glass-input rounded-none px-2 py-1.5 font-mono text-xs w-full" type="number" step="any" placeholder="Max Lat">
+                                    <input id="custom-min-lon" class="glass-input rounded-lg px-2 py-1.5 font-mono text-xs w-full bg-black/20 border-white/10 text-white" type="number" step="any" placeholder="Min Lon">
+                                    <input id="custom-max-lon" class="glass-input rounded-lg px-2 py-1.5 font-mono text-xs w-full bg-black/20 border-white/10 text-white" type="number" step="any" placeholder="Max Lon">
+                                    <input id="custom-min-lat" class="glass-input rounded-lg px-2 py-1.5 font-mono text-xs w-full bg-black/20 border-white/10 text-white" type="number" step="any" placeholder="Min Lat">
+                                    <input id="custom-max-lat" class="glass-input rounded-lg px-2 py-1.5 font-mono text-xs w-full bg-black/20 border-white/10 text-white" type="number" step="any" placeholder="Max Lat">
                                 </div>
                                 <div id="custom-aoi-error" class="text-[#ff453a] font-mono text-[10px] hidden">Invalid bounds</div>
                             </div>
                             <!-- Sub-Mode Toggle for LIVE -->
                             <div class="flex gap-2 mt-1">
                                 <button id="submode-pairwise" class="flex-1 text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10">PAIRWISE</button>
-                                <button id="submode-series" class="flex-1 text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary">PERIOD</button>
+                                <button id="submode-series" class="flex-1 text-[10px] font-mono text-white/60 border border-outline px-2 py-1 hover:text-primary hover:border-primary">PERIOD</button>
                             </div>
                             
                             <!-- Pairwise Inputs -->
                             <div id="live-pairwise-inputs" class="flex flex-col gap-4">
                                 <div class="flex flex-col gap-1.5">
-                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T1 Date (Baseline)</label>
-                                    <input id="live-t1-date" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2024-01-20">
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">T1 Date (Baseline)</label>
+                                    <input id="live-t1-date" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full bg-black/20 border-white/10 text-white" type="date" value="2024-01-20">
                                 </div>
                                 <div class="flex flex-col gap-1.5">
-                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T2 Date (Current)</label>
-                                    <input id="live-t2-date" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2024-06-20">
-                                    <span class="font-mono text-[10px] text-outline/70">±7 days search window</span>
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">T2 Date (Current)</label>
+                                    <input id="live-t2-date" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full bg-black/20 border-white/10 text-white" type="date" value="2024-06-20">
+                                    <span class="font-mono text-[10px] text-white/60/70">±7 days search window</span>
                                 </div>
                             </div>
 
                             <!-- Series Inputs -->
                             <div id="live-series-inputs" class="hidden flex flex-col gap-4">
                                 <div class="flex flex-col gap-1.5">
-                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Date Range Start</label>
-                                    <input id="live-series-start" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2024-01-01">
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Date Range Start</label>
+                                    <input id="live-series-start" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full bg-black/20 border-white/10 text-white" type="date" value="2024-01-01">
                                 </div>
                                 <div class="flex flex-col gap-1.5">
-                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Date Range End</label>
-                                    <input id="live-series-end" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2024-06-30">
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Date Range End</label>
+                                    <input id="live-series-end" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full bg-black/20 border-white/10 text-white" type="date" value="2024-06-30">
                                 </div>
                                 <div class="flex flex-col gap-1.5">
-                                    <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Max Scenes</label>
-                                    <select id="live-series-max" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
-                                        <option class="bg-[#0a0a0a] text-outline" value="2">2 Scenes (1 Pair)</option>
-                                        <option class="bg-[#0a0a0a] text-outline" value="4">4 Scenes (3 Pairs)</option>
-                                        <option class="bg-[#0a0a0a] text-outline" value="6" selected>6 Scenes (5 Pairs)</option>
-                                        <option class="bg-[#0a0a0a] text-outline" value="8">8 Scenes (7 Pairs)</option>
-                                        <option class="bg-[#0a0a0a] text-outline" value="20">20 Scenes (Max)</option>
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Max Scenes</label>
+                                    <select id="live-series-max" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full appearance-none bg-black/20 border-white/10 text-white cursor-pointer hover:bg-black/40 transition-colors">
+                                        <option class="bg-black text-white/60" value="2">2 Scenes (1 Pair)</option>
+                                        <option class="bg-black text-white/60" value="4">4 Scenes (3 Pairs)</option>
+                                        <option class="bg-black text-white/60" value="6" selected>6 Scenes (5 Pairs)</option>
+                                        <option class="bg-black text-white/60" value="8">8 Scenes (7 Pairs)</option>
+                                        <option class="bg-black text-white/60" value="20">20 Scenes (Max)</option>
                                     </select>
                                 </div>
                             </div>
@@ -374,34 +371,35 @@
                         </div>
                         <div id="upload-inputs" class="flex flex-col gap-4 hidden">
                             <div class="flex flex-col gap-1.5">
-                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T1 Image (.tif)</label>
-                                <div id="dropzone-t1" class="border border-dashed border-outline/50 bg-surface-container-low/30 hover:border-primary/50 transition-colors py-3 px-2 flex flex-col items-center justify-center cursor-pointer text-center group">
-                                    <span class="material-symbols-outlined text-outline group-hover:text-primary text-[18px] mb-1 transition-colors">upload_file</span>
-                                    <span id="t1-filename" class="font-mono text-[10px] text-outline group-hover:text-primary break-all max-w-[90%]">Drag & Drop or Click</span>
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">T1 Image (.tif)</label>
+                                <div id="dropzone-t1" class="border border-dashed border-white/20 bg-white/5 hover:bg-white/10 rounded-lg hover:border-primary/50 transition-colors py-3 px-2 flex flex-col items-center justify-center cursor-pointer text-center group">
+                                    <span class="material-symbols-outlined text-white/70 group-hover:text-primary text-[18px] mb-1 transition-colors">upload_file</span>
+                                    <span id="t1-filename" class="font-mono text-[10px] text-white/70 group-hover:text-primary break-all max-w-[90%]">Drag & Drop or Click</span>
                                     <input id="t1-file" type="file" accept=".tif,.tiff" class="hidden">
                                 </div>
                             </div>
                             <div class="flex flex-col gap-1.5">
-                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T2 Image (.tif)</label>
-                                <div id="dropzone-t2" class="border border-dashed border-outline/50 bg-surface-container-low/30 hover:border-primary/50 transition-colors py-3 px-2 flex flex-col items-center justify-center cursor-pointer text-center group">
-                                    <span class="material-symbols-outlined text-outline group-hover:text-primary text-[18px] mb-1 transition-colors">upload_file</span>
-                                    <span id="t2-filename" class="font-mono text-[10px] text-outline group-hover:text-primary break-all max-w-[90%]">Drag & Drop or Click</span>
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">T2 Image (.tif)</label>
+                                <div id="dropzone-t2" class="border border-dashed border-white/20 bg-white/5 hover:bg-white/10 rounded-lg hover:border-primary/50 transition-colors py-3 px-2 flex flex-col items-center justify-center cursor-pointer text-center group">
+                                    <span class="material-symbols-outlined text-white/70 group-hover:text-primary text-[18px] mb-1 transition-colors">upload_file</span>
+                                    <span id="t2-filename" class="font-mono text-[10px] text-white/70 group-hover:text-primary break-all max-w-[90%]">Drag & Drop or Click</span>
                                     <input id="t2-file" type="file" accept=".tif,.tiff" class="hidden">
                                 </div>
                             </div>
                         </div>
                         <div id="demo-inputs" class="flex flex-col gap-4 hidden">
                             <div class="flex flex-col gap-1.5">
-                                <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Demo Scene</label>
-                                <select id="demo-scene-select" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
-                                    <option class="bg-[#0a0a0a] text-outline" value="01_dubai">Dubai, UAE</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="02_lasvegas">Las Vegas, USA</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="03_chongqing">Chongqing, China</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="04_montpellier">Montpellier, France</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="05_rio">Rio de Janeiro, Brazil</option>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Demo Scene</label>
+                                <select id="demo-scene-select" class="glass-input rounded-md px-3 py-2 font-mono text-sm w-full appearance-none bg-black/40 border-white/20 text-white">
+                                    <option class="bg-[#0a0a0a] text-white/70" value="01_dubai">Dubai, UAE</option>
+                                    <option class="bg-[#0a0a0a] text-white/70" value="02_lasvegas">Las Vegas, USA</option>
+                                    <option class="bg-[#0a0a0a] text-white/70" value="03_chongqing">Chongqing, China</option>
+                                    <option class="bg-[#0a0a0a] text-white/70" value="04_montpellier">Montpellier, France</option>
+                                    <option class="bg-[#0a0a0a] text-white/70" value="05_rio">Rio de Janeiro, Brazil</option>
                                 </select>
                             </div>
-                            <div class="text-[10px] font-mono text-outline/70 leading-tight">
+                            <div class="text-[10px] font-mono text-white/50 leading-tight">
                                 Select a scene to automatically fetch predefined SAR T1/T2 image pairs.
                             </div>
                         </div>
@@ -411,33 +409,35 @@
                 <!-- Processing Parameters -->
                 <section class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
-                        <h3 class="font-mono text-xs text-primary uppercase tracking-widest">Processing Params</h3>
-                        <div class="h-px bg-outline/20 flex-1 ml-4"></div>
+                        <h3 class="font-mono text-xs text-white/90 uppercase tracking-widest">Processing Params</h3>
+                        <div class="h-px bg-white/20 flex-1 ml-4"></div>
                     </div>
                     <!-- Resolution -->
                     <div class="flex flex-col gap-1.5">
-                        <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Tile Resolution</label>
-                        <select id="processing-resolution" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
-                            <option class="bg-[#0a0a0a] text-outline" value="256">256 x 256 px</option>
-                            <option class="bg-[#0a0a0a] text-outline" selected="" value="512">512 x 512 px</option>
+                        <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Tile Resolution</label>
+                        <select id="processing-resolution" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full appearance-none bg-black/20 border-white/10 text-white cursor-pointer hover:bg-black/40 transition-colors">
+                            <option class="bg-black text-white/90" value="256">256 x 256 px</option>
+                            <option class="bg-black text-white/90" selected="" value="512">512 x 512 px</option>
+                        </select>
                         </select>
                     </div>
                     <!-- Model Selector -->
                     <div class="flex flex-col gap-1.5 mt-2">
-                        <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Inference Model</label>
-                        <select id="processing-model" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
-                            <option class="bg-[#0a0a0a] text-outline" value="siamese">Siamese U-Net v2</option>
-                            <option class="bg-[#0a0a0a] text-outline" selected="" value="snunet">SNUNet-CD (Optimized)</option>
+                        <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Inference Model</label>
+                        <select id="processing-model" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full appearance-none bg-black/20 border-white/10 text-white cursor-pointer hover:bg-black/40 transition-colors">
+                            <option class="bg-black text-white/90" value="siamese">Siamese U-Net v2</option>
+                            <option class="bg-black text-white/90" selected="" value="snunet">SNUNet-CD (Optimized)</option>
+                        </select>
                         </select>
                     </div>
                     <!-- Sensitivity Slider -->
                     <div class="flex flex-col gap-2 mt-4">
                         <div class="flex justify-between items-center">
-                            <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Detection Sensitivity</label>
+                            <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Detection Sensitivity</label>
                             <span class="font-mono text-sm text-primary" id="sens-val">0.95</span>
                         </div>
-                        <input id="sens-slider" class="w-full accent-primary h-1 bg-surface-variant rounded-none appearance-none cursor-pointer" max="1.0" min="0.1" step="0.05" type="range" value="0.95">
-                        <div class="flex justify-between font-mono text-[10px] text-outline uppercase tracking-widest mt-1">
+                        <input id="sens-slider" class="w-full accent-primary h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" max="1.0" min="0.1" step="0.05" type="range" value="0.95">
+                        <div class="flex justify-between font-mono text-[10px] text-white/40 uppercase tracking-widest mt-1">
                             <span>COARSE</span>
                             <span>FINE</span>
                         </div>
@@ -447,52 +447,53 @@
                 <!-- Quick Jump Locations -->
                 <section class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
-                        <h3 class="font-mono text-xs text-primary uppercase tracking-widest">Saved Vectors</h3>
-                        <div class="h-px bg-outline/20 flex-1 ml-4"></div>
+                        <h3 class="font-mono text-xs text-white/90 uppercase tracking-widest">Saved Vectors</h3>
+                        <div class="h-px bg-white/20 flex-1 ml-4"></div>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <button class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">location_on</span> New Delhi Command
+                        <button class="bg-white/5 border border-white/10 text-white/80 font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-md hover:border-primary/50 hover:bg-white/10 hover:text-primary transition-all flex items-center justify-start gap-3 w-full group">
+                            <span class="material-symbols-outlined text-[16px] text-white/60 group-hover:text-primary">location_on</span> New Delhi Command
                         </button>
-                        <button class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">location_on</span> Mumbai Port
+                        <button class="bg-white/5 border border-white/10 text-white/80 font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-md hover:border-primary/50 hover:bg-white/10 hover:text-primary transition-all flex items-center justify-start gap-3 w-full group">
+                            <span class="material-symbols-outlined text-[16px] text-white/60 group-hover:text-primary">location_on</span> Mumbai Port
                         </button>
-                        <a href="studio.html" class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">view_in_ar</span> Mumbai 3D Terrain
+                        <a href="studio.html" class="bg-white/5 border border-white/10 text-white/80 font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-md hover:border-primary/50 hover:bg-white/10 hover:text-primary transition-all flex items-center justify-start gap-3 w-full group">
+                            <span class="material-symbols-outlined text-[16px] text-white/60 group-hover:text-primary">view_in_ar</span> Mumbai 3D Terrain
                         </a>
                     </div>
                 </section>
             </div>
 
             <!-- Primary Action Footer -->
-            <div class="p-6 border-t border-outline/15 bg-surface-container-low/50 mt-auto flex flex-col gap-3">
+            <div class="p-6 border-t border-white/10 bg-white/5 mt-auto flex flex-col gap-3 shadow-[0_-8px_32px_0_rgba(0,0,0,0.2)]">
                 <!-- Availability Check Button -->
-                <button id="btn-check-availability" class="w-full bg-surface-container-high border border-outline/30 text-on-surface font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-none flex items-center justify-center gap-2 hover:border-primary/50 hover:text-primary transition-colors">
+                <button id="btn-check-availability" class="w-full bg-surface-container-high border border-outline/30 text-on-surface font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:border-primary/50 hover:text-primary transition-colors">
                     <span class="material-symbols-outlined text-[18px]">travel_explore</span>
                     <span>Check Satellite Availability</span>
                 </button>
                 
                 <!-- Run Inference Button (Hidden initially in LIVE mode) -->
-                <button id="btn-run-live" class="hidden w-full bg-primary text-[#0a0a0a] font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-none items-center justify-center gap-2 hover:bg-primary-fixed-dim transition-colors pulse-border relative overflow-hidden group">
+                <button id="btn-run-live" class="hidden w-full bg-gradient-to-r from-primary to-[#2dd4bf] hover:brightness-110 text-[#022c22] font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-xl items-center justify-center gap-2 transition-all pulse-border relative overflow-hidden group shadow-[0_0_20px_rgba(78,222,163,0.4)]">
                     <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">satellite_alt</span>
                     <span id="btn-run-text">Run Live Intelligence</span>
-                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-[shine_1s_ease-in-out]"></div>
+                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 group-hover:animate-[shine_1s_ease-in-out]"></div>
                 </button>
-                <button id="btn-run-series" class="hidden w-full bg-[#c487ff] text-[#2c0051] font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-none items-center justify-center gap-2 hover:bg-[#ddb7ff] transition-colors relative overflow-hidden group">
+                <button id="btn-run-series" class="hidden w-full bg-gradient-to-r from-[#c487ff] to-[#a352ff] hover:brightness-110 text-[#2c0051] font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-xl items-center justify-center gap-2 transition-all relative overflow-hidden group shadow-[0_0_20px_rgba(196,135,255,0.4)]">
                     <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">stacked_line_chart</span>
                     <span id="btn-run-series-text">Run Period Intelligence</span>
-                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-[shine_1s_ease-in-out]"></div>
+                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 group-hover:animate-[shine_1s_ease-in-out]"></div>
                 </button>
-                <a href="overview.html" class="w-full bg-surface-container-high border border-outline/30 hover:border-primary/50 text-outline hover:text-primary font-mono text-[11px] uppercase tracking-widest py-2 px-3 text-center transition-all">
-                    Defense Command Center →
+                </button>
+                <a href="overview.html" class="w-full bg-white/5 border border-white/10 hover:border-white/30 text-white/80 hover:text-white hover:bg-white/10 font-mono text-[11px] uppercase tracking-widest py-2 px-3 text-center transition-all rounded-xl shadow-inner">
+                    Command Center →
                 </a>
             </div>
         </aside>
 
         <!-- Level 0 Canvas: Interactive Map Area -->
-        <div class="flex-1 relative bg-surface-container-lowest map-cursor overflow-hidden ml-[-1px]">
+        <div id="map-parallax-container" class="absolute inset-0 z-0 bg-surface-container-lowest map-cursor overflow-hidden">
             <!-- Satellite Basemap Layer -->
-            <div class="absolute inset-0 bg-cover bg-center opacity-70" data-alt="High-resolution tactical map of India, displaying accurate international and state borders outlined in glowing cyan/emerald vector lines." data-location="India" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBipvc13muhDU84O-GEV1lXzNJLdVGGZMDHVYs-ClBsbz5_jsoOw7toHUCCNDpUhEWbA62Y2u7JH1f7RVxYSACdkqxkyURQhw5rMILekseMAJwpo3DNKIEP0RZaljGWZFJNSt0KRZmgrnDH_v1y_7ZhS7R_yDJLcJE15D_FE7FH9VckUK2UQ2bxrysnNF9PxvA9iGUAQdVFAo5ZDqGpBf7IC_7uHftsW-kXq3fAtNFHNA0YwQUMcbD'); filter: grayscale(100%) contrast(1.2) brightness(0.8);">
+            <div id="map-parallax-bg" class="absolute inset-0 bg-cover bg-center opacity-70" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBipvc13muhDU84O-GEV1lXzNJLdVGGZMDHVYs-ClBsbz5_jsoOw7toHUCCNDpUhEWbA62Y2u7JH1f7RVxYSACdkqxkyURQhw5rMILekseMAJwpo3DNKIEP0RZaljGWZFJNSt0KRZmgrnDH_v1y_7ZhS7R_yDJLcJE15D_FE7FH9VckUK2UQ2bxrysnNF9PxvA9iGUAQdVFAo5ZDqGpBf7IC_7uHftsW-kXq3fAtNFHNA0YwQUMcbD'); filter: grayscale(100%) contrast(1.2) brightness(0.8);">
                 <!-- Map Overlay Gradient for better UI contrast -->
                 <div class="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/50 to-transparent pointer-events-none"></div>
             </div>
@@ -507,14 +508,14 @@
                             <span class="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff453a]/60 text-[#ff453a] font-mono text-[10px] uppercase tracking-widest px-3 py-1">MODEL 3 — BINARY CHANGE MASK</span>
                         </div>
                         <div class="absolute top-4 left-4 flex gap-2 pointer-events-auto flex-wrap">
-                            <button id="view-t1" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T1)">T1</button>
-                            <button id="view-t2" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Colorized satellite-style SAR (T2)">T2</button>
-                            <button id="view-optical" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="True-color optical basemap (coordinate runs only)">Optical</button>
-                            <button id="view-falsecolor" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50" title="Dual-polarization false-color (VV/VH/ratio)">False Color</button>
-                            <button id="view-heatmap" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50">Heatmap</button>
-                            <button id="view-mask" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a]/50 px-3 py-1 text-xs font-mono text-[#ff453a] hover:text-[#ff453a] hover:border-[#ff453a]" title="Exact Model 3 binary change mask from the API">Binary Mask</button>
-                            <button id="view-overlay" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-primary/50 px-3 py-1 text-xs font-mono text-primary">Overlay</button>
-                            <button id="view-boxes" class="bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000]/50 px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000]" title="Highlight major changed areas with labeled boxes">Highlight</button>
+                            <button id="view-t1" class="bg-black/40 backdrop-blur-xl border border-white/20 rounded-md px-3 py-1 text-xs font-mono text-white/80 hover:text-primary hover:border-primary/50 transition-colors shadow-lg" title="Colorized satellite-style SAR (T1)">T1</button>
+                            <button id="view-t2" class="bg-black/40 backdrop-blur-xl border border-white/20 rounded-md px-3 py-1 text-xs font-mono text-white/80 hover:text-primary hover:border-primary/50 transition-colors shadow-lg" title="Colorized satellite-style SAR (T2)">T2</button>
+                            <button id="view-optical" class="bg-black/40 backdrop-blur-xl border border-white/20 rounded-md px-3 py-1 text-xs font-mono text-white/80 hover:text-primary hover:border-primary/50 transition-colors shadow-lg" title="True-color optical basemap (coordinate runs only)">Optical</button>
+                            <button id="view-falsecolor" class="bg-black/40 backdrop-blur-xl border border-white/20 rounded-md px-3 py-1 text-xs font-mono text-white/80 hover:text-primary hover:border-primary/50 transition-colors shadow-lg" title="Dual-polarization false-color (VV/VH/ratio)">False Color</button>
+                            <button id="view-heatmap" class="bg-black/40 backdrop-blur-xl border border-white/20 rounded-md px-3 py-1 text-xs font-mono text-white/80 hover:text-primary hover:border-primary/50 transition-colors shadow-lg">Heatmap</button>
+                            <button id="view-mask" class="bg-black/40 backdrop-blur-xl border border-[#ff453a]/50 rounded-md px-3 py-1 text-xs font-mono text-[#ff453a] hover:text-[#ff453a] hover:border-[#ff453a] transition-colors shadow-lg" title="Exact Model 3 binary change mask from the API">Binary Mask</button>
+                            <button id="view-overlay" class="bg-black/40 backdrop-blur-xl border border-primary/50 rounded-md px-3 py-1 text-xs font-mono text-primary shadow-lg">Overlay</button>
+                            <button id="view-boxes" class="bg-black/40 backdrop-blur-xl border border-[#ffb000]/50 rounded-md px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000] transition-colors shadow-lg" title="Highlight major changed areas with labeled boxes">Highlight</button>
                         </div>
                     </div>
                 </div>
@@ -537,73 +538,71 @@
             </div>
 
             <!-- Floating Map Controls (Level 2 Overlays) -->
-            <div class="absolute right-6 top-6 flex flex-col gap-2">
-                <button class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Zoom In">
-                    <span class="material-symbols-outlined text-[20px]">add</span>
+            <div class="absolute right-6 top-24 flex flex-col gap-2 z-30">
+                <button class="w-12 h-12 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all pointer-events-auto" title="Zoom In">
+                    <span class="material-symbols-outlined text-[24px]">add</span>
                 </button>
-                <button class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Zoom Out">
-                    <span class="material-symbols-outlined text-[20px]">remove</span>
+                <button class="w-12 h-12 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all pointer-events-auto" title="Zoom Out">
+                    <span class="material-symbols-outlined text-[24px]">remove</span>
                 </button>
-                <div class="h-px w-full bg-outline/20 my-1"></div>
-                <button class="w-10 h-10 bg-primary/20 backdrop-blur-md border border-primary rounded-none shadow-sm text-primary flex items-center justify-center hover:bg-primary/30 transition-colors pointer-events-auto" title="Draw Bounding Box">
-                    <span class="material-symbols-outlined text-[20px]">crop_free</span>
+                <div class="h-px w-full bg-white/20 my-2 shadow-[0_1px_2px_rgba(0,0,0,0.5)]"></div>
+                <button class="w-12 h-12 bg-primary/20 backdrop-blur-3xl border border-primary/50 border-t-primary/80 border-l-primary/80 rounded-2xl shadow-[0_8px_32px_0_rgba(78,222,163,0.3)] text-primary flex items-center justify-center hover:bg-primary/30 hover:scale-105 transition-all pointer-events-auto" title="Draw Bounding Box">
+                    <span class="material-symbols-outlined text-[24px]">crop_free</span>
                 </button>
-                <a href="studio.html" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="3D Terrain Studio">
-                    <span class="material-symbols-outlined text-[20px]">view_in_ar</span>
+                <a href="studio.html" class="w-12 h-12 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all pointer-events-auto mt-2" title="3D Terrain Studio">
+                    <span class="material-symbols-outlined text-[24px]">view_in_ar</span>
                 </a>
-                <a href="analytics.html" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Cluster Analytics">
-                    <span class="material-symbols-outlined text-[20px]">analytics</span>
+                <a href="analytics.html" class="w-12 h-12 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all pointer-events-auto" title="Cluster Analytics">
+                    <span class="material-symbols-outlined text-[24px]">analytics</span>
                 </a>
             </div>
 
             <!-- Results Metrics Panel (Hidden by default) -->
-            <div class="absolute left-6 top-6 w-64 bg-[#0a0a0a]/90 backdrop-blur-xl border border-primary/30 p-4 font-mono text-[10px] z-30 hidden" id="results-panel">
+            <div class="absolute left-1/2 -translate-x-1/2 top-24 w-72 bg-black/40 backdrop-blur-xl border border-primary/30 p-4 font-mono text-[10px] z-30 hidden rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]" id="results-panel">
                 <div class="flex justify-between items-center mb-3 border-b border-primary/20 pb-2">
                     <span class="text-primary tracking-widest uppercase font-ui-semibold text-xs">Analysis Complete</span>
                     <span class="material-symbols-outlined text-primary text-[16px]">check_circle</span>
                 </div>
-                <div class="flex flex-col gap-2 text-outline">
-                    <div class="flex justify-between"><span class="uppercase">Execution Time</span><span id="metric-time" class="text-on-surface">-- s</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Total Pixels</span><span id="metric-total" class="text-on-surface">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Changed Pixels</span><span id="metric-changed" class="text-primary font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Change %</span><span id="metric-percent" class="text-primary font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="metric-clusters" class="text-on-surface">--</span></div>
+                <div class="flex flex-col gap-2 text-white/80">
+                    <div class="flex justify-between"><span class="uppercase">Execution Time</span><span id="metric-time" class="text-white">-- s</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Total Pixels</span><span id="metric-total" class="text-white">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Changed Pixels</span><span id="metric-changed" class="text-primary font-bold drop-shadow-[0_0_5px_rgba(78,222,163,0.5)]">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Change %</span><span id="metric-percent" class="text-primary font-bold drop-shadow-[0_0_5px_rgba(78,222,163,0.5)]">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="metric-clusters" class="text-white">--</span></div>
                 </div>
             </div>
 
             <!-- TEMPORARY DEBUG: Model 3 binary change mask inspection (hidden until a real result loads) -->
-            <div class="absolute left-6 bottom-6 w-72 bg-[#0a0a0a]/90 backdrop-blur-xl border border-[#ff453a]/40 p-4 font-mono text-[10px] z-30 hidden" id="mask-debug-panel">
+            <div class="absolute right-20 bottom-6 w-72 bg-black/40 backdrop-blur-xl border border-[#ff453a]/40 p-4 font-mono text-[10px] z-30 hidden rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]" id="mask-debug-panel">
                 <div class="flex justify-between items-center mb-3 border-b border-[#ff453a]/30 pb-2">
-                    <span class="text-[#ff453a] tracking-widest uppercase font-ui-semibold text-xs">Model 3 — Binary Change Mask</span>
-                    <span class="text-[#ff453a] text-[9px] border border-[#ff453a]/50 px-1.5 py-0.5 tracking-widest">DEBUG</span>
+                    <span class="text-[#ff453a] tracking-widest uppercase font-ui-semibold text-xs drop-shadow-[0_0_5px_rgba(255,69,58,0.5)]">Model 3 — Binary Change Mask</span>
+                    <span class="text-[#ff453a] text-[9px] border border-[#ff453a]/50 px-1.5 py-0.5 tracking-widest rounded-sm">DEBUG</span>
                 </div>
-                <div class="flex flex-col gap-2 text-outline">
+                <div class="flex flex-col gap-2 text-white/80">
                     <div class="flex justify-between"><span class="uppercase">Changed Pixels</span><span id="dbg-changed" class="text-[#ff453a] font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Valid Pixels</span><span id="dbg-valid" class="text-on-surface">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Valid Pixels</span><span id="dbg-valid" class="text-white">--</span></div>
                     <div class="flex justify-between"><span class="uppercase">Change</span><span id="dbg-change" class="text-[#ff453a] font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Threshold</span><span id="dbg-threshold" class="text-on-surface">--</span></div>
-                    <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="dbg-clusters" class="text-on-surface">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Threshold</span><span id="dbg-threshold" class="text-white">--</span></div>
+                    <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="dbg-clusters" class="text-white">--</span></div>
                 </div>
-                <div class="mt-3 pt-2 border-t border-[#ff453a]/20 text-[9px] text-outline/70 leading-tight">
+                <div class="mt-3 pt-2 border-t border-[#ff453a]/20 text-[9px] text-white/50 leading-tight">
                     Exact mask from POST /detect/change-detection · not recomputed client-side
                 </div>
             </div>
 
             <!-- Coordinate Readout Pill -->
-            <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none px-6 py-2 shadow-sm flex items-center gap-6 pointer-events-none">
-                <div class="container-marker marker-tl"></div><div class="container-marker marker-tr"></div>
-                <div class="container-marker marker-bl"></div><div class="container-marker marker-br"></div>
-                <div class="flex items-center gap-2 text-outline font-mono text-xs">
+            <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-white/10 via-white/5 to-white/10 backdrop-blur-3xl border border-white/20 border-t-white/40 rounded-full px-8 py-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] flex items-center gap-6 pointer-events-none z-30">
+                <div class="flex items-center gap-2 text-white font-mono text-xs drop-shadow-md">
                     <span class="material-symbols-outlined text-[16px]">my_location</span>
                     <span id="display-lat">LAT: 28.6139° N</span>
                 </div>
-                <div class="w-px h-4 bg-outline/30"></div>
-                <div class="flex items-center gap-2 text-outline font-mono text-xs">
+                <div class="w-px h-5 bg-white/20 shadow-[1px_0_2px_rgba(0,0,0,0.5)]"></div>
+                <div class="flex items-center gap-2 text-white font-mono text-xs drop-shadow-md">
                     <span id="display-lng">LNG: 77.2090° E</span>
                 </div>
-                <div class="w-px h-4 bg-outline/30"></div>
-                <div class="flex items-center gap-2 text-primary font-mono text-xs uppercase tracking-widest">
-                    <span>ZOOM: 8z</span>
+                <div class="w-px h-5 bg-white/20 shadow-[1px_0_2px_rgba(0,0,0,0.5)]"></div>
+                <div class="flex items-center gap-2 text-primary font-mono text-xs uppercase tracking-widest drop-shadow-[0_0_8px_rgba(78,222,163,0.8)] font-bold">
+                    <span>ZOOM: 8Z</span>
                 </div>
             </div>
 
@@ -611,9 +610,9 @@
             <div class="absolute top-0 left-0 w-1 h-full bg-primary/40 shadow-[0_0_20px_rgba(78,222,163,0.8)] z-20 pointer-events-none hidden" id="radar-sweep"></div>
             
             <!-- Terminal Log Overlay -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 bg-[#0a0a0a]/90 border border-primary/30 p-4 font-mono text-[10px] text-primary z-30 hidden backdrop-blur-xl" id="terminal-overlay">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 bg-black/40 border border-white/20 p-4 font-mono text-[10px] text-primary z-40 hidden backdrop-blur-xl rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]" id="terminal-overlay">
                 <div class="flex justify-between mb-2 border-b border-primary/20 pb-1">
-                    <span class="tracking-widest uppercase">System Log</span>
+                    <span class="tracking-widest uppercase drop-shadow-[0_0_5px_rgba(78,222,163,0.5)]">System Log</span>
                     <span class="animate-pulse">_</span>
                 </div>
                 <div class="flex flex-col gap-1" id="log-content"></div>
@@ -650,8 +649,8 @@
     <script src="assets/sar-store.js"></script>
     <script>
     (function() {
-        const map = document.querySelector('main > div.flex-1');
-        const roiBox = map.querySelector('.border-primary.bg-primary\\/10');
+        const map = document.querySelector('#map-parallax-container');
+        const roiBox = document.querySelector('#demo-bbox > div');
         const areaBadge = roiBox.querySelector('span');
         const btnCheckAvail = document.getElementById('btn-check-availability');
         const runBtn = document.getElementById('btn-run-live');
@@ -1347,14 +1346,19 @@
                 const name = btn.innerText.trim();
                 const loc = locations[name];
                 if (!loc) return;
-                const bg = map.querySelector('.bg-cover');
-                bg.style.transition = 'all 1.8s cubic-bezier(0.16, 1, 0.3, 1)';
-                bg.style.backgroundPosition = loc.pos;
+                const bg = document.getElementById('map-parallax-bg');
+                if (bg) {
+                    bg.style.transition = 'background-position 1.8s cubic-bezier(0.16, 1, 0.3, 1)';
+                    bg.style.backgroundPosition = loc.pos;
+                    setTimeout(() => bg.style.transition = 'transform 0.1s ease-out', 1800);
+                }
                 latDisplay.innerText = `LAT: ${loc.lat}`;
                 lngDisplay.innerText = `LNG: ${loc.lng}`;
             });
         });
     })();
+
+
     </script>
 </body>
 </html>
