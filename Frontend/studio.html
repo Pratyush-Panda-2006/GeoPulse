@@ -340,14 +340,30 @@
                     </div>
                 </div>
 
-                <div class="absolute top-4 right-4 z-30 flex gap-2">
-                    <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 p-1 flex gap-1 flex-col">
-                        <button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Zoom In">
+                <!-- Viewer Tools -->
+                <div class="absolute bottom-4 right-4 flex flex-col gap-2 z-20">
+                    <!-- Opacity controls -->
+                    <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-xl p-2 flex flex-col items-center gap-2">
+                        <div class="h-24 w-8 relative flex justify-center">
+                            <input type="range" id="opacity-slider" class="vertical-slider absolute top-10" min="0" max="100" value="100">
+                        </div>
+                        <span id="opacity-val" class="text-[10px] font-mono text-outline font-medium tracking-wider">100%</span>
+                    </div>
+                    
+                    <!-- Zoom controls -->
+                    <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-xl flex flex-col overflow-hidden">
+                        <button id="zoom-in-btn" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Zoom In">
                             <span class="material-symbols-outlined text-[20px]">add</span>
                         </button>
-                        <button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Zoom Out">
+                        <div class="w-full h-px bg-outline/20"></div>
+                        <button id="zoom-out-btn" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Zoom Out">
                             <span class="material-symbols-outlined text-[20px]">remove</span>
                         </button>
+                    </div>
+                </div>
+
+                <div class="absolute top-4 right-4 z-30 flex gap-2">
+                    <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 p-1 flex gap-1 flex-col">
                         <a href="explorer.html" class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Return to Full Explorer">
                             <span class="material-symbols-outlined text-[20px]">my_location</span>
                         </a>
@@ -370,10 +386,10 @@
                     <div class="absolute inset-0 z-20 pointer-events-none opacity-60" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\' preserveAspectRatio=\'none\'><path d=\'M10,20 Q30,10 50,30 T90,20 M20,40 Q40,60 70,50 T90,80 M10,80 Q30,70 50,90 T80,100\' stroke=\'%234edea3\' stroke-width=\'0.5\' fill=\'none\' vector-effect=\'non-scaling-stroke\' opacity=\'0.7\'/></svg>');"></div>
 
                     <!-- T1 Image (Left) -->
-                    <div class="absolute inset-0 bg-cover bg-center" data-alt="Raw Baseline SAR Image" id="t1-image-bg" style=""></div>
+                    <div class="absolute inset-0 bg-cover bg-no-repeat bg-center" data-alt="Raw Baseline SAR Image" id="t1-image-bg" style=""></div>
 
                     <!-- T2 Image (Right) with Clip -->
-                    <div class="absolute inset-0 bg-cover bg-center" data-alt="Multi-temporal SAR Image" id="t2-image-clip" style="clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);">
+                    <div class="absolute inset-0 bg-cover bg-no-repeat bg-center" data-alt="Multi-temporal SAR Image" id="t2-image-clip" style="clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);">
                         <!-- Heatmap Overlay Simulation -->
                         <div class="absolute inset-0 mix-blend-screen opacity-50 colormap-overlay hidden" id="heatmap-overlay" style="background: linear-gradient(to top right, transparent, rgba(255,0,0,0.2), rgba(0,255,0,0.2)); filter: hue-rotate(0deg);"></div>
                     </div>
@@ -382,7 +398,7 @@
                     <div class="split-slider-thumb" id="split-slider"></div>
 
                     <!-- Coordinate Readout -->
-                    <div class="absolute bottom-4 right-4 bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 px-4 py-1 z-30 flex items-center gap-3">
+                    <div class="absolute bottom-4 right-20 bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 px-4 py-1 z-30 flex items-center gap-3">
                         <span class="font-mono text-xs text-primary tracking-widest uppercase">18°56'43"N 72°57'58"E (MUMBAI PORT)</span>
                         <a href="analytics.html" class="text-on-surface hover:text-primary text-xs underline font-mono">View Audit →</a>
                     </div>
@@ -432,9 +448,9 @@
                         <div class="flex flex-col gap-2">
                             <div class="flex justify-between items-center">
                                 <label class="font-mono text-xs text-on-surface-variant uppercase tracking-widest">Opacity</label>
-                                <span class="font-mono text-xs text-primary" id="opacity-val">100%</span>
+                                <span class="font-mono text-xs text-primary" id="opacity-val-ui">100%</span>
                             </div>
-                            <input id="opacity-slider" class="w-full appearance-none bg-transparent" max="100" min="0" type="range" value="100">
+                            <input id="opacity-slider-ui" class="w-full appearance-none bg-transparent" max="100" min="0" type="range" value="100">
                         </div>
                         <div class="flex flex-col gap-2">
                             <div class="flex justify-between items-center">
@@ -517,6 +533,14 @@
 
             t1Bg.style.backgroundImage = `url('${previews.t1}')`;
             t2Clip.style.backgroundImage = `url('${previews.t2}')`;
+
+            const img = new Image();
+            img.onload = () => {
+                imageW = img.naturalWidth || 1;
+                imageH = img.naturalHeight || 1;
+                updateZoomAndPan();
+            };
+            img.src = previews.t1;
 
             // Populate Metrics
             const fmtInt = (n) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString() : '--';
@@ -610,32 +634,25 @@
                     t2Clip.style.backgroundImage = `url('${previews.t2}')`;
                     heatmapOverlay.classList.add('hidden');
                 } else if (layer === 'optical') {
-                    // True-color optical basemap (coordinate runs only); fall back
-                    // to the colorized satellite SAR if somehow absent.
                     t2Clip.style.backgroundImage = `url('${previews.optical || previews.t2}')`;
                     heatmapOverlay.classList.add('hidden');
                 } else if (layer === 'grayscale') {
-                    // Classic single-channel SAR intensity (VV), on demand.
                     t2Clip.style.backgroundImage = `url('${previews.grayscaleT2 || previews.t2}')`;
                     heatmapOverlay.classList.add('hidden');
                 } else if (layer === 'falsecolor') {
-                    // Optional dual-pol false color; fall back to satellite if absent.
                     t2Clip.style.backgroundImage = `url('${previews.falseColorT2 || previews.t2}')`;
                     heatmapOverlay.classList.add('hidden');
                 } else if (layer === 'heatmap') {
                     t2Clip.style.backgroundImage = `url('${previews.heatmap}')`;
                     heatmapOverlay.classList.remove('hidden');
                 } else if (layer === 'mask') {
-                    t2Clip.style.backgroundImage = `url('${previews.mask}')`;
+                    t2Clip.style.backgroundImage = `url('${previews.mask || previews.t2}')`;
                     heatmapOverlay.classList.add('hidden');
                 } else if (layer === 'overlay') {
                     t2Clip.style.backgroundImage = `url('${previews.overlay}')`;
                     heatmapOverlay.classList.add('hidden');
                 } else if (layer === 'boxes') {
-                    // "Highlight Changes": labeled severity boxes. Prefer the boxes
-                    // baked over the true-color optical when available (clearest),
-                    // else over the colorized satellite SAR.
-                    t2Clip.style.backgroundImage = `url('${previews.opticalBoxes || previews.boxes || previews.overlay}')`;
+                    t2Clip.style.backgroundImage = `url('${previews.opticalBoxes || previews.boxes || previews.overlay || previews.t2}')`;
                     heatmapOverlay.classList.add('hidden');
                 }
 
@@ -684,10 +701,11 @@
                         // centroid_xy is (col, row) = (x, y).
                         const cx = Number(region.centroid_xy[0]);
                         const cy = Number(region.centroid_xy[1]);
-                        const bgX = Math.max(0, Math.min(100, (cx / W) * 100));
-                        const bgY = Math.max(0, Math.min(100, (cy / H) * 100));
-                        const bgPos = `${bgX}% ${bgY}%`;
-                        const bgSize = '180%'; // gentle zoom — keeps the JPEG crisp
+                        basePosX = Math.max(0, Math.min(100, (cx / W) * 100));
+                        basePosY = Math.max(0, Math.min(100, (cy / H) * 100));
+                        panX = 0;
+                        panY = 0;
+                        currentZoom = 180; // gentle zoom — keeps the JPEG crisp
 
                         [t1Bg, t2Clip].forEach(el => {
                             el.style.transition = 'background-size 1.2s ease-in-out, background-position 1.2s ease-in-out';
@@ -695,13 +713,10 @@
                         });
                         // Trigger the transition after the swap has painted.
                         setTimeout(() => {
-                            t1Bg.style.backgroundPosition = bgPos;
-                            t1Bg.style.backgroundSize = bgSize;
-                            t2Clip.style.backgroundPosition = bgPos;
-                            t2Clip.style.backgroundSize = bgSize;
+                            updateZoomAndPan();
                         }, 50);
 
-                        const coordDisplay = document.querySelector('.absolute.bottom-4.right-4 span');
+                        const coordDisplay = document.querySelector('.absolute.bottom-4.right-20 span');
                         if (coordDisplay) {
                             coordDisplay.innerText = `FOCUS: CLUSTER ${targetRegionId} | Px: ${cx.toFixed(0)}, ${cy.toFixed(0)}`;
                         }
@@ -714,10 +729,83 @@
         // Simple Split Slider Logic
         const container = document.getElementById('split-view-container');
         const slider = document.getElementById('split-slider');
+        const t1Bg = document.getElementById('t1-image-bg');
         const t2Clip = document.getElementById('t2-image-clip');
+
+        // Zoom state and logic
+        let currentZoom = 100;
+        let basePosX = 50;
+        let basePosY = 50;
+        let panX = 0;
+        let panY = 0;
+        let imageW = 1;
+        let imageH = 1;
+        
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+
+        const updateZoomAndPan = () => {
+            const rect = container.getBoundingClientRect();
+            // Calculate actual rendered dimensions based on aspect ratio
+            const renderW = rect.width * (currentZoom / 100);
+            const renderH = renderW * (imageH / imageW);
+            
+            // Allow panning only if the rendered image exceeds container bounds
+            // This allows vertical panning at 100% zoom if the image is tall,
+            // while strictly preventing empty space from showing.
+            const maxPanX = Math.max(0, (renderW - rect.width) / 2);
+            const maxPanY = Math.max(0, (renderH - rect.height) / 2);
+            
+            panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+            panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+
+            t1Bg.style.backgroundSize = `${currentZoom}%`;
+            t2Clip.style.backgroundSize = `${currentZoom}%`;
+            const bgPosStr = `calc(${basePosX}% + ${panX}px) calc(${basePosY}% + ${panY}px)`;
+            t1Bg.style.backgroundPosition = bgPosStr;
+            t2Clip.style.backgroundPosition = bgPosStr;
+        };
+
+        if (zoomInBtn) {
+            zoomInBtn.addEventListener('click', () => {
+                t1Bg.style.transition = 'background-size 0.2s ease-out';
+                t2Clip.style.transition = 'background-size 0.2s ease-out';
+                currentZoom = Math.min(currentZoom + 50, 500);
+                updateZoomAndPan();
+            });
+        }
+        
+        if (zoomOutBtn) {
+            zoomOutBtn.addEventListener('click', () => {
+                t1Bg.style.transition = 'background-size 0.2s ease-out';
+                t2Clip.style.transition = 'background-size 0.2s ease-out';
+                currentZoom = Math.max(currentZoom - 50, 100);
+                updateZoomAndPan();
+            });
+        }
 
         let isDragging = false;
         let sliderReqId = null;
+        let isMapPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let startPanX = 0;
+        let startPanY = 0;
+
+        container.addEventListener('mousedown', (e) => {
+            if (e.target.closest('#split-slider') || e.target.closest('button') || e.target.closest('input')) return;
+            
+            isMapPanning = true;
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            startPanX = panX;
+            startPanY = panY;
+            container.style.cursor = 'grabbing';
+            // Disable transition during drag for zero latency
+            t1Bg.style.transition = 'none';
+            t2Clip.style.transition = 'none';
+            e.preventDefault();
+        });
 
         slider.addEventListener('mousedown', (e) => {
             e.preventDefault(); // Prevent native drag/select
@@ -733,9 +821,21 @@
                 document.body.style.userSelect = '';
                 if (sliderReqId) cancelAnimationFrame(sliderReqId);
             }
+            if (isMapPanning) {
+                isMapPanning = false;
+                container.style.cursor = 'default';
+            }
         });
 
         document.addEventListener('mousemove', (e) => {
+            if (isMapPanning) {
+                const dx = e.clientX - panStartX;
+                const dy = e.clientY - panStartY;
+                panX = startPanX + dx;
+                panY = startPanY + dy;
+                updateZoomAndPan();
+            }
+
             if (!isDragging) return;
 
             if (sliderReqId) cancelAnimationFrame(sliderReqId);
@@ -754,14 +854,25 @@
             });
         });
 
-        // Opacity Slider
+        // Opacity Slider Logic for both main view and sidebar
         const opacitySlider = document.getElementById('opacity-slider');
         const opacityVal = document.getElementById('opacity-val');
-        if(opacitySlider && opacityVal) {
-            opacitySlider.addEventListener('input', (e) => {
-                opacityVal.innerText = `${e.target.value}%`;
-                t2Clip.style.opacity = e.target.value / 100;
-            });
+        const opacitySliderUi = document.getElementById('opacity-slider-ui');
+        const opacityValUi = document.getElementById('opacity-val-ui');
+
+        const updateOpacity = (val) => {
+            if (opacitySlider) opacitySlider.value = val;
+            if (opacityVal) opacityVal.innerText = `${val}%`;
+            if (opacitySliderUi) opacitySliderUi.value = val;
+            if (opacityValUi) opacityValUi.innerText = `${val}%`;
+            t2Clip.style.opacity = val / 100;
+        };
+
+        if(opacitySlider) {
+            opacitySlider.addEventListener('input', (e) => updateOpacity(e.target.value));
+        }
+        if(opacitySliderUi) {
+            opacitySliderUi.addEventListener('input', (e) => updateOpacity(e.target.value));
         }
 
         // Colormap Toggle Logic

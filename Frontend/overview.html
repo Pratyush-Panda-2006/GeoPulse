@@ -201,7 +201,7 @@
     </div>
 
     <!-- TopNavBar -->
-    <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3">
+    <nav class="fixed top-0 left-0 right-0 z-[150] flex justify-between items-center bg-transparent border-transparent px-6 py-3 transition-all duration-300 hover:bg-[#0a0a0a]/80 hover:backdrop-blur-md">
         <a href="index.html" class="font-headline-md text-[18px] md:text-[20px] text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity">
             <span class="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse"></span>
             <span>GEOPULSE</span>
@@ -230,145 +230,159 @@
         </div>
     </nav>
 
+    <!-- Tactical Hero (Parallax 3D) - Full Screen -->
+    <header id="parallax-hero" class="relative w-full h-screen overflow-hidden bg-gradient-to-b from-sky-900 to-sky-700 cursor-crosshair">
+        <!-- Vignette overlay -->
+        <div class="absolute inset-0 z-[100] pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0)_65%,rgba(0,0,0,0.7))]"></div>
+        
+        <!-- Parallax Image Layers Container -->
+        <div id="parallax-layers-container" class="absolute inset-0 z-0"></div>
+        
+        <!-- Foreground Text & Buttons -->
+        <div id="parallax-text" class="absolute z-[101] text-white text-center pointer-events-auto transition-transform duration-[450ms] ease-out flex flex-col items-center justify-center w-full max-w-[800px] px-4" style="top: calc(50% - 20px); left: 50%; transform: translate(-50%, -50%);">
+            <h1 class="font-black text-[5rem] md:text-[8rem] lg:text-[11rem] leading-[0.8] drop-shadow-2xl tracking-tighter" style="font-family: 'Inter', sans-serif;">GEOPULSE</h1>
+            <p class="font-accent-italic text-accent-italic text-white/90 max-w-2xl mt-6 drop-shadow-md text-lg">RISAT-2B / EOS-04 Multi-Temporal Change Detection</p>
+            <div class="flex flex-wrap justify-center gap-4 mt-8 drop-shadow-xl">
+                <a href="explorer.html" class="bg-primary text-[#0a0a0a] px-6 py-2.5 font-ui-semibold uppercase tracking-widest hover:bg-primary-fixed-dim transition-all flex items-center gap-2 shadow-lg rounded-sm">
+                    <span class="material-symbols-outlined text-[18px]">satellite_alt</span> Open Explorer
+                </a>
+                <a href="studio.html" class="bg-surface-container-high/80 backdrop-blur-sm border border-outline/50 hover:border-white text-white px-6 py-2.5 font-ui-semibold uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg rounded-sm">
+                    <span class="material-symbols-outlined text-[18px]">view_in_ar</span> 3D Terrain Studio
+                </a>
+            </div>
+        </div>
+
+        <script>
+            (function() {
+                const layers = [
+                  { src: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=3200&q=80', speedX: 0.03, speedY: 0.038, speedZ: 0, rotation: 0, distance: -200, zIndex: 1, initialTop: 'calc(50% - 50px)', initialLeft: 'calc(50% + 0px)', width: '3200px', className: '' },
+                  { src: 'https://i.ibb.co/DHhNwG0X/fog-7.png', speedX: 0.27, speedY: 0.32, speedZ: 0, rotation: 0, distance: 850, zIndex: 2, initialTop: 'calc(50% - 100px)', initialLeft: 'calc(50% + 300px)', width: '1900px', className: '' },
+                  { src: 'https://i.ibb.co/4gT3LR9K/mountain-10.png', speedX: 0.095, speedY: 0.005, speedZ: 0, rotation: 0, distance: 1110, zIndex: 3, initialTop: 'calc(50% + 169px)', initialLeft: 'calc(50% + 330px)', width: '1200px', className: '' },
+                  { src: 'https://i.ibb.co/rW6cjXV/fog-6.png', speedX: 0.25, speedY: 0.28, speedZ: 0, rotation: 0, distance: 1400, zIndex: 4, initialTop: 'calc(50% + 285px)', initialLeft: 'calc(50%)', width: '2200px', className: 'opacity-30' },
+                  { src: 'https://i.ibb.co/zHWDdxRR/mountain-9.png', speedX: 0.125, speedY: 0.155, speedZ: 0.15, rotation: 0.02, distance: 1700, zIndex: 5, initialTop: 'calc(50% + 313px)', initialLeft: 'calc(50% - 557px)', width: '670px', className: '' },
+                  { src: 'https://i.ibb.co/jFSMJ2t/fog-5.png', speedX: 0.16, speedY: 0.105, speedZ: 0, rotation: 0, distance: 1900, zIndex: 7, initialTop: 'calc(50% + 360px)', initialLeft: 'calc(50% + 40px)', width: '650px', className: '' },
+                  { src: 'https://i.ibb.co/Fq5CHqZ6/mountain-7.png', speedX: 0.1, speedY: 0.1, speedZ: 0, rotation: 0.09, distance: 2000, zIndex: 19, initialTop: 'calc(50% + 223px)', initialLeft: 'calc(50% + 495px)', width: '738px', className: '' },
+                  { src: 'https://i.ibb.co/N2TjCDLQ/mountain-6.png', speedX: 0.065, speedY: 0.05, speedZ: 0.05, rotation: 0.12, distance: 2300, zIndex: 18, initialTop: 'calc(50% + 120px)', initialLeft: 'calc(50% + 590px)', width: '408px', className: '' },
+                  { src: 'https://i.ibb.co/23Xc3QwX/fog-4.png', speedX: 0.135, speedY: 0.1, speedZ: 0, rotation: 0, distance: 2400, zIndex: 11, initialTop: 'calc(50% + 223px)', initialLeft: 'calc(50% + 460px)', width: '590px', className: 'opacity-50' },
+                  { src: 'https://i.ibb.co/SSfDbsF/mountain-5.png', speedX: 0.08, speedY: 0.05, speedZ: 0.13, rotation: 0.1, distance: 2550, zIndex: 12, initialTop: 'calc(50% + 320px)', initialLeft: 'calc(50% + 230px)', width: '725px', className: '' },
+                  { src: 'https://i.ibb.co/chZkMKzX/fog-3.png', speedX: 0.11, speedY: 0.018, speedZ: 0, rotation: 0, distance: 2800, zIndex: 13, initialTop: 'calc(50% + 210px)', initialLeft: 'calc(50% + 5px)', width: '1600px', className: '' },
+                  { src: 'https://i.ibb.co/39PKgGNS/mountain-4.png', speedX: 0.059, speedY: 0.024, speedZ: 0.35, rotation: 0.14, distance: 3200, zIndex: 15, initialTop: 'calc(50% + 196px)', initialLeft: 'calc(50% - 698px)', width: '1100px', className: '' },
+                  { src: 'https://i.ibb.co/rKHGSD9S/mountain-3.png', speedX: 0.04, speedY: 0.018, speedZ: 0.32, rotation: 0.05, distance: 3400, zIndex: 20, initialTop: 'calc(50% - 20px)', initialLeft: 'calc(50% + 750px)', width: '630px', className: '' },
+                  { src: 'https://i.ibb.co/bj0s7gRP/fog-2.png', speedX: 0.15, speedY: 0.0115, speedZ: 0, rotation: 0, distance: 3600, zIndex: 16, initialTop: 'calc(50% - 20px)', initialLeft: 'calc(50% + 698px)', width: '1100px', className: '' },
+                  { src: 'https://i.ibb.co/7tHMfwZH/mountain-2.png', speedX: 0.0235, speedY: 0.013, speedZ: 0.42, rotation: 0.15, distance: 3800, zIndex: 17, initialTop: 'calc(50% + 256px)', initialLeft: 'calc(50% + 528px)', width: '800px', className: '' },
+                  { src: 'https://i.ibb.co/Knh5tBS/mountain-1.png', speedX: 0.027, speedY: 0.018, speedZ: 0.53, rotation: 0.2, distance: 4000, zIndex: 18, initialTop: 'calc(50% + 196px)', initialLeft: 'calc(50% - 728px)', width: '1100px', className: '' },
+                  { src: 'https://i.ibb.co/Y41vTxSN/fog-1.png', speedX: 0.12, speedY: 0.01, speedZ: 0, rotation: 0, distance: 4200, zIndex: 21, initialTop: 'calc(100% - 355px)', initialLeft: 'calc(50% + 100px)', width: '1900px', className: 'opacity-50' }
+                ];
+
+                const container = document.getElementById('parallax-layers-container');
+                const imgElements = [];
+
+                layers.forEach(layer => {
+                    const img = document.createElement('img');
+                    img.src = layer.src;
+                    // Map Tailwind classes directly
+                    img.className = `absolute pointer-events-none transition-transform duration-[450ms] ease-out ${layer.className || ''}`;
+                    img.style.width = layer.width;
+                    img.style.top = layer.initialTop;
+                    img.style.left = layer.initialLeft;
+                    img.style.zIndex = layer.zIndex;
+                    img.style.transform = 'translate(-50%, -50%)';
+                    container.appendChild(img);
+                    imgElements.push({ el: img, data: layer });
+                });
+
+                const textRef = document.getElementById('parallax-text');
+                const heroElement = document.getElementById('parallax-hero');
+
+                heroElement.addEventListener('mousemove', (e) => {
+                    const rect = heroElement.getBoundingClientRect();
+                    const clientX = e.clientX - rect.left;
+                    const clientY = e.clientY - rect.top;
+                    
+                    const newXValue = clientX - rect.width / 2;
+                    const newYValue = clientY - rect.height / 2;
+                    const newRotateDegree = (newXValue / (rect.width / 2)) * 20;
+
+                    imgElements.forEach(item => {
+                        const computedLeft = parseFloat(getComputedStyle(item.el).left);
+                        if(isNaN(computedLeft)) return;
+                        const isInLeft = computedLeft < rect.width / 2 ? 1 : -1;
+                        const zValue = (clientX - computedLeft) * isInLeft * 0.1;
+                        
+                        item.el.style.transform = `perspective(2300px) translateZ(${zValue * item.data.speedZ}px) rotateY(${newRotateDegree * item.data.rotation}deg) translateX(calc(-50% + ${-newXValue * item.data.speedX}px)) translateY(calc(-50% + ${newYValue * item.data.speedY}px))`;
+                    });
+
+                    if (textRef) {
+                        const computedLeft = parseFloat(getComputedStyle(textRef).left);
+                        const isInLeft = computedLeft < rect.width / 2 ? 1 : -1;
+                        const zValue = (clientX - computedLeft) * isInLeft * 0.1;
+                        textRef.style.transform = `perspective(2300px) translateZ(${zValue * 0.08}px) rotateY(${newRotateDegree * 0.04}deg) translateX(calc(-50% + ${-newXValue * 0.07}px)) translateY(calc(-50% + ${newYValue * 0.05}px))`;
+                    }
+                });
+            })();
+        </script>
+    </header>
+
     <!-- Main Content -->
-    <main class="pt-24 pb-32 px-margin relative z-10 grid grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-gutter max-w-[1920px] mx-auto">
-        <!-- Tactical Hero -->
-        <header class="col-span-1 md:col-span-8 lg:col-span-12 mb-12 relative border border-outline/15 bg-[#0a0a0a]/60 backdrop-blur-2xl p-8 rounded-none overflow-hidden">
-            <div class="container-marker marker-tl"></div>
-            <div class="container-marker marker-tr"></div>
-            <div class="container-marker marker-bl"></div>
-            <div class="container-marker marker-br"></div>
-            <div class="absolute inset-0 z-0 opacity-40">
-                <div class="bg-cover bg-center w-full h-full" data-alt="A cinematic, high-contrast black and white satellite view of a rugged terrain." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBYpvBteGF0qdGBOlm0HQwvQB3F2pS0YzHMEy0R6XYY2UElTwO6L26cte8znQn2byH2cT01CFresEyh3tbzY5jmxSQwrCOtlPNOQ7CLGCWJ5JjH0y14OpyrJHQmqi3RTsK8UzfpGs4Iqc52BkIh_qiO7Km2FcY2uLOg_u_GVBmOHLe3Ui3f5niag6YtdxMaH_kvGkJvGVUWuJHLKMsH6xnqxJw1jkvllF0iOaqAGF4hWiFlWB9ivUpM')"></div>
-                <div class="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
-            </div>
-            <div class="relative z-10 flex flex-col justify-end min-h-[300px]">
-                <div class="flex flex-wrap items-center gap-3 mb-3">
-                    <span class="bg-primary/20 border border-primary text-primary px-3 py-1 font-mono text-xs uppercase tracking-widest">DEFENSE MISSION READY</span>
-                    <span class="bg-surface-container-high border border-outline/20 text-outline px-3 py-1 font-mono text-xs uppercase tracking-widest">ORBITAL PASS: RISAT-2B</span>
+    <main class="pt-16 pb-32 px-margin relative z-10 grid grid-cols-1 md:grid-cols-2 gap-gutter max-w-[1920px] mx-auto">
+        <!-- Metrics Strip -->
+        <div class="border border-outline/15 bg-[#0a0a0a]/60 backdrop-blur-2xl p-6 relative">
+            <div class="container-marker marker-tl"></div><div class="container-marker marker-tr"></div>
+            <div class="container-marker marker-bl"></div><div class="container-marker marker-br"></div>
+            <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2 mb-4">Executive Metrics</h3>
+            <div class="flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-outline/15 pb-2 border-dotted">
+                    <span class="font-mono text-sm text-on-surface-variant">AREA ANALYZED</span>
+                    <span class="font-mono font-semibold text-primary">3,287,263 km²</span>
                 </div>
-                <h1 class="font-headline-lg-mobile md:font-display-lg text-headline-lg-mobile md:text-display-lg text-on-surface uppercase mb-4 shadow-black drop-shadow-lg">DEFENSE COMMAND // SAR INTELLIGENCE</h1>
-                <p class="font-accent-italic text-accent-italic text-on-surface-variant max-w-2xl">RISAT-2B / EOS-04 Multi-Temporal Change Detection &amp; Tactical Monitoring</p>
-                <div class="flex flex-wrap gap-4 mt-6">
-                    <a href="explorer.html" class="bg-primary text-[#0a0a0a] px-6 py-2.5 font-ui-semibold uppercase tracking-widest hover:bg-primary-fixed-dim transition-all flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">satellite_alt</span> Open Explorer
-                    </a>
-                    <a href="studio.html" class="bg-surface-container-high border border-outline/30 hover:border-primary/50 text-on-surface hover:text-primary px-6 py-2.5 font-ui-semibold uppercase tracking-widest transition-all flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">view_in_ar</span> 3D Terrain Studio
-                    </a>
-                    <a href="analytics.html" class="bg-surface-container-high border border-outline/30 hover:border-primary/50 text-on-surface hover:text-primary px-6 py-2.5 font-ui-semibold uppercase tracking-widest transition-all flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">insights</span> Cluster Audit
-                    </a>
+                <div class="flex justify-between items-center border-b border-outline/15 pb-2 border-dotted">
+                    <span class="font-mono text-sm text-on-surface-variant">CHANGE DETECTION</span>
+                    <span class="font-mono font-semibold text-error">14.2%</span>
+                </div>
+                <div class="flex justify-between items-center pb-2">
+                    <span class="font-mono text-sm text-on-surface-variant">CONFIDENCE LEVEL</span>
+                    <span class="font-mono font-semibold text-primary">98.9%</span>
                 </div>
             </div>
-        </header>
+        </div>
 
-        <!-- Tactical Explorer Section -->
-        <section class="col-span-1 md:col-span-8 lg:col-span-8 border border-outline/15 bg-[#0a0a0a]/60 backdrop-blur-2xl p-6 relative">
-            <div class="container-marker marker-tl"></div>
-            <div class="container-marker marker-tr"></div>
-            <div class="container-marker marker-bl"></div>
-            <div class="container-marker marker-br"></div>
-            <div class="flex justify-between items-end border-b border-outline/15 pb-4 mb-6">
-                <div>
-                    <h2 class="font-headline-md text-headline-md text-on-surface uppercase tracking-tight">Tactical Explorer</h2>
-                    <p class="text-sm font-mono text-outline mt-1">LAT: 20.5937° N | LNG: 78.9629° E</p>
-                </div>
-                <div class="flex gap-3">
-                    <a href="explorer.html" class="synth-click border border-outline/30 text-outline hover:text-primary hover:border-primary/50 px-4 py-2 font-mono text-xs uppercase tracking-widest transition-all flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-[16px]">open_in_new</span> Full Screen
-                    </a>
-                    <button class="synth-click bg-primary text-[#0a0a0a] px-6 py-2 rounded-none font-ui-semibold text-ui-semibold uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2" id="run-intelligence-btn">
-                        <span class="material-symbols-outlined text-[18px]">satellite_alt</span>
-                        Run Intelligence
-                    </button>
-                </div>
+        <!-- Threat Clusters -->
+        <div class="border border-outline/15 bg-[#0a0a0a]/60 backdrop-blur-2xl p-6 relative flex-grow">
+            <div class="container-marker marker-tl"></div><div class="container-marker marker-tr"></div>
+            <div class="container-marker marker-bl"></div><div class="container-marker marker-br"></div>
+            <div class="flex justify-between items-center border-b border-outline/15 pb-2 mb-4">
+                <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Threat Clusters</h3>
+                <a href="analytics.html" class="text-[11px] font-mono text-primary hover:underline uppercase">View All →</a>
             </div>
-            <div class="relative w-full h-[500px] border border-outline/15 bg-surface-container-low overflow-hidden">
-                <div class="bg-cover bg-center w-full h-full opacity-80" data-alt="An India-centric tactical map displaying accurate borders." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC6Da_UeDbYfWUoVrHLihfYloN5zHCzstNOEWCyopnzvKtZPV3mvWhBZ8ayCprHhTZE32z_1Fi3IT20vInsRbqqGihNaq3LWdy_RQcYmzv8QAGoI-5aq-ydcUWSCJHIFUrQTgDjuO0vEalJKFY7ZH5Nd8rsbhexpcVNi9QCHZNHXcmJ8ieoBC-IGZXL9zUMQvpQ0GbX1n_JqhX16qk3B8iNVd86GxmU9wp0lwCM1TEkUnc66W4NoEjK')"></div>
-                <div class="hidden absolute top-0 bottom-0 w-1 bg-primary shadow-[0_0_20px_5px_theme('colors.primary')] z-20 pointer-events-none" id="radar-sweep"></div>
-                <!-- Simulated Map Overlay UI -->
-                <div class="absolute bottom-4 left-4 flex flex-col gap-2 z-20">
-                    <a href="telemetry.html" class="bg-surface-container-highest/80 backdrop-blur-md border border-outline/15 px-3 py-1 font-mono text-xs text-primary flex items-center gap-2 w-max hover:border-primary/50 transition-colors">
-                        <div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                        LIVE UPLINK: CONNECTED
-                    </a>
-                    <div class="bg-surface-container-highest/80 backdrop-blur-md border border-outline/15 px-3 py-2 font-mono text-[10px] text-primary w-52 h-20 overflow-hidden flex flex-col justify-end gap-1" id="telemetry-log">
-                        <div>14:44:15.981 - [ANALYTICS] UPDATED</div>
+            <div class="flex flex-col gap-3">
+                <!-- Threat Row -->
+                <a href="analytics.html" class="synth-click bg-surface-container-low border border-outline/15 p-3 flex justify-between items-center hover:border-primary/50 transition-colors cursor-pointer group relative pl-6">
+                    <span class="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-primary rounded-full"><span class="absolute inset-0 rounded-full bg-primary animate-ping opacity-75"></span></span>
+                    <div class="flex flex-col">
+                        <span class="font-mono text-xs text-on-surface group-hover:text-primary transition-colors">CORRIDOR-Alpha</span>
+                        <span class="font-mono text-[10px] text-outline">IND-OP-01 (New Delhi Command)</span>
                     </div>
-                </div>
-                <div class="absolute bottom-4 right-4 flex gap-2 flex-col z-20">
-                    <button class="synth-click w-10 h-10 bg-surface/80 backdrop-blur-md border border-outline/15 text-outline hover:text-primary hover:border-primary/80 transition-colors flex items-center justify-center">
-                        <span class="material-symbols-outlined">add</span>
-                    </button>
-                    <button class="synth-click w-10 h-10 bg-surface/80 backdrop-blur-md border border-outline/15 text-outline hover:text-primary hover:border-primary/80 transition-colors flex items-center justify-center">
-                        <span class="material-symbols-outlined">remove</span>
-                    </button>
-                </div>
+                    <div class="bg-error/20 border border-error text-error px-2 py-0.5 text-[10px] font-mono uppercase">CRITICAL</div>
+                </a>
+                <!-- Threat Row -->
+                <a href="studio.html" class="synth-click bg-surface-container-low border border-outline/15 p-3 flex justify-between items-center hover:border-primary/50 transition-colors cursor-pointer group relative pl-6">
+                    <span class="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-primary rounded-full"><span class="absolute inset-0 rounded-full bg-primary animate-ping opacity-75"></span></span>
+                    <div class="flex flex-col">
+                        <span class="font-mono text-xs text-on-surface group-hover:text-primary transition-colors">CORRIDOR-Beta</span>
+                        <span class="font-mono text-[10px] text-outline">IND-OP-02 (Mumbai Port)</span>
+                    </div>
+                    <div class="bg-primary/20 border border-primary text-primary px-2 py-0.5 text-[10px] font-mono uppercase">ELEVATED</div>
+                </a>
+                <!-- Threat Row -->
+                <a href="analytics.html" class="synth-click bg-surface-container-low border border-outline/15 p-3 flex justify-between items-center hover:border-primary/50 transition-colors cursor-pointer group pl-3">
+                    <div class="flex flex-col">
+                        <span class="font-mono text-xs text-on-surface group-hover:text-primary transition-colors">CORRIDOR-Gamma</span>
+                        <span class="font-mono text-[10px] text-outline">IND-OP-03 (Bengaluru Hub)</span>
+                    </div>
+                    <div class="bg-outline/20 border border-outline text-outline px-2 py-0.5 text-[10px] font-mono uppercase">NOMINAL</div>
+                </a>
             </div>
-        </section>
-
-        <!-- Change Intelligence Dashboard -->
-        <aside class="col-span-1 md:col-span-4 lg:col-span-4 flex flex-col gap-gutter">
-            <!-- Metrics Strip -->
-            <div class="border border-outline/15 bg-[#0a0a0a]/60 backdrop-blur-2xl p-6 relative">
-                <div class="container-marker marker-tl"></div><div class="container-marker marker-tr"></div>
-                <div class="container-marker marker-bl"></div><div class="container-marker marker-br"></div>
-                <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest border-b border-outline/15 pb-2 mb-4">Executive Metrics</h3>
-                <div class="flex flex-col gap-4">
-                    <div class="flex justify-between items-center border-b border-outline/15 pb-2 border-dotted">
-                        <span class="font-mono text-sm text-on-surface-variant">AREA ANALYZED</span>
-                        <span class="font-mono font-semibold text-primary">3,287,263 km²</span>
-                    </div>
-                    <div class="flex justify-between items-center border-b border-outline/15 pb-2 border-dotted">
-                        <span class="font-mono text-sm text-on-surface-variant">CHANGE DETECTION</span>
-                        <span class="font-mono font-semibold text-error">14.2%</span>
-                    </div>
-                    <div class="flex justify-between items-center pb-2">
-                        <span class="font-mono text-sm text-on-surface-variant">CONFIDENCE LEVEL</span>
-                        <span class="font-mono font-semibold text-primary">98.9%</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Threat Clusters -->
-            <div class="border border-outline/15 bg-[#0a0a0a]/60 backdrop-blur-2xl p-6 relative flex-grow">
-                <div class="container-marker marker-tl"></div><div class="container-marker marker-tr"></div>
-                <div class="container-marker marker-bl"></div><div class="container-marker marker-br"></div>
-                <div class="flex justify-between items-center border-b border-outline/15 pb-2 mb-4">
-                    <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Threat Clusters</h3>
-                    <a href="analytics.html" class="text-[11px] font-mono text-primary hover:underline uppercase">View All →</a>
-                </div>
-                <div class="flex flex-col gap-3">
-                    <!-- Threat Row -->
-                    <a href="analytics.html" class="synth-click bg-surface-container-low border border-outline/15 p-3 flex justify-between items-center hover:border-primary/50 transition-colors cursor-pointer group relative pl-6">
-                        <span class="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-primary rounded-full"><span class="absolute inset-0 rounded-full bg-primary animate-ping opacity-75"></span></span>
-                        <div class="flex flex-col">
-                            <span class="font-mono text-xs text-on-surface group-hover:text-primary transition-colors">CORRIDOR-Alpha</span>
-                            <span class="font-mono text-[10px] text-outline">IND-OP-01 (New Delhi Command)</span>
-                        </div>
-                        <div class="bg-error/20 border border-error text-error px-2 py-0.5 text-[10px] font-mono uppercase">CRITICAL</div>
-                    </a>
-                    <!-- Threat Row -->
-                    <a href="studio.html" class="synth-click bg-surface-container-low border border-outline/15 p-3 flex justify-between items-center hover:border-primary/50 transition-colors cursor-pointer group relative pl-6">
-                        <span class="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-primary rounded-full"><span class="absolute inset-0 rounded-full bg-primary animate-ping opacity-75"></span></span>
-                        <div class="flex flex-col">
-                            <span class="font-mono text-xs text-on-surface group-hover:text-primary transition-colors">CORRIDOR-Beta</span>
-                            <span class="font-mono text-[10px] text-outline">IND-OP-02 (Mumbai Port)</span>
-                        </div>
-                        <div class="bg-primary/20 border border-primary text-primary px-2 py-0.5 text-[10px] font-mono uppercase">ELEVATED</div>
-                    </a>
-                    <!-- Threat Row -->
-                    <a href="analytics.html" class="synth-click bg-surface-container-low border border-outline/15 p-3 flex justify-between items-center hover:border-primary/50 transition-colors cursor-pointer group pl-3">
-                        <div class="flex flex-col">
-                            <span class="font-mono text-xs text-on-surface group-hover:text-primary transition-colors">CORRIDOR-Gamma</span>
-                            <span class="font-mono text-[10px] text-outline">IND-OP-03 (Bengaluru Hub)</span>
-                        </div>
-                        <div class="bg-outline/20 border border-outline text-outline px-2 py-0.5 text-[10px] font-mono uppercase">NOMINAL</div>
-                    </a>
-                </div>
-            </div>
-        </aside>
+        </div>
     </main>
 
     <!-- Footer -->
