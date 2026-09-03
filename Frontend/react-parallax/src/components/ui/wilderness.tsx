@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { cn } from '../../lib/utils';
 
 export interface ParallaxLayer {
@@ -257,19 +257,12 @@ export const ParallaxHero: React.FC<ParallaxHeroProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const layerRefs = useRef<(HTMLImageElement | null)[]>([]);
   const textRef = useRef<HTMLDivElement>(null);
-  const [xValue, setXValue] = useState(0);
-  const [yValue, setYValue] = useState(0);
-  const [rotateDegree, setRotateDegree] = useState(0);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const newXValue = e.clientX - window.innerWidth / 2;
       const newYValue = e.clientY - window.innerHeight / 2;
       const newRotateDegree = (newXValue / (window.innerWidth / 2)) * 20;
-
-      setXValue(newXValue);
-      setYValue(newYValue);
-      setRotateDegree(newRotateDegree);
 
       updateLayers(e.clientX, newXValue, newYValue, newRotateDegree);
     };

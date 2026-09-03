@@ -14,20 +14,21 @@ All views are connected with universal global navigation, quick action launchpad
 | [`overview.html`](file:///c:/Users/prema.PRATYUSH/Downloads/stitch_sar_change_intelligence_explorer/overview.html) | **Defense Command Suite** | Strategic command dashboard, mission readiness, target tracker, threat clusters (Alpha, Beta, Gamma) with routing to analytics, executive metrics, audio feedback, radar sweep animations. |
 | [`studio.html`](file:///c:/Users/prema.PRATYUSH/Downloads/stitch_sar_change_intelligence_explorer/studio.html) | **3D Terrain Studio** | Interactive before/after split-view slider (T1 baseline vs. T2 AI change mask), colormap toggles (Turbo, Viridis, Binary Red), layer opacity/brightness/contrast controls, radiometric speckle filter alerts. |
 | [`analytics.html`](file:///c:/Users/prema.PRATYUSH/Downloads/stitch_sar_change_intelligence_explorer/analytics.html) | **Cluster Audit & Analytics** | Interactive anomaly cluster table with GSAP-powered fly-to map navigation, filter buttons, zero-detection simulation toggle, export actions (PDF, GeoJSON, CSV), and live coordinate readouts. |
-| [`telemetry.html`](file:///c:/Users/prema.PRATYUSH/Downloads/stitch_sar_change_intelligence_explorer/telemetry.html) | **RISAT-2B Telemetry Hub** | Real-time IST clock, dynamic downlink latency jitter readout, GPU VRAM allocation monitor, CUDA RTX compute specs, and historical 7-day system uptime telemetry. |
+| [`telemetry.html`](file:///c:/Users/prema.PRATYUSH/Downloads/stitch_sar_change_intelligence_explorer/telemetry.html) | **SENTINEL-1 Telemetry Hub** | Real-time IST clock, dynamic downlink latency jitter readout, GPU VRAM allocation monitor, CUDA RTX compute specs, and historical 7-day system uptime telemetry. |
+| [`style.css`](file:///c:/Users/prema.PRATYUSH/Downloads/stitch_sar_change_intelligence_explorer/style.css) | Global Stylesheet | Contains all custom utility classes, CRT effects, neon glows, scrollbar overrides, and bespoke animations. |
 
 ---
 
-## Cleaned Directory Structure
+## 📂 Project Structure
 
-```
-stitch_sar_change_intelligence_explorer/
-├── index.html          # Main entry point (SAR Intelligence Explorer)
-├── explorer.html       # Direct alias to SAR Explorer
-├── overview.html       # Defense Command Overview Dashboard
-├── studio.html         # 3D Terrain Intelligence Split-View Studio
-├── analytics.html      # SAR Change Analytics & Cluster Audit Table
-├── telemetry.html      # RISAT-2B Real-time Telemetry & Health Hub
+```text
+📁 stitch_sar_change_intelligence_explorer/
+├── index.html          # Gateway / Loading Screen
+├── explorer.html       # Primary SAR Visual Explorer
+├── overview.html       # Project Executive Summary
+├── studio.html         # Interactive Feature Studio
+├── analytics.html      # Inference Data & Charts
+├── telemetry.html      # SENTINEL-1 Real-time Telemetry & Health Hub
 ├── README.md           # Documentation & Navigation Map
 └── assets/
     └── screenshots/    # High-resolution screenshots of each suite view

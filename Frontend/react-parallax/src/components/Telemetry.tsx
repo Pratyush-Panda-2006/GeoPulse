@@ -62,17 +62,17 @@ export default function Telemetry() {
 
       {/* TopNavBar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-black/40 backdrop-blur-xl border-b border-white/10 px-6 py-3">
-        <a href="#" className="flex items-center gap-2 font-headline-md text-xl font-bold text-primary tracking-tighter uppercase transition-all">
+        <a href="index.html" className="flex items-center gap-2 font-headline-md text-xl font-bold text-primary tracking-tighter uppercase transition-all">
           <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
           <span>GeoPulse</span>
         </a>
         <div className="hidden md:flex gap-6 lg:gap-8 items-center">
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="#">OVERVIEW</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="#">STUDIO</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="#">ANALYTICS</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="#">EXPLORER</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="#">Intelligence</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="#">TELEMETRY</a>
+          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="overview.html">OVERVIEW</a>
+          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="studio.html">STUDIO</a>
+          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="analytics.html">ANALYTICS</a>
+          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="explorer.html">EXPLORER</a>
+          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="intelligence.html">Intelligence</a>
+          <a className="font-semibold text-sm uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="telemetry.html">TELEMETRY</a>
         </div>
         <div className="flex gap-4 items-center">
           <a href="#" className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-1 font-mono text-xs text-primary">
@@ -90,7 +90,7 @@ export default function Telemetry() {
                 <p className="italic text-gray-300 mt-2 max-w-2xl font-serif">Real-time health, link lock & CUDA compute telemetry for GeoPulse SAR Processing Engines.</p>
             </div>
             <div className="flex gap-3">
-                <a href="#" className="bg-primary text-black px-5 py-2 font-semibold text-xs uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center gap-1.5">
+                <a href="explorer.html" className="bg-primary text-black px-5 py-2 font-semibold text-xs uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center gap-1.5">
                     Return to Explorer
                 </a>
             </div>
