@@ -1,27 +1,24 @@
 import React from 'react';
 import { 
+  Sliders, 
   X, 
   RotateCcw, 
-  Sliders, 
-  ArrowUpRight,
-  ShieldCheck
+  ArrowUpRight 
 } from 'lucide-react';
 import { TacticalLayerDock } from './TacticalLayerDock';
-
-export interface InferenceMetrics {
-  threshold: number;
-  clusters: number;
-  changePercentage: number;
-  changedPixels: number;
-  totalPixels: number;
-}
 
 interface LayerInferenceControlPanelProps {
   isOpen: boolean;
   onClose: () => void;
   activeLayer: string;
   onSelectLayer: (layerId: string) => void;
-  metrics: InferenceMetrics;
+  metrics: {
+    threshold: number;
+    clusters: number;
+    changePercentage: number;
+    changedPixels: number;
+    totalPixels: number;
+  };
   opacity: number;
   setOpacity: (val: number) => void;
   brightness: number;
@@ -58,14 +55,14 @@ export const LayerInferenceControlPanel: React.FC<LayerInferenceControlPanelProp
 
   return (
     <aside 
-      className="absolute top-3.5 right-3.5 bottom-3.5 w-88 z-40 bg-[#1A2234]/95 backdrop-blur-xl border border-[#2D3748] rounded-xl shadow-2xl flex flex-col overflow-hidden text-slate-200 font-sans transition-all duration-200 animate-in fade-in slide-in-from-right-4"
+      className="w-[360px] h-full bg-[#0D121D] border-l border-[#2D3748] flex flex-col shrink-0 z-30 select-none overflow-hidden text-slate-200 font-sans transition-all duration-200"
       aria-label="Layer & Analytical Telemetry Control Panel"
     >
       {/* Header */}
-      <div className="px-4 py-3 border-b border-[#2D3748] flex items-center justify-between bg-[#0B0F17]/60 shrink-0">
+      <div className="px-4 py-3 border-b border-[#2D3748] flex items-center justify-between bg-[#0B0F17]/80 shrink-0">
         <div className="flex items-center gap-2">
           <Sliders className="w-4 h-4 text-emerald-400" />
-          <h2 className="font-semibold text-xs uppercase tracking-wider text-slate-100">
+          <h2 className="font-bold text-xs uppercase tracking-wider text-slate-100">
             Triage & Analysis Inspector
           </h2>
         </div>
@@ -86,37 +83,36 @@ export const LayerInferenceControlPanel: React.FC<LayerInferenceControlPanelProp
             <span id="metrics-heading" className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
               Inference Intelligence
             </span>
-            <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400">
-              <ShieldCheck className="w-3 h-3" />
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
               NOMINAL
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="p-2.5 bg-[#0B0F17]/60 border border-[#2D3748] rounded-lg flex flex-col">
+            <div className="p-3 bg-[#0B0F17]/80 border border-[#2D3748] rounded-lg flex flex-col">
               <span className="text-[10px] font-mono text-slate-400 uppercase">Threshold</span>
-              <span className="text-sm font-mono font-bold tracking-tight text-slate-100 mt-0.5 tabular-nums">
+              <span className="text-base font-mono font-bold tracking-tight text-slate-100 mt-0.5 tabular-nums">
                 {metrics.threshold.toFixed(2)}
               </span>
             </div>
 
-            <div className="p-2.5 bg-[#0B0F17]/60 border border-[#2D3748] rounded-lg flex flex-col">
+            <div className="p-3 bg-[#0B0F17]/80 border border-[#2D3748] rounded-lg flex flex-col">
               <span className="text-[10px] font-mono text-slate-400 uppercase">Change Clusters</span>
-              <span className="text-sm font-mono font-bold tracking-tight text-amber-400 mt-0.5 tabular-nums">
-                {metrics.clusters} <span className="text-[10px] font-normal text-slate-400">ROI</span>
+              <span className="text-base font-mono font-bold tracking-tight text-amber-400 mt-0.5 tabular-nums">
+                {metrics.clusters}
               </span>
             </div>
 
-            <div className="p-2.5 bg-[#0B0F17]/60 border border-[#2D3748] rounded-lg flex flex-col">
+            <div className="p-3 bg-[#0B0F17]/80 border border-[#2D3748] rounded-lg flex flex-col">
               <span className="text-[10px] font-mono text-slate-400 uppercase">Total Delta Area</span>
-              <span className="text-sm font-mono font-bold tracking-tight text-emerald-400 mt-0.5 tabular-nums">
+              <span className="text-base font-mono font-bold tracking-tight text-emerald-400 mt-0.5 tabular-nums">
                 {metrics.changePercentage.toFixed(3)}%
               </span>
             </div>
 
-            <div className="p-2.5 bg-[#0B0F17]/60 border border-[#2D3748] rounded-lg flex flex-col">
+            <div className="p-3 bg-[#0B0F17]/80 border border-[#2D3748] rounded-lg flex flex-col">
               <span className="text-[10px] font-mono text-slate-400 uppercase">Changed Pixels</span>
-              <span className="text-sm font-mono font-bold tracking-tight text-slate-100 mt-0.5 tabular-nums">
+              <span className="text-base font-mono font-bold tracking-tight text-slate-100 mt-0.5 tabular-nums">
                 {metrics.changedPixels.toLocaleString()}
               </span>
             </div>
@@ -143,19 +139,18 @@ export const LayerInferenceControlPanel: React.FC<LayerInferenceControlPanelProp
                 <input 
                   id="opacity-numeric"
                   type="number" 
-                  min={0} 
-                  max={100}
+                  min="0" 
+                  max="100" 
                   value={opacity}
                   onChange={(e) => setOpacity(Math.max(0, Math.min(100, Number(e.target.value))))}
-                  className="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus-visible:outline-none focus-visible:border-emerald-400"
-                  aria-label="Opacity percentage"
+                  className="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus:border-emerald-400 focus:outline-none"
+                  aria-label="Numeric opacity percentage"
                 />
                 <span className="text-[10px] text-slate-400 font-mono">%</span>
                 <button 
                   onClick={() => setOpacity(100)} 
-                  title="Reset to 100%"
-                  className="p-1 text-slate-500 hover:text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400 rounded"
-                  aria-label="Reset Opacity"
+                  className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+                  title="Reset opacity to 100%"
                 >
                   <RotateCcw className="w-3 h-3" />
                 </button>
@@ -164,35 +159,34 @@ export const LayerInferenceControlPanel: React.FC<LayerInferenceControlPanelProp
             <input 
               id="opacity-range"
               type="range" 
-              min={0} 
-              max={100} 
-              value={opacity} 
+              min="0" 
+              max="100" 
+              value={opacity}
               onChange={(e) => setOpacity(Number(e.target.value))}
-              className="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer"
+              className="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             />
           </div>
 
           {/* Brightness Control */}
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between items-center text-xs">
-              <label htmlFor="brightness-range" className="text-slate-300">Brightness Offset</label>
+              <label htmlFor="brightness-range" className="text-slate-300">Brightness Gain</label>
               <div className="flex items-center gap-1.5">
                 <input 
                   id="brightness-numeric"
                   type="number" 
-                  min={50} 
-                  max={150}
+                  min="50" 
+                  max="150" 
                   value={brightness}
                   onChange={(e) => setBrightness(Math.max(50, Math.min(150, Number(e.target.value))))}
-                  className="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus-visible:outline-none focus-visible:border-emerald-400"
-                  aria-label="Brightness percentage"
+                  className="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus:border-emerald-400 focus:outline-none"
+                  aria-label="Numeric brightness percentage"
                 />
                 <span className="text-[10px] text-slate-400 font-mono">%</span>
                 <button 
                   onClick={() => setBrightness(100)} 
-                  title="Reset to 100%"
-                  className="p-1 text-slate-500 hover:text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400 rounded"
-                  aria-label="Reset Brightness"
+                  className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+                  title="Reset brightness to 100%"
                 >
                   <RotateCcw className="w-3 h-3" />
                 </button>
@@ -201,11 +195,11 @@ export const LayerInferenceControlPanel: React.FC<LayerInferenceControlPanelProp
             <input 
               id="brightness-range"
               type="range" 
-              min={50} 
-              max={150} 
-              value={brightness} 
+              min="50" 
+              max="150" 
+              value={brightness}
               onChange={(e) => setBrightness(Number(e.target.value))}
-              className="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer"
+              className="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             />
           </div>
 
@@ -217,19 +211,18 @@ export const LayerInferenceControlPanel: React.FC<LayerInferenceControlPanelProp
                 <input 
                   id="contrast-numeric"
                   type="number" 
-                  min={50} 
-                  max={200}
+                  min="50" 
+                  max="200" 
                   value={contrast}
                   onChange={(e) => setContrast(Math.max(50, Math.min(200, Number(e.target.value))))}
-                  className="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus-visible:outline-none focus-visible:border-emerald-400"
-                  aria-label="Contrast percentage"
+                  className="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus:border-emerald-400 focus:outline-none"
+                  aria-label="Numeric contrast percentage"
                 />
                 <span className="text-[10px] text-slate-400 font-mono">%</span>
                 <button 
                   onClick={() => setContrast(100)} 
-                  title="Reset to 100%"
-                  className="p-1 text-slate-500 hover:text-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400 rounded"
-                  aria-label="Reset Contrast"
+                  className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+                  title="Reset contrast to 100%"
                 >
                   <RotateCcw className="w-3 h-3" />
                 </button>
@@ -238,44 +231,53 @@ export const LayerInferenceControlPanel: React.FC<LayerInferenceControlPanelProp
             <input 
               id="contrast-range"
               type="range" 
-              min={50} 
-              max={200} 
-              value={contrast} 
+              min="50" 
+              max="200" 
+              value={contrast}
               onChange={(e) => setContrast(Number(e.target.value))}
-              className="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer"
+              className="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             />
           </div>
         </section>
 
-        {/* Section 4: Scientific Radiometric Colormaps & Calibrated Scale */}
+        {/* Section 4: Scientific Radiometric Colormaps */}
         <section className="flex flex-col gap-2 pt-2 border-t border-[#2D3748]" aria-labelledby="colormap-heading">
           <div className="flex justify-between items-center">
-            <label id="colormap-heading" className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+            <span id="colormap-heading" className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
               Radiometric Colormap
-            </label>
-            <span className="text-[10px] font-mono text-slate-400">dB Backscatter</span>
+            </span>
+            <span className="text-[10px] font-mono text-slate-400">dB Scale</span>
           </div>
 
-          <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Colormap Selection">
-            {COLORMAPS.map(mapItem => (
-              <button
-                key={mapItem.id}
-                role="radio"
-                aria-checked={colormap === mapItem.id}
-                onClick={() => setColormap(mapItem.id)}
-                className={`p-2 rounded-lg border flex items-center justify-between text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
-                  colormap === mapItem.id 
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-semibold' 
-                    : 'bg-[#0B0F17]/60 border-[#2D3748] text-slate-300 hover:bg-slate-800/60'
+          <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="Colormaps">
+            {COLORMAPS.map(map => (
+              <label 
+                key={map.id} 
+                className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors ${
+                  colormap === map.id 
+                    ? 'border-emerald-500/40 bg-emerald-500/10' 
+                    : 'border-[#2D3748] bg-[#0B0F17]/40 hover:bg-[#1A2234]/60'
                 }`}
               >
-                <span className="font-mono text-xs">{mapItem.name}</span>
-                <div className={`w-20 h-2 rounded bg-gradient-to-r ${mapItem.gradient}`} />
-              </button>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="radio" 
+                    name="colormap-choice" 
+                    value={map.id}
+                    checked={colormap === map.id}
+                    onChange={() => setColormap(map.id)}
+                    className="text-emerald-500 bg-transparent border-slate-600 focus:ring-0"
+                  />
+                  <span className={`font-mono text-xs ${colormap === map.id ? 'text-slate-100 font-semibold' : 'text-slate-300'}`}>
+                    {map.name}
+                  </span>
+                </div>
+                <div className={`w-16 h-2 rounded bg-gradient-to-r ${map.gradient}`} />
+              </label>
             ))}
           </div>
 
-          {/* Calibrated dB Scale Swatch Bar */}
+          {/* Calibrated dB Scale Legend */}
           <div className="mt-1 p-2 bg-[#0B0F17]/60 border border-[#2D3748] rounded-lg flex flex-col gap-1">
             <div className="w-full h-1.5 rounded bg-gradient-to-r from-blue-600 via-emerald-400 to-red-500" />
             <div className="flex justify-between font-mono text-[9px] text-slate-400">
@@ -285,17 +287,16 @@ export const LayerInferenceControlPanel: React.FC<LayerInferenceControlPanelProp
             </div>
           </div>
         </section>
-
       </div>
 
-      {/* Action Footer */}
-      <div className="p-3 border-t border-[#2D3748] bg-[#0B0F17]/60 flex gap-2 shrink-0">
+      {/* Inspector Footer Action (Send to Analytics Button) */}
+      <div className="p-4 border-t border-[#2D3748] bg-[#0B0F17]/90 shrink-0">
         <a 
           href="analytics.html" 
-          className="flex-1 py-2 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 min-h-[40px]"
+          className="w-full py-2.5 px-4 bg-[#00DC82] hover:bg-[#00c574] text-[#0B0F17] font-bold text-sm rounded-lg flex items-center justify-center gap-2 tracking-wide transition-colors shadow-lg shadow-[#00DC82]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 min-h-[42px]"
         >
           <span>Send to Analytics</span>
-          <ArrowUpRight className="w-3.5 h-3.5" />
+          <ArrowUpRight className="w-4 h-4" />
         </a>
       </div>
     </aside>

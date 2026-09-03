@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { InteractiveMapCanvas } from './InteractiveMapCanvas';
 import { LayerInferenceControlPanel } from './LayerInferenceControlPanel';
-import { Satellite, AlertTriangle } from 'lucide-react';
+import { Bell, User } from 'lucide-react';
 
 export default function GeoPulseStudio() {
   const [activeLayer, setActiveLayer] = useState<string>('t2');
@@ -17,59 +17,58 @@ export default function GeoPulseStudio() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0B0F17] text-slate-100 overflow-hidden font-sans select-none">
-      {/* 1. Global Mission Bar (Height: 44px, Zero Overlap, Perfect Alignment) */}
-      <header className="h-11 px-6 bg-[#0B0F17] border-b border-[#2D3748] flex items-center justify-between text-xs select-none z-50 shrink-0">
-        <div className="flex items-center gap-8">
-          <a href="index.html" className="flex items-center gap-2.5 font-mono font-bold tracking-wider text-slate-100 hover:text-emerald-400 transition-colors shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>GEOPULSE</span>
-            <span className="text-[10px] text-emerald-400 font-normal border border-emerald-500/30 px-1.5 py-0.5 rounded">
-              STUDIO 3D
-            </span>
+      {/* 1. Global Mission Bar (Exact Match with Image Design) */}
+      <header className="h-12 px-6 bg-[#0B0F17] border-b border-[#2D3748] relative flex items-center justify-between text-xs select-none z-50 shrink-0">
+        {/* Brand Logo (Left) */}
+        <a href="overview.html" className="flex items-center gap-2 font-mono font-bold tracking-wider text-[#00DC82] hover:text-[#00c574] transition-colors shrink-0">
+          <span className="w-2 h-2 rounded-full bg-[#00DC82]" />
+          <span className="text-sm font-bold tracking-wider">GEOPULSE</span>
+        </a>
+
+        {/* High-Contrast Navigation Links (Centered) */}
+        <nav className="hidden md:flex items-center gap-8 text-xs font-mono tracking-wider absolute left-1/2 -translate-x-1/2">
+          <a href="overview.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">OVERVIEW</a>
+          <a href="studio.html" className="text-[#00DC82] font-semibold border-b-2 border-[#00DC82] pb-0.5">STUDIO</a>
+          <a href="analytics.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">ANALYTICS</a>
+          <a href="explorer.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">EXPLORER</a>
+          <a href="intelligence.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">INTELLIGENCE</a>
+          <a href="telemetry.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">TELEMETRY</a>
+        </nav>
+
+        {/* Right Side: CDSE Satellite Link Badge + Bell + Profile Icons */}
+        <div className="flex items-center gap-4 shrink-0">
+          <a href="telemetry.html" className="flex items-center gap-2 px-3 py-1 bg-[#00DC82]/5 border border-[#00DC82]/40 rounded text-[#00DC82] font-mono text-xs tracking-tight hover:bg-[#00DC82]/10 transition-colors" title="Copernicus Data Space Ecosystem Link Active">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00DC82] animate-pulse" />
+            <span>CDSE SATELLITE LINK: ACTIVE</span>
           </a>
 
-          {/* High-Contrast Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-mono tracking-wider text-slate-400">
-            <a href="overview.html" className="hover:text-slate-100 transition-colors py-1">OVERVIEW</a>
-            <a href="studio.html" className="text-emerald-400 font-bold border-b-2 border-emerald-400 py-1">STUDIO</a>
-            <a href="analytics.html" className="hover:text-slate-100 transition-colors py-1">ANALYTICS</a>
-            <a href="explorer.html" className="hover:text-slate-100 transition-colors py-1">EXPLORER</a>
-            <a href="intelligence.html" className="hover:text-slate-100 transition-colors py-1">INTELLIGENCE</a>
-            <a href="telemetry.html" className="hover:text-slate-100 transition-colors py-1">TELEMETRY</a>
-          </nav>
-        </div>
+          <button className="text-slate-400 hover:text-slate-100 p-1 transition-colors" title="System Notifications">
+            <Bell className="w-4 h-4" />
+          </button>
 
-        {/* Consolidated Diagnostics Status Badges */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-300 font-mono text-[11px]" title="Lee Filter 5x5 Radiometric Enhancement Active">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">RADIOMETRIC ENHANCEMENT: ACTIVE</span>
-            <span className="sm:hidden">ENHANCED</span>
-          </div>
-
-          <a href="telemetry.html" className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg text-emerald-400 font-mono text-[11px] transition-colors" title="View Real-Time Satellite Telemetry">
-            <Satellite className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">CDSE LINK: ACTIVE</span>
-            <span className="sm:hidden">LINK</span>
-          </a>
+          <button className="text-slate-400 hover:text-slate-100 p-1 transition-colors" title="Operator Profile">
+            <User className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
-      {/* 2. Primary Full-Bleed SAR Workspace (Statically Framed, 0px Height Shift) */}
-      <main className="relative flex-1 w-full h-[calc(100vh-44px)] overflow-hidden">
-        <InteractiveMapCanvas 
-          t1ImageUrl={t1Url}
-          t2ImageUrl={t2Url}
-          activeLayer={activeLayer}
-          onSelectLayer={setActiveLayer}
-          opacity={opacity}
-          brightness={brightness}
-          contrast={contrast}
-          onToggleInspector={() => setIsInspectorOpen(prev => !prev)}
-          isInspectorOpen={isInspectorOpen}
-        />
+      {/* 2. Primary Full-Bleed SAR Workspace (Side-by-Side Flex Layout, Statically Framed) */}
+      <main className="relative flex-1 w-full h-[calc(100vh-48px)] flex overflow-hidden">
+        <div className="relative flex-1 h-full overflow-hidden">
+          <InteractiveMapCanvas 
+            t1ImageUrl={t1Url}
+            t2ImageUrl={t2Url}
+            activeLayer={activeLayer}
+            onSelectLayer={setActiveLayer}
+            opacity={opacity}
+            brightness={brightness}
+            contrast={contrast}
+            onToggleInspector={() => setIsInspectorOpen(prev => !prev)}
+            isInspectorOpen={isInspectorOpen}
+          />
+        </div>
 
-        {/* Collapsible Layer & Analytical Telemetry Inspector Dock */}
+        {/* Docked Right-Hand Triage & Analytical Telemetry Inspector (Not Floating) */}
         <LayerInferenceControlPanel 
           isOpen={isInspectorOpen}
           onClose={() => setIsInspectorOpen(false)}
@@ -77,9 +76,9 @@ export default function GeoPulseStudio() {
           onSelectLayer={setActiveLayer}
           metrics={{
             threshold: 0.60,
-            clusters: 2,
-            changePercentage: 0.196,
-            changedPixels: 294,
+            clusters: 38,
+            changePercentage: 3.202,
+            changedPixels: 6152,
             totalPixels: 262144
           }}
           opacity={opacity}
