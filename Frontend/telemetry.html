@@ -1,1708 +1,492 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>GeoPulse - Ground Telemetry</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@10..48,400;10..48,500;10..48,600;10..48,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,0" rel="stylesheet">
-
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>GeoPulse - RISAT-2B Telemetry & System Status</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700;900&amp;family=Playfair+Display:wght@400;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#131313",
+                    "tertiary-container": "#c487ff",
+                    "surface": "#131313",
+                    "outline-variant": "#3c4a42",
+                    "primary-fixed-dim": "#4edea3",
+                    "tertiary": "#ddb7ff",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-secondary-fixed-variant": "#004395",
+                    "secondary-fixed": "#d8e2ff",
+                    "on-secondary-fixed": "#001a42",
+                    "surface-tint": "#4edea3",
+                    "on-primary": "#003824",
+                    "on-tertiary-container": "#550093",
+                    "surface-container": "#201f1f",
+                    "outline": "#86948a",
+                    "on-primary-container": "#00422b",
+                    "surface-variant": "#353534",
+                    "primary": "#4edea3",
+                    "secondary": "#adc6ff",
+                    "surface-container-low": "#1c1b1b",
+                    "on-secondary": "#002e6a",
+                    "on-tertiary-fixed": "#2c0051",
+                    "surface-dim": "#131313",
+                    "secondary-fixed-dim": "#adc6ff",
+                    "tertiary-fixed-dim": "#ddb7ff",
+                    "on-tertiary-fixed-variant": "#6900b3",
+                    "on-error-container": "#ffdad6",
+                    "tertiary-fixed": "#f0dbff",
+                    "inverse-on-surface": "#313030",
+                    "on-error": "#690005",
+                    "on-tertiary": "#490080",
+                    "on-surface": "#e5e2e1",
+                    "inverse-primary": "#006c49",
+                    "error": "#ffb4ab",
+                    "secondary-container": "#0566d9",
+                    "on-background": "#e5e2e1",
+                    "primary-fixed": "#6ffbbe",
+                    "error-container": "#93000a",
+                    "on-primary-fixed": "#002113",
+                    "inverse-surface": "#e5e2e1",
+                    "surface-container-high": "#2a2a2a",
+                    "primary-container": "#10b981",
+                    "on-secondary-container": "#e6ecff",
+                    "surface-container-highest": "#353534",
+                    "on-primary-fixed-variant": "#005236",
+                    "on-surface-variant": "#bbcabf",
+                    "surface-bright": "#3a3939"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "gutter": "24px",
+                    "md": "24px",
+                    "xl": "80px",
+                    "xs": "8px",
+                    "margin": "32px",
+                    "sm": "16px",
+                    "lg": "48px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Bricolage Grotesque"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-lg": ["Bricolage Grotesque"],
+                    "headline-lg-mobile": ["Bricolage Grotesque"],
+                    "display-lg": ["Bricolage Grotesque"],
+                    "ui-semibold": ["Inter"],
+                    "accent-italic": ["Playfair Display"],
+                    "mono": ["JetBrains Mono", "monospace"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                    "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                    "headline-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                    "headline-lg-mobile": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                    "display-lg": ["72px", { "lineHeight": "1.0", "letterSpacing": "-0.05em", "fontWeight": "800" }],
+                    "ui-semibold": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                    "accent-italic": ["20px", { "lineHeight": "1.2", "fontWeight": "400" }]
+            }
+          },
+        }
+      }
+    </script>
     <style>
-        :root {
-            --bg: #07100d;
-            --panel: rgba(13, 24, 20, 0.78);
-            --panel-strong: rgba(16, 30, 25, 0.94);
-            --border: rgba(255,255,255,0.09);
-            --border-bright: rgba(255,255,255,0.15);
-            --text: #edf5f0;
-            --muted: #84968e;
-            --dim: #52645c;
-            --green: #69e6a3;
-            --green-soft: rgba(105,230,163,0.12);
-            --yellow: #f2ca69;
-            --yellow-soft: rgba(242,202,105,0.12);
-            --red: #ff6f73;
-            --red-soft: rgba(255,111,115,0.12);
-            --blue: #76b9ff;
-            --blue-soft: rgba(118,185,255,0.12);
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #131313; color: #e5e2e1; }
+        .font-jetbrains { font-family: 'JetBrains Mono', monospace; }
 
-        * {
-            box-sizing: border-box;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            color: var(--text);
-            background:
-                radial-gradient(circle at 15% 5%, rgba(70,150,110,0.10), transparent 28%),
-                radial-gradient(circle at 90% 25%, rgba(55,115,90,0.07), transparent 25%),
-                var(--bg);
-            font-family: Inter, sans-serif;
-            overflow-x: hidden;
-        }
-
-        body::before {
-            content: "";
+        /* 12-column structural grid lines */
+        .structural-grid {
             position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: 0.28;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-            background-size: 48px 48px;
-            mask-image: linear-gradient(to bottom, black, transparent 90%);
-        }
-
-        a {
-            color: inherit;
-            text-decoration: none;
-        }
-
-        .mono {
-            font-family: "JetBrains Mono", monospace;
-        }
-
-        .material-symbols-outlined {
-            font-size: 19px;
-            vertical-align: middle;
-        }
-
-        /* NAV */
-
-        nav {
-            height: 72px;
-            padding: 0 34px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--border);
-            background: rgba(5, 13, 10, 0.78);
-            backdrop-filter: blur(18px);
-            position: sticky;
             top: 0;
-            z-index: 50;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .brand-mark {
-            width: 34px;
-            height: 34px;
-            border: 1px solid rgba(105,230,163,0.4);
-            border-radius: 10px;
-            display: grid;
-            place-items: center;
-            color: var(--green);
-            background: var(--green-soft);
-        }
-
-        .brand-name {
-            font-family: "Bricolage Grotesque", sans-serif;
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .nav-links a {
-            padding: 9px 13px;
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.09em;
-            transition: 0.2s;
-        }
-
-        .nav-links a:hover {
-            color: var(--text);
-        }
-
-        .nav-links a.active {
-            color: var(--green);
-        }
-
-        .nav-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--muted);
-            font-size: 10px;
-            letter-spacing: 0.08em;
-        }
-
-        .status-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--green);
-            box-shadow: 0 0 12px rgba(105,230,163,0.7);
-        }
-
-        /* PAGE */
-
-        main {
-            width: min(1480px, calc(100% - 48px));
-            margin: 0 auto;
-            padding: 52px 0 80px;
-        }
-
-        .eyebrow {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--green);
-            font-family: "JetBrains Mono", monospace;
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.16em;
-            margin-bottom: 14px;
-        }
-
-        .eyebrow::before {
-            content: "";
-            width: 22px;
-            height: 1px;
-            background: var(--green);
-        }
-
-        h1 {
-            margin: 0;
-            font-family: "Bricolage Grotesque", sans-serif;
-            font-size: clamp(38px, 5vw, 66px);
-            line-height: 0.95;
-            letter-spacing: -0.045em;
-            font-weight: 600;
-        }
-
-        .hero-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 30px;
-            align-items: flex-end;
-            margin-bottom: 32px;
-        }
-
-        .hero-copy p {
-            max-width: 650px;
-            margin: 18px 0 0;
-            color: var(--muted);
-            line-height: 1.65;
-            font-size: 14px;
-        }
-
-        .simulation-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 9px;
-            padding: 11px 14px;
-            border: 1px solid rgba(242,202,105,0.28);
-            background: var(--yellow-soft);
-            color: var(--yellow);
-            border-radius: 9px;
-            font-family: "JetBrains Mono", monospace;
-            font-size: 10px;
-            letter-spacing: 0.06em;
-            white-space: nowrap;
-        }
-
-        /* SUMMARY CARDS */
-
-        .summary-grid {
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 14px;
+            gap: theme('spacing.sm');
+            padding: 0 theme('spacing.sm');
         }
 
-        .summary-card {
-            position: relative;
-            padding: 20px;
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: var(--panel);
-            backdrop-filter: blur(16px);
-            overflow: hidden;
+        @media (min-width: 768px) {
+            .structural-grid {
+                grid-template-columns: repeat(8, 1fr);
+                gap: theme('spacing.sm');
+                padding: 0 theme('spacing.md');
+            }
         }
 
-        .summary-card::after {
-            content: "";
-            position: absolute;
-            width: 90px;
-            height: 90px;
-            right: -35px;
-            bottom: -45px;
-            border-radius: 50%;
-            background: var(--green-soft);
+        @media (min-width: 1024px) {
+            .structural-grid {
+                grid-template-columns: repeat(12, 1fr);
+                gap: theme('spacing.gutter');
+                padding: 0 theme('spacing.margin');
+            }
         }
 
-        .summary-label {
-            color: var(--muted);
-            font-family: "JetBrains Mono", monospace;
-            font-size: 9px;
-            letter-spacing: 0.13em;
-            text-transform: uppercase;
-        }
-
-        .summary-value {
-            margin-top: 9px;
-            font-family: "Bricolage Grotesque", sans-serif;
-            font-size: 32px;
-            font-weight: 600;
-            letter-spacing: -0.03em;
-        }
-
-        .summary-sub {
-            margin-top: 4px;
-            color: var(--dim);
-            font-size: 10px;
-        }
-
-        /* GRID */
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1.55fr) minmax(330px, 0.9fr);
-            gap: 14px;
-        }
-
-        .panel {
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            background: var(--panel);
-            backdrop-filter: blur(18px);
-            overflow: hidden;
-        }
-
-        .panel-header {
-            min-height: 64px;
-            padding: 15px 19px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-        }
-
-        .panel-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .panel-title-icon {
-            width: 31px;
-            height: 31px;
-            border-radius: 8px;
-            display: grid;
-            place-items: center;
-            color: var(--green);
-            background: var(--green-soft);
-        }
-
-        .panel-title h2 {
-            margin: 0;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.09em;
-        }
-
-        .panel-meta {
-            color: var(--dim);
-            font-family: "JetBrains Mono", monospace;
-            font-size: 9px;
-        }
-
-        /* MAP */
-
-        .map-panel {
-            min-height: 570px;
-        }
-
-        .map {
-            height: 505px;
-            position: relative;
-            overflow: hidden;
-            background:
-                radial-gradient(circle at 50% 45%, rgba(71,132,103,0.11), transparent 32%),
-                linear-gradient(135deg, rgba(255,255,255,0.018), transparent 35%),
-                #09130f;
-        }
-
-        .map::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background-image:
-                linear-gradient(rgba(105,230,163,0.045) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(105,230,163,0.045) 1px, transparent 1px);
-            background-size: 70px 70px;
-        }
-
-        .map::after {
-            content: "SIMULATED TERRAIN / SENSOR COVERAGE";
-            position: absolute;
-            left: 18px;
-            bottom: 15px;
-            color: rgba(132,150,142,0.45);
-            font: 9px "JetBrains Mono", monospace;
-            letter-spacing: 0.1em;
-        }
-
-        .terrain {
-            position: absolute;
-            inset: 0;
-            opacity: 0.55;
-        }
-
-        .terrain-line {
-            position: absolute;
-            height: 1px;
-            background: rgba(110,150,128,0.12);
-            transform-origin: left center;
-        }
-
-        .t1 { width: 72%; left: 5%; top: 24%; transform: rotate(18deg); }
-        .t2 { width: 80%; left: 12%; top: 54%; transform: rotate(-11deg); }
-        .t3 { width: 65%; left: 27%; top: 73%; transform: rotate(26deg); }
-        .t4 { width: 56%; left: 4%; top: 82%; transform: rotate(-25deg); }
-        .t5 { width: 60%; left: 43%; top: 15%; transform: rotate(70deg); }
-
-        .node {
-            position: absolute;
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            cursor: pointer;
-            z-index: 4;
-            transition: 0.25s;
-        }
-
-        .node::before {
-            content: "";
-            position: absolute;
-            inset: 7px;
-            border-radius: 50%;
-            background: var(--green);
-            box-shadow: 0 0 18px rgba(105,230,163,0.45);
-        }
-
-        .node::after {
-            content: "";
-            position: absolute;
-            inset: -9px;
-            border: 1px solid rgba(105,230,163,0.16);
-            border-radius: 50%;
-        }
-
-        .node.alert::before {
-            background: var(--red);
-            box-shadow: 0 0 18px rgba(255,111,115,0.5);
-        }
-
-        .node.alert::after {
-            border-color: rgba(255,111,115,0.28);
-            animation: pulse 1.7s infinite;
-        }
-
-        .node.warning::before {
-            background: var(--yellow);
-            box-shadow: 0 0 18px rgba(242,202,105,0.45);
-        }
-
-        .node.selected {
-            transform: scale(1.22);
-        }
-
-        .node-label {
-            position: absolute;
-            left: 43px;
-            top: 5px;
-            white-space: nowrap;
-            color: var(--muted);
-            font: 9px "JetBrains Mono", monospace;
-            pointer-events: none;
-        }
-
-        .node.alert .node-label {
-            color: var(--red);
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(0.85); opacity: 0.8; }
-            50% { transform: scale(1.25); opacity: 0.2; }
-        }
-
-        .satellite-link {
-            position: absolute;
-            left: 49%;
-            top: 37%;
-            width: 180px;
-            height: 1px;
-            border-top: 1px dashed rgba(118,185,255,0.45);
-            transform: rotate(35deg);
-            transform-origin: left;
-            z-index: 2;
-        }
-
-        .satellite-point {
-            position: absolute;
-            left: 45%;
-            top: 30%;
-            width: 58px;
-            height: 58px;
-            border: 1px solid rgba(118,185,255,0.35);
-            background: var(--blue-soft);
-            border-radius: 14px;
-            display: grid;
-            place-items: center;
-            color: var(--blue);
-            z-index: 3;
-        }
-
-        .map-legend {
-            position: absolute;
-            right: 18px;
-            bottom: 16px;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 9px;
-            background: rgba(5,13,10,0.76);
-            backdrop-filter: blur(10px);
-            z-index: 8;
-        }
-
-        .legend-row {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            color: var(--muted);
-            font-size: 9px;
-            margin: 5px 0;
-        }
-
-        .legend-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--green);
-        }
-
-        .legend-dot.alert {
-            background: var(--red);
-        }
-
-        .legend-dot.warning {
-            background: var(--yellow);
-        }
-
-        /* NODE DETAILS */
-
-        .node-details {
-            min-height: 570px;
-        }
-
-        .selected-node {
-            padding: 22px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .node-id {
-            color: var(--green);
-            font: 12px "JetBrains Mono", monospace;
-            font-weight: 600;
-        }
-
-        .node-location {
-            margin-top: 6px;
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .node-state {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            margin-top: 14px;
-            padding: 6px 9px;
-            border-radius: 6px;
-            background: var(--green-soft);
-            color: var(--green);
-            font: 9px "JetBrains Mono", monospace;
-        }
-
-        .sensor-list {
-            padding: 4px 22px 15px;
-        }
-
-        .sensor {
-            padding: 15px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.055);
-        }
-
-        .sensor:last-child {
-            border-bottom: 0;
-        }
-
-        .sensor-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 9px;
-        }
-
-        .sensor-name {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--muted);
-            font-size: 11px;
-        }
-
-        .sensor-name .material-symbols-outlined {
-            font-size: 17px;
-        }
-
-        .sensor-value {
-            font: 11px "JetBrains Mono", monospace;
-        }
-
-        .bar {
-            height: 5px;
-            border-radius: 20px;
-            background: rgba(255,255,255,0.06);
-            overflow: hidden;
-        }
-
-        .bar-fill {
+        .structural-grid > div {
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
             height: 100%;
-            width: var(--value);
-            border-radius: inherit;
-            background: var(--green);
-            transition: width 0.5s;
         }
 
-        .bar-fill.alert {
-            background: var(--red);
+        .structural-grid > div:last-child {
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
         }
 
-        .bar-fill.warning {
-            background: var(--yellow);
-        }
-
-        .node-health {
-            padding: 18px 22px 22px;
+        .glass-panel { background: rgba(10, 10, 10, 0.6); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .layout-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 24px;
+        }
+        
+        .glitch-hover:hover {
+            animation: glitch-anim 0.3s linear infinite;
+            text-shadow: 2px 0 #ff00c1, -2px 0 #00fff9;
         }
 
-        .health-item {
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 9px;
-            background: rgba(255,255,255,0.018);
+        @keyframes glitch-anim {
+            0% { clip-path: polygon(0 2%, 100% 2%, 100% 5%, 0 5%); }
+            20% { clip-path: polygon(0 15%, 100% 15%, 100% 15%, 0 15%); }
+            40% { clip-path: polygon(0 10%, 100% 10%, 100% 20%, 0 20%); }
+            60% { clip-path: polygon(0 1%, 100% 1%, 100% 2%, 0 2%); }
+            80% { clip-path: polygon(0 33%, 100% 33%, 100% 33%, 0 33%); }
+            100% { clip-path: polygon(0 44%, 100% 44%, 100% 44%, 0 44%); }
         }
 
-        .health-label {
-            color: var(--dim);
-            font: 8px "JetBrains Mono", monospace;
-            letter-spacing: 0.1em;
+        /* Circuit Traces */
+        .circuit-trace {
+            position: absolute;
+            background: theme('colors.primary');
+            box-shadow: 0 0 8px theme('colors.primary');
+            opacity: 0;
+            animation: pulse-trace 3s infinite;
         }
-
-        .health-value {
-            margin-top: 6px;
-            font: 13px "JetBrains Mono", monospace;
+        @keyframes pulse-trace {
+            0% { opacity: 0; transform: scaleX(0); transform-origin: left; }
+            50% { opacity: 1; transform: scaleX(1); transform-origin: left; }
+            50.1% { transform-origin: right; }
+            100% { opacity: 0; transform: scaleX(0); transform-origin: right; }
         }
-
-        /* LOWER */
-
-        .lower-grid {
-            display: grid;
-            grid-template-columns: 1.15fr 0.85fr;
-            gap: 14px;
-            margin-top: 14px;
+        
+        .circuit-trace-v {
+            position: absolute;
+            background: theme('colors.primary');
+            box-shadow: 0 0 8px theme('colors.primary');
+            opacity: 0;
+            animation: pulse-trace-v 3s infinite;
         }
-
-        /* EVENTS */
-
-        .events {
-            padding: 0 20px;
-        }
-
-        .event {
-            min-height: 64px;
-            display: grid;
-            grid-template-columns: 75px 105px 1fr auto;
-            align-items: center;
-            gap: 14px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .event:last-child {
-            border-bottom: 0;
-        }
-
-        .event-time {
-            color: var(--dim);
-            font: 9px "JetBrains Mono", monospace;
-        }
-
-        .event-node {
-            color: var(--muted);
-            font: 9px "JetBrains Mono", monospace;
-        }
-
-        .event-type {
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        .event-type.alert {
-            color: var(--red);
-        }
-
-        .event-type.warning {
-            color: var(--yellow);
-        }
-
-        .event-type.normal {
-            color: var(--green);
-        }
-
-        .event-reading {
-            color: var(--dim);
-            font: 9px "JetBrains Mono", monospace;
-        }
-
-        /* CORRELATION */
-
-        .correlation {
-            padding: 22px;
-        }
-
-        .correlation-empty {
-            padding: 20px 0;
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.6;
-        }
-
-        .detection-id {
-            color: var(--blue);
-            font: 10px "JetBrains Mono", monospace;
-            letter-spacing: 0.08em;
-        }
-
-        .correlation-title {
-            margin-top: 9px;
-            font-family: "Bricolage Grotesque", sans-serif;
-            font-size: 22px;
-            font-weight: 600;
-        }
-
-        .correlation-sub {
-            margin-top: 5px;
-            color: var(--muted);
-            font-size: 11px;
-        }
-
-        .metrics {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 18px;
-        }
-
-        .metric {
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 9px;
-            background: rgba(255,255,255,0.018);
-        }
-
-        .metric-label {
-            color: var(--dim);
-            font: 8px "JetBrains Mono", monospace;
-            text-transform: uppercase;
-        }
-
-        .metric-value {
-            margin-top: 6px;
-            font: 13px "JetBrains Mono", monospace;
-        }
-
-        .evidence {
-            margin-top: 12px;
-            padding: 14px;
-            border: 1px solid rgba(105,230,163,0.22);
-            border-radius: 10px;
-            background: var(--green-soft);
-        }
-
-        .evidence strong {
-            display: block;
-            color: var(--green);
-            font-size: 10px;
-            letter-spacing: 0.06em;
-        }
-
-        .evidence p {
-            margin: 6px 0 0;
-            color: var(--muted);
-            font-size: 10px;
-            line-height: 1.5;
-        }
-
-        .real-data {
-            margin-top: 14px;
-            color: var(--dim);
-            font: 8px "JetBrains Mono", monospace;
-            letter-spacing: 0.08em;
-        }
-
-        /* FOOTER */
-
-        footer {
-            margin-top: 24px;
-            padding: 15px 3px;
-            display: flex;
-            justify-content: space-between;
-            color: var(--dim);
-            font: 8px "JetBrains Mono", monospace;
-            letter-spacing: 0.07em;
-        }
-
-        /* RESPONSIVE */
-
-        @media (max-width: 1050px) {
-            .nav-links a {
-                padding: 8px 7px;
-            }
-
-            .dashboard-grid,
-            .lower-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .summary-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 720px) {
-            nav {
-                padding: 0 16px;
-            }
-
-            .nav-links {
-                display: none;
-            }
-
-            main {
-                width: min(100% - 28px, 1480px);
-                padding-top: 34px;
-            }
-
-            .hero-row {
-                display: block;
-            }
-
-            .simulation-badge {
-                margin-top: 22px;
-            }
-
-            .summary-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .map-panel,
-            .node-details {
-                min-height: auto;
-            }
-
-            .map {
-                height: 430px;
-            }
-
-            .event {
-                grid-template-columns: 60px 85px 1fr;
-                gap: 8px;
-            }
-
-            .event-reading {
-                display: none;
-            }
-
-            footer {
-                display: block;
-                line-height: 1.8;
-            }
+        @keyframes pulse-trace-v {
+            0% { opacity: 0; transform: scaleY(0); transform-origin: top; }
+            50% { opacity: 1; transform: scaleY(1); transform-origin: top; }
+            50.1% { transform-origin: bottom; }
+            100% { opacity: 0; transform: scaleY(0); transform-origin: bottom; }
         }
     </style>
 </head>
-
-<body>
-
-<nav>
-    <a class="brand" href="index.html">
-        <div class="brand-mark">
-            <span class="material-symbols-outlined">radar</span>
-        </div>
-        <span class="brand-name">GeoPulse</span>
-    </a>
-
-    <div class="nav-links">
-        <a href="index.html">OVERVIEW</a>
-        <a href="studio.html">STUDIO</a>
-        <a href="analytics.html">ANALYTICS</a>
-        <a href="explorer.html">EXPLORER</a>
-        <a href="intelligence.html">INTELLIGENCE</a>
-        <a class="active" href="telemetry.html">TELEMETRY</a>
+<body class="bg-background text-on-background min-h-screen flex flex-col relative antialiased selection:bg-primary/30 selection:text-primary">
+    <div class="structural-grid">
+        <div></div><div></div><div></div><div></div>
+        <div class="hidden md:block"></div><div class="hidden md:block"></div><div class="hidden md:block"></div><div class="hidden md:block"></div>
+        <div class="hidden lg:block"></div><div class="hidden lg:block"></div><div class="hidden lg:block"></div><div class="hidden lg:block"></div>
     </div>
 
-    <div class="nav-status">
-        <span class="status-dot"></span>
-        SYSTEM ONLINE
-    </div>
-</nav>
-
-<main>
-
-    <section class="hero-row">
-        <div class="hero-copy">
-            <div class="eyebrow">GROUND TELEMETRY</div>
-
-            <h1>Sensor confirmation<br>network.</h1>
-
-            <p>
-                A distributed ground-sensor layer designed to provide
-                independent physical evidence for satellite-detected change.
-                The current interface uses simulated nodes for demonstration.
-            </p>
+    <!-- TopNavBar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3">
+        <a href="index.html" class="flex items-center gap-2 font-headline-md text-headline-md text-primary tracking-tighter uppercase glitch-hover transition-all">
+            <div class="h-2.5 w-2.5 rounded-full bg-[#10b981] animate-pulse"></div>
+            <span>GeoPulse</span>
+        </a>
+        <div class="hidden md:flex gap-6 lg:gap-8 items-center">
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">OVERVIEW</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">STUDIO</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="analytics.html">ANALYTICS</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="explorer.html">EXPLORER</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="telemetry.html">TELEMETRY</a>
         </div>
-
-        <div class="simulation-badge">
-            <span class="material-symbols-outlined">science</span>
-            SIMULATION MODE · HARDWARE INTERFACE NOT CONNECTED
-        </div>
-    </section>
-
-
-    <!-- SUMMARY -->
-
-    <section class="summary-grid">
-
-        <div class="summary-card">
-            <div class="summary-label">Network Nodes</div>
-            <div class="summary-value" id="nodeCount">12</div>
-            <div class="summary-sub">simulated deployments</div>
-        </div>
-
-        <div class="summary-card">
-            <div class="summary-label">Online</div>
-            <div class="summary-value" id="onlineCount">10</div>
-            <div class="summary-sub">active sensor links</div>
-        </div>
-
-        <div class="summary-card">
-            <div class="summary-label">Alerts</div>
-            <div class="summary-value" id="alertCount">2</div>
-            <div class="summary-sub">requiring attention</div>
-        </div>
-
-        <div class="summary-card">
-            <div class="summary-label">Satellite Link</div>
-            <div class="summary-value" id="satelliteState">READY</div>
-            <div class="summary-sub">latest GeoPulse inference</div>
-        </div>
-
-    </section>
-
-
-    <!-- NETWORK -->
-
-    <section class="dashboard-grid">
-
-        <div class="panel map-panel">
-
-            <div class="panel-header">
-                <div class="panel-title">
-                    <div class="panel-title-icon">
-                        <span class="material-symbols-outlined">hub</span>
-                    </div>
-                    <h2>GROUND SENSOR NETWORK</h2>
-                </div>
-
-                <div class="panel-meta">12 DEPLOYED · SIMULATED</div>
+        <div class="flex gap-4 items-center">
+            <a href="telemetry.html" class="flex items-center gap-2 bg-primary/10 border border-primary/20 hover:border-primary/50 transition-all rounded-none px-3 py-1 font-mono text-xs text-primary" title="Live Telemetry Link">
+                <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                <span class="uppercase tracking-widest hidden lg:inline">Link Active (UI DEMO)</span>
+                <span class="uppercase tracking-widest lg:hidden">Active</span>
+            </a>
+            <div class="flex gap-3">
+                <a href="analytics.html" title="Cluster Alerts">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
+                </a>
+                <a href="overview.html" title="Command Center Profile">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
+                </a>
             </div>
+        </div>
+    </nav>
 
-            <div class="map">
-
-                <div class="terrain">
-                    <div class="terrain-line t1"></div>
-                    <div class="terrain-line t2"></div>
-                    <div class="terrain-line t3"></div>
-                    <div class="terrain-line t4"></div>
-                    <div class="terrain-line t5"></div>
-                </div>
-
-                <div class="satellite-point">
-                    <span class="material-symbols-outlined">satellite_alt</span>
-                </div>
-
-                <div class="satellite-link"></div>
-
-                <div class="node" style="left:14%;top:19%" data-node="GP-NODE-001">
-                    <span class="node-label">GP-NODE-001</span>
-                </div>
-
-                <div class="node" style="left:31%;top:30%" data-node="GP-NODE-002">
-                    <span class="node-label">GP-NODE-002</span>
-                </div>
-
-                <div class="node alert selected" style="left:61%;top:25%" data-node="GP-NODE-003">
-                    <span class="node-label">GP-NODE-003</span>
-                </div>
-
-                <div class="node" style="left:79%;top:38%" data-node="GP-NODE-004">
-                    <span class="node-label">GP-NODE-004</span>
-                </div>
-
-                <div class="node warning" style="left:19%;top:53%" data-node="GP-NODE-005">
-                    <span class="node-label">GP-NODE-005</span>
-                </div>
-
-                <div class="node" style="left:42%;top:48%" data-node="GP-NODE-006">
-                    <span class="node-label">GP-NODE-006</span>
-                </div>
-
-                <div class="node" style="left:72%;top:57%" data-node="GP-NODE-007">
-                    <span class="node-label">GP-NODE-007</span>
-                </div>
-
-                <div class="node" style="left:86%;top:71%" data-node="GP-NODE-008">
-                    <span class="node-label">GP-NODE-008</span>
-                </div>
-
-                <div class="node" style="left:28%;top:74%" data-node="GP-NODE-009">
-                    <span class="node-label">GP-NODE-009</span>
-                </div>
-
-                <div class="node" style="left:52%;top:78%" data-node="GP-NODE-010">
-                    <span class="node-label">GP-NODE-010</span>
-                </div>
-
-                <div class="node" style="left:69%;top:83%" data-node="GP-NODE-011">
-                    <span class="node-label">GP-NODE-011</span>
-                </div>
-
-                <div class="node" style="left:8%;top:82%" data-node="GP-NODE-012">
-                    <span class="node-label">GP-NODE-012</span>
-                </div>
-
-                <div class="map-legend">
-                    <div class="legend-row">
-                        <span class="legend-dot"></span>
-                        ONLINE
-                    </div>
-                    <div class="legend-row">
-                        <span class="legend-dot warning"></span>
-                        WARNING
-                    </div>
-                    <div class="legend-row">
-                        <span class="legend-dot alert"></span>
-                        ALERT
-                    </div>
-                </div>
-
+    <!-- Main Content Area -->
+    <main class="flex-1 pt-24 px-margin overflow-y-auto relative z-10 w-full max-w-[1920px] mx-auto pb-32">
+        <div id="no-inference-overlay" class="absolute inset-0 z-50 flex items-center justify-center bg-[#0a0a0a]/90 backdrop-blur-md hidden pointer-events-auto">
+            <div class="flex flex-col items-center gap-4 text-center">
+                <span class="material-symbols-outlined text-[48px] text-[#ff453a]">warning</span>
+                <h2 class="font-headline-md text-[#ff453a] uppercase tracking-widest">NO ACTIVE INFERENCE</h2>
+                <p class="font-mono text-outline text-sm max-w-md">No valid SAR inference result found in memory. Please run live intelligence from the Explorer.</p>
+                <a href="explorer.html" class="mt-4 px-6 py-2 bg-primary text-[#0a0a0a] font-ui-semibold uppercase tracking-widest hover:bg-primary-fixed-dim transition-colors">Go to Explorer</a>
             </div>
         </div>
 
+        <div id="telemetry-content">
+            <header class="mb-10 border-b border-outline/15 pb-4 flex flex-wrap justify-between items-end gap-4">
+                <div>
+                    <h1 class="font-headline-lg text-headline-lg text-on-surface uppercase shadow-black drop-shadow-lg glitch-hover transition-all">RISAT-2B TELEMETRY HUB</h1>
+                    <p class="font-accent-italic text-accent-italic text-on-surface-variant mt-2 max-w-2xl">Real-time health, link lock &amp; CUDA compute telemetry for GeoPulse SAR Processing Engines.</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="explorer.html" class="bg-primary text-[#0a0a0a] px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest hover:bg-primary-fixed-dim transition-all flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[16px]">satellite_alt</span> Return to Explorer
+                    </a>
+                    <a href="studio.html" class="bg-surface-container-high border border-outline/30 text-on-surface hover:text-primary px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest transition-all flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[16px]">view_in_ar</span> Open 3D Studio
+                    </a>
+                </div>
+            </header>
 
-        <!-- SELECTED NODE -->
-
-        <div class="panel node-details">
-
-            <div class="panel-header">
-                <div class="panel-title">
-                    <div class="panel-title-icon">
-                        <span class="material-symbols-outlined">sensors</span>
+            <div class="layout-grid">
+            <!-- Connectivity Panel -->
+            <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-4 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Connectivity <span class="text-[10px] text-tertiary-container ml-2">(SIMULATED / UI DEMO)</span></h3>
+                        <span class="material-symbols-outlined text-primary" data-icon="satellite_alt">satellite_alt</span>
                     </div>
-                    <h2>SELECTED NODE</h2>
+                    <div class="mb-4">
+                        <span class="font-mono text-xs text-on-surface-variant block mb-1 uppercase tracking-widest">Active Link</span>
+                        <span class="font-headline-md text-headline-md text-on-surface font-mono">ISRO RISAT-2B</span>
+                        <span class="font-mono text-xs text-on-surface-variant block mt-2 uppercase tracking-widest">Station Lock: ISTRAC, Bengaluru</span>
+                        <span class="font-mono text-xs text-on-surface-variant block mt-2 uppercase tracking-widest">Last Update: <span id="ist-time1">--:--:--</span> IST</span>
+                    </div>
                 </div>
-
-                <div class="panel-meta">LIVE SIMULATION</div>
+                <div class="flex items-end justify-between border-t border-outline/15 pt-4 mt-4 border-dotted">
+                    <div>
+                        <span class="font-mono text-xs text-on-surface-variant block mb-1 uppercase tracking-widest">Downlink Latency</span>
+                        <span class="text-4xl text-[#ff00c1] font-jetbrains tracking-tight" id="latency-readout">122ms</span>
+                    </div>
+                    <div class="h-8 w-8 rounded-none border border-[#10b981] flex items-center justify-center bg-[#10b981]/20">
+                        <span class="h-2 w-2 bg-[#10b981] rounded-none animate-pulse"></span>
+                    </div>
+                </div>
             </div>
 
-            <div class="selected-node">
-
-                <div class="node-id" id="selectedNodeId">
-                    GP-NODE-003
-                </div>
-
-                <div class="node-location" id="selectedLocation">
-                    Forest Boundary / Sector B
-                </div>
-
-                <div class="node-state">
-                    <span class="status-dot"></span>
-                    ONLINE · HIGH CONFIDENCE LINK
-                </div>
-
-            </div>
-
-            <div class="sensor-list">
-
-                <div class="sensor">
-                    <div class="sensor-top">
-                        <div class="sensor-name">
-                            <span class="material-symbols-outlined">graphic_eq</span>
-                            Acoustic activity
+            <!-- AI Engine Specs -->
+            <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-8 relative overflow-hidden group">
+                <div class="circuit-trace h-[2px] w-1/3 top-0 left-10"></div>
+                <div class="circuit-trace h-[2px] w-1/4 bottom-0 right-20" style="animation-delay: 1.5s;"></div>
+                <div class="circuit-trace-v w-[2px] h-1/2 top-10 right-0" style="animation-delay: 0.75s;"></div>
+                <div class="circuit-trace-v w-[2px] h-1/3 bottom-10 left-0" style="animation-delay: 2.25s;"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">AI Compute Node <span class="text-[10px] text-tertiary-container ml-2">(SIMULATED / UI DEMO)</span></h3>
+                        <span class="material-symbols-outlined text-outline" data-icon="memory_alt">memory_alt</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-surface-container-low p-4 border border-outline/15 relative">
+                            <span class="font-mono text-xs text-on-surface-variant block mb-2 uppercase tracking-widest">Framework</span>
+                            <span class="font-headline-md text-headline-md text-on-surface font-mono">PyTorch 2.x (SNUNet)</span>
                         </div>
-                        <div class="sensor-value" id="acousticValue">83%</div>
-                    </div>
-                    <div class="bar">
-                        <div class="bar-fill alert" id="acousticBar" style="--value:83%"></div>
-                    </div>
-                </div>
-
-                <div class="sensor">
-                    <div class="sensor-top">
-                        <div class="sensor-name">
-                            <span class="material-symbols-outlined">vibration</span>
-                            Ground vibration
+                        <div class="bg-surface-container-low p-4 border border-outline/15 relative">
+                            <span class="font-mono text-xs text-on-surface-variant block mb-2 uppercase tracking-widest">Hardware Accelerator</span>
+                            <span class="font-headline-md text-headline-md text-on-surface font-mono">CUDA: NVIDIA RTX 3050</span>
                         </div>
-                        <div class="sensor-value" id="vibrationValue">91%</div>
                     </div>
-                    <div class="bar">
-                        <div class="bar-fill alert" id="vibrationBar" style="--value:91%"></div>
-                    </div>
-                </div>
-
-                <div class="sensor">
-                    <div class="sensor-top">
-                        <div class="sensor-name">
-                            <span class="material-symbols-outlined">water_drop</span>
-                            Soil moisture
+                    <div class="mt-6 border-t border-outline/15 pt-4 border-dotted">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-mono text-xs text-on-surface-variant uppercase tracking-widest">GPU VRAM Usage</span>
+                            <span class="text-xl text-[#00fff9] font-jetbrains tracking-tight" id="vram-readout">1.3 GB / 6.0 GB</span>
                         </div>
-                        <div class="sensor-value" id="moistureValue">64%</div>
-                    </div>
-                    <div class="bar">
-                        <div class="bar-fill" id="moistureBar" style="--value:64%"></div>
-                    </div>
-                </div>
-
-                <div class="sensor">
-                    <div class="sensor-top">
-                        <div class="sensor-name">
-                            <span class="material-symbols-outlined">screen_rotation_alt</span>
-                            Tilt / tamper
+                        <div class="w-full bg-surface-container-highest border border-outline/15 h-3">
+                            <div class="bg-[#00fff9] h-full transition-all duration-300" id="gpu-bar" style="width: 21.7687%;"></div>
                         </div>
-                        <div class="sensor-value" id="tiltValue">NORMAL</div>
-                    </div>
-                    <div class="bar">
-                        <div class="bar-fill" style="--value:8%"></div>
                     </div>
                 </div>
-
             </div>
 
-            <div class="node-health">
-
-                <div class="health-item">
-                    <div class="health-label">BATTERY</div>
-                    <div class="health-value">87%</div>
+            <!-- Historical Uptime Chart -->
+            <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-4 mt-2 h-64 flex flex-col relative overflow-hidden">
+                <div class="relative z-10 flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 border-b border-outline/15 pb-2">
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">System Uptime <span class="text-[10px] text-tertiary-container ml-2">(SIMULATED)</span></h3>
+                        <span class="font-headline-md text-headline-md text-primary font-mono">99.98%</span>
+                    </div>
+                    <div class="flex-1 flex items-end space-x-1">
+                        <!-- Chart Bars -->
+                        <div class="w-full h-full flex items-end space-x-2">
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[90%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-7</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[95%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-6</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[100%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-5</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[88%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-4</span></div>
+                            <div class="bg-error/20 w-full h-[65%] hover:bg-error/50 transition-colors border border-error flex items-end justify-center p-1"><span class="text-[10px] font-mono text-error">T-3</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[94%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-2</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[99%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-primary">T-1</span></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-2 font-mono text-xs text-outline tracking-widest uppercase">
+                        <span>T-7d (Nominal)</span>
+                        <span>Today (<span id="ist-time2">--:--:--</span> IST)</span>
+                    </div>
                 </div>
-
-                <div class="health-item">
-                    <div class="health-label">SIGNAL</div>
-                    <div class="health-value">94%</div>
-                </div>
-
-                <div class="health-item">
-                    <div class="health-label">LAST PACKET</div>
-                    <div class="health-value" id="lastPacket">02s ago</div>
-                </div>
-
-                <div class="health-item">
-                    <div class="health-label">FIRMWARE</div>
-                    <div class="health-value">SIM-1.4</div>
-                </div>
-
             </div>
 
+            <!-- Real Inference Metadata -->
+            <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-8 mt-2 h-64 flex flex-col relative overflow-hidden bg-primary/5 border border-primary/20">
+                <div class="relative z-10 flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 border-b border-outline/15 pb-2">
+                        <h3 class="font-ui-semibold text-ui-semibold text-primary uppercase tracking-widest">Inference Results <span class="text-[10px] text-primary ml-2 font-bold">(REAL DATA)</span></h3>
+                        <span class="material-symbols-outlined text-primary" data-icon="data_usage">data_usage</span>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 h-full">
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Model Name</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-model-name">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Threshold</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-threshold">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Execution Time</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary"><span id="real-exec-time">--</span> s</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Run Status</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-[#10b981] uppercase" id="real-status">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Total Pixels</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-on-surface" id="real-total-px">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Changed Pixels</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-changed-px">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Change %</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-change-pct">--</span>
+                        </div>
+                        <div class="bg-[#0a0a0a]/60 p-3 border border-primary/10 flex flex-col justify-center">
+                            <span class="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Clusters</span>
+                            <span class="font-['JetBrains_Mono'] text-lg text-primary" id="real-clusters">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-
-    </section>
-
-
-    <!-- EVENTS + CORRELATION -->
-
-    <section class="lower-grid">
-
-        <div class="panel">
-
-            <div class="panel-header">
-                <div class="panel-title">
-                    <div class="panel-title-icon">
-                        <span class="material-symbols-outlined">notifications_active</span>
-                    </div>
-                    <h2>RECENT SENSOR EVENTS</h2>
-                </div>
-
-                <div class="panel-meta">SIMULATED STREAM</div>
-            </div>
-
-            <div class="events">
-
-                <div class="event">
-                    <div class="event-time">02:41:18</div>
-                    <div class="event-node">GP-NODE-003</div>
-                    <div class="event-type alert">VIBRATION SPIKE</div>
-                    <div class="event-reading">91%</div>
-                </div>
-
-                <div class="event">
-                    <div class="event-time">02:39:52</div>
-                    <div class="event-node">GP-NODE-003</div>
-                    <div class="event-type alert">ACOUSTIC ANOMALY</div>
-                    <div class="event-reading">83%</div>
-                </div>
-
-                <div class="event">
-                    <div class="event-time">02:37:11</div>
-                    <div class="event-node">GP-NODE-005</div>
-                    <div class="event-type warning">ELEVATED VIBRATION</div>
-                    <div class="event-reading">67%</div>
-                </div>
-
-                <div class="event">
-                    <div class="event-time">02:35:43</div>
-                    <div class="event-node">GP-NODE-007</div>
-                    <div class="event-type normal">HEARTBEAT</div>
-                    <div class="event-reading">OK</div>
-                </div>
-
-                <div class="event">
-                    <div class="event-time">02:32:26</div>
-                    <div class="event-node">GP-NODE-011</div>
-                    <div class="event-type normal">SOIL UPDATE</div>
-                    <div class="event-reading">58%</div>
-                </div>
-
-                <div class="event">
-                    <div class="event-time">02:29:04</div>
-                    <div class="event-node">GP-NODE-002</div>
-                    <div class="event-type normal">HEARTBEAT</div>
-                    <div class="event-reading">OK</div>
-                </div>
-
-            </div>
-
         </div>
+    </main>
 
-
-        <!-- SATELLITE CORRELATION -->
-
-        <div class="panel">
-
-            <div class="panel-header">
-                <div class="panel-title">
-                    <div class="panel-title-icon">
-                        <span class="material-symbols-outlined">satellite_alt</span>
-                    </div>
-                    <h2>SATELLITE ↔ GROUND</h2>
-                </div>
-
-                <div class="panel-meta">CROSS-MODAL</div>
-            </div>
-
-            <div class="correlation" id="correlationPanel">
-
-                <div class="detection-id" id="detectionId">
-                    LATEST SATELLITE DETECTION
-                </div>
-
-                <div class="correlation-title" id="correlationTitle">
-                    Awaiting inference
-                </div>
-
-                <div class="correlation-sub" id="correlationSub">
-                    Run a GeoPulse detection to populate real satellite evidence here.
-                </div>
-
-                <div class="metrics">
-
-                    <div class="metric">
-                        <div class="metric-label">Change probability</div>
-                        <div class="metric-value" id="changeProbability">—</div>
-                    </div>
-
-                    <div class="metric">
-                        <div class="metric-label">Changed area</div>
-                        <div class="metric-value" id="changedArea">—</div>
-                    </div>
-
-                    <div class="metric">
-                        <div class="metric-label">Nearby node</div>
-                        <div class="metric-value">GP-NODE-003</div>
-                    </div>
-
-                    <div class="metric">
-                        <div class="metric-label">Distance</div>
-                        <div class="metric-value">420 m</div>
-                    </div>
-
-                </div>
-
-                <div class="evidence">
-
-                    <strong>
-                        ★ SIMULATED CORRELATED EVIDENCE
-                    </strong>
-
-                    <p>
-                        The selected ground node is reporting elevated acoustic
-                        and vibration activity near the simulated satellite
-                        detection zone. Physical sensor hardware is not
-                        currently connected.
-                    </p>
-
-                </div>
-
-                <div class="real-data" id="realDataStatus">
-                    SATELLITE DATA · WAITING FOR LATEST INFERENCE
-                </div>
-
-            </div>
-
+    <!-- Footer -->
+    <footer class="w-full py-12 px-margin grid grid-cols-1 md:grid-cols-12 gap-gutter bg-surface-dim border-t border-outline/15 relative overflow-hidden z-40">
+        <div class="col-span-1 md:col-span-6 flex flex-col justify-between">
+            <div class="font-headline-md text-headline-md text-primary mb-4 glitch-hover transition-all">GeoPulse</div>
+            <p class="font-mono text-xs text-outline tracking-widest uppercase">All Rights Reserved</p>
         </div>
-
-    </section>
-
-
-    <footer>
-        <span>GEOPULSE / GROUND TELEMETRY</span>
-        <span>SIMULATION DATA · HARDWARE DEPLOYMENT PLANNED FOR FUTURE FIELD VALIDATION</span>
+        <div class="col-span-1 md:col-span-6 flex justify-end gap-6 font-ui-semibold text-ui-semibold uppercase flex-wrap">
+            <a class="text-outline hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
+            <a class="text-outline hover:text-primary transition-colors" href="studio.html">[3D STUDIO]</a>
+            <a class="text-outline hover:text-primary transition-colors" href="analytics.html">[CLUSTER AUDIT]</a>
+            <a class="text-outline hover:text-primary transition-colors" href="telemetry.html">[TELEMETRY]</a>
+        </div>
     </footer>
 
-</main>
+    <script src="assets/sar-store.js"></script>
+    <script>
+        (function initTelemetry() {
+            console.log("[DEBUG] initTelemetry() started");
+            try {
+                if (typeof SARStore === 'undefined') {
+                    console.error("[DEBUG] SARStore is undefined! Script not loaded.");
+                } else {
+                    console.log("[DEBUG] SARStore loaded successfully.");
+                }
 
+                const metadata = SARStore.loadMetadata();
+                console.log("[DEBUG] metadata found?", !!metadata);
+                
+                if (metadata) {
+                    console.log("[DEBUG] metadata keys:", Object.keys(metadata));
+                }
+                
+                const realDataPanel = document.getElementById('real-model-name');
+                console.log("[DEBUG] real-data panel found in DOM?", !!realDataPanel);
 
-<script src="assets/sar-store.js"></script>
+                if (!metadata || !metadata.regions) {
+                    console.log("[DEBUG] No valid inference. Showing overlay.");
+                    document.getElementById('no-inference-overlay').classList.remove('hidden');
+                    document.getElementById('telemetry-content').style.opacity = '0.3';
+                    document.getElementById('telemetry-content').style.pointerEvents = 'none';
+                    return;
+                }
 
-<script>
+                const fmtNum = (n) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString() : '--';
+                
+                document.getElementById('real-model-name').innerText = metadata.model || 'Unknown';
+                document.getElementById('real-threshold').innerText = metadata.threshold != null ? metadata.threshold : '--';
+                document.getElementById('real-exec-time').innerText = metadata.execution_time_sec != null ? metadata.execution_time_sec : '--';
+                document.getElementById('real-status').innerText = metadata.status || 'SUCCESS';
+                
+                document.getElementById('real-total-px').innerText = fmtNum(metadata.total_pixels);
+                document.getElementById('real-changed-px').innerText = fmtNum(metadata.changed_pixels);
+                document.getElementById('real-change-pct').innerText = metadata.change_percentage != null ? `${metadata.change_percentage}%` : '--';
+                document.getElementById('real-clusters').innerText = fmtNum(metadata.num_change_clusters);
 
-    /*
-     * ============================================================
-     * GeoPulse Ground Telemetry
-     * ============================================================
-     *
-     * Ground nodes are intentionally simulated for the current demo.
-     *
-     * Satellite detection information is read from SARStore and
-     * therefore represents the latest actual GeoPulse inference
-     * available in the browser session.
-     */
+                console.log("[DEBUG] Values populated successfully.");
+            } catch (err) {
+                console.error("Telemetry initialization error:", err);
+            }
+        })();
 
-
-    const simulatedNodes = {
-        "GP-NODE-001": {
-            location: "Forest Boundary / Sector A",
-            acoustic: 32,
-            vibration: 21,
-            moisture: 61,
-            tilt: "NORMAL",
-            battery: 92,
-            signal: 88
-        },
-
-        "GP-NODE-002": {
-            location: "Forest Boundary / Sector A",
-            acoustic: 28,
-            vibration: 35,
-            moisture: 57,
-            tilt: "NORMAL",
-            battery: 81,
-            signal: 91
-        },
-
-        "GP-NODE-003": {
-            location: "Forest Boundary / Sector B",
-            acoustic: 83,
-            vibration: 91,
-            moisture: 64,
-            tilt: "NORMAL",
-            battery: 87,
-            signal: 94
-        },
-
-        "GP-NODE-004": {
-            location: "Mining Perimeter / East",
-            acoustic: 21,
-            vibration: 29,
-            moisture: 43,
-            tilt: "NORMAL",
-            battery: 76,
-            signal: 86
-        },
-
-        "GP-NODE-005": {
-            location: "Mining Perimeter / South",
-            acoustic: 49,
-            vibration: 67,
-            moisture: 52,
-            tilt: "NORMAL",
-            battery: 72,
-            signal: 82
-        },
-
-        "GP-NODE-006": {
-            location: "Forest Boundary / Sector C",
-            acoustic: 24,
-            vibration: 18,
-            moisture: 68,
-            tilt: "NORMAL",
-            battery: 94,
-            signal: 95
-        },
-
-        "GP-NODE-007": {
-            location: "Access Road / Checkpoint",
-            acoustic: 19,
-            vibration: 24,
-            moisture: 59,
-            tilt: "NORMAL",
-            battery: 90,
-            signal: 93
-        },
-
-        "GP-NODE-008": {
-            location: "River Corridor / North",
-            acoustic: 17,
-            vibration: 22,
-            moisture: 76,
-            tilt: "NORMAL",
-            battery: 84,
-            signal: 79
-        },
-
-        "GP-NODE-009": {
-            location: "Forest Boundary / Sector D",
-            acoustic: 31,
-            vibration: 26,
-            moisture: 63,
-            tilt: "NORMAL",
-            battery: 88,
-            signal: 90
-        },
-
-        "GP-NODE-010": {
-            location: "Mining Perimeter / West",
-            acoustic: 36,
-            vibration: 41,
-            moisture: 47,
-            tilt: "NORMAL",
-            battery: 69,
-            signal: 75
-        },
-
-        "GP-NODE-011": {
-            location: "River Corridor / South",
-            acoustic: 18,
-            vibration: 20,
-            moisture: 58,
-            tilt: "NORMAL",
-            battery: 93,
-            signal: 89
-        },
-
-        "GP-NODE-012": {
-            location: "Forest Boundary / West",
-            acoustic: 27,
-            vibration: 25,
-            moisture: 66,
-            tilt: "NORMAL",
-            battery: 80,
-            signal: 84
+        // IST Time Update
+        function updateTime() {
+            const now = new Date();
+            const options = { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const istTime = now.toLocaleTimeString('en-IN', options);
+            const el1 = document.getElementById('ist-time1');
+            const el2 = document.getElementById('ist-time2');
+            if (el1) el1.innerText = istTime;
+            if (el2) el2.innerText = istTime;
         }
-    };
-
-
-    const locations = Object.keys(simulatedNodes);
-
-
-    function updateNode(nodeId) {
-
-        const node = simulatedNodes[nodeId];
-
-        if (!node) {
-            return;
-        }
-
-        document.getElementById("selectedNodeId").textContent = nodeId;
-        document.getElementById("selectedLocation").textContent = node.location;
-
-        document.getElementById("acousticValue").textContent =
-            node.acoustic + "%";
-
-        document.getElementById("vibrationValue").textContent =
-            node.vibration + "%";
-
-        document.getElementById("moistureValue").textContent =
-            node.moisture + "%";
-
-        document.getElementById("tiltValue").textContent =
-            node.tilt;
-
-        document.getElementById("acousticBar").style.setProperty(
-            "--value",
-            node.acoustic + "%"
-        );
-
-        document.getElementById("vibrationBar").style.setProperty(
-            "--value",
-            node.vibration + "%"
-        );
-
-        document.getElementById("moistureBar").style.setProperty(
-            "--value",
-            node.moisture + "%"
-        );
-
-        document.querySelectorAll(".node").forEach(function (element) {
-            element.classList.toggle(
-                "selected",
-                element.dataset.node === nodeId
-            );
-        });
-    }
-
-
-    document.querySelectorAll(".node").forEach(function (element) {
-
-        element.addEventListener("click", function () {
-
-            const nodeId = element.dataset.node;
-
-            updateNode(nodeId);
-
-        });
-
-    });
-
-
-    /*
-     * Small telemetry animation.
-     *
-     * This does NOT pretend to be real hardware.
-     * It simply makes the demonstration feel like a live sensor
-     * network while remaining inside simulation mode.
-     */
-
-    function simulateTelemetry() {
-
-        locations.forEach(function (nodeId) {
-
-            const node = simulatedNodes[nodeId];
-
-            node.acoustic = Math.max(
-                5,
-                Math.min(99, node.acoustic + (Math.random() * 4 - 2))
-            );
-
-            node.vibration = Math.max(
-                5,
-                Math.min(99, node.vibration + (Math.random() * 4 - 2))
-            );
-
-        });
-
-        const selected =
-            document.getElementById("selectedNodeId").textContent;
-
-        if (simulatedNodes[selected]) {
-            updateNode(selected);
-        }
-
-        const seconds =
-            Math.floor(Math.random() * 4) + 1;
-
-        document.getElementById("lastPacket").textContent =
-            String(seconds).padStart(2, "0") + "s ago";
-    }
-
-
-    setInterval(simulateTelemetry, 1800);
-
-
-    /*
-     * ============================================================
-     * REAL GEOPULSE RESULT
-     * ============================================================
-     */
-
-    function loadSatelliteDetection() {
-
-        let metadata = null;
-
-        try {
-            metadata = SARStore.loadMetadata();
-        } catch (error) {
-            metadata = null;
-        }
-
-        const state =
-            document.getElementById("satelliteState");
-
-        const probability =
-            document.getElementById("changeProbability");
-
-        const area =
-            document.getElementById("changedArea");
-
-        const title =
-            document.getElementById("correlationTitle");
-
-        const subtitle =
-            document.getElementById("correlationSub");
-
-        const status =
-            document.getElementById("realDataStatus");
-
-        const detectionId =
-            document.getElementById("detectionId");
-
-
-        if (!metadata) {
-
-            state.textContent = "READY";
-
-            probability.textContent = "—";
-            area.textContent = "—";
-
-            title.textContent = "Awaiting inference";
-
-            subtitle.textContent =
-                "Run a GeoPulse detection to populate real satellite evidence here.";
-
-            detectionId.textContent =
-                "LATEST SATELLITE DETECTION";
-
-            status.textContent =
-                "SATELLITE DATA · WAITING FOR LATEST INFERENCE";
-
-            return;
-        }
-
-
-        state.textContent = "ACTIVE";
-
-
-        if (metadata.change_percentage != null) {
-
-            probability.textContent =
-                Number(metadata.change_percentage).toFixed(1) + "%";
-
-        } else {
-
-            probability.textContent = "—";
-
-        }
-
-
-        if (metadata.total_changed_area_sq_km != null) {
-
-            area.textContent =
-                Number(metadata.total_changed_area_sq_km).toFixed(3) +
-                " km²";
-
-        } else {
-
-            area.textContent = "—";
-
-        }
-
-
-        if (metadata.job_id) {
-
-            detectionId.textContent =
-                "JOB " + String(metadata.job_id).slice(0, 18);
-
-        }
-
-
-        if (metadata.num_change_clusters != null) {
-
-            title.textContent =
-                metadata.num_change_clusters +
-                " detected change region" +
-                (metadata.num_change_clusters === 1 ? "" : "s");
-
-        } else {
-
-            title.textContent =
-                "Satellite change detected";
-
-        }
-
-
-        const model =
-            metadata.model ||
-            "GeoPulse inference";
-
-
-        subtitle.textContent =
-            model +
-            " · latest stored result";
-
-
-        status.textContent =
-            "SATELLITE DATA · REAL SESSION RESULT";
-    }
-
-
-    loadSatelliteDetection();
-
-
-    /*
-     * Refresh the satellite panel in case another GeoPulse page
-     * writes a new result into sessionStorage.
-     */
-
-    setInterval(loadSatelliteDetection, 2000);
-
-
-    /*
-     * Start with the primary simulated alert node.
-     */
-
-    updateNode("GP-NODE-003");
-
-</script>
-
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // Live GPU & Network Jitter Script
+        setInterval(() => {
+            const latencyElement = document.getElementById('latency-readout');
+            if (latencyElement) {
+                const jitter = Math.floor(Math.random() * 7) + 118; 
+                latencyElement.innerText = `${jitter}ms`;
+            }
+
+            const gpuBar = document.getElementById('gpu-bar');
+            const vramReadout = document.getElementById('vram-readout');
+            if (gpuBar && vramReadout) {
+                let basePercent = 20 + (Math.random() * 15 - 5); 
+                basePercent = Math.max(5, Math.min(basePercent, 95));
+                gpuBar.style.width = `${basePercent}%`;
+                const currentVram = (basePercent / 100) * 6.0;
+                vramReadout.innerText = `${currentVram.toFixed(1)} GB / 6.0 GB`;
+            }
+        }, 800);
+    </script>
 </body>
 </html>
