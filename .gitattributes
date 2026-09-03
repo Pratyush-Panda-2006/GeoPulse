@@ -2,3 +2,4 @@
 *.pth filter=lfs diff=lfs merge=lfs -text
 *.ckpt filter=lfs diff=lfs merge=lfs -text
 *.bin filter=lfs diff=lfs merge=lfs -text
+models/ChangeFormer/checkpoints/ChangeFormerV6_LEVIR/best_ckpt.pt filter=lfs diff=lfs merge=lfs -text

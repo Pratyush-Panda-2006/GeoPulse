@@ -421,13 +421,13 @@ async def detect_uploaded_images(
         if pil_t1.size != pil_t2.size:
             pil_t2 = pil_t2.resize(pil_t1.size, Image.Resampling.BILINEAR)
 
-        if model_name not in ["snunet_cd_sar"]:
+        if model_name not in ["snunet_cd_sar", "changeformer_v6"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Model '{model_name}' is not allowed or has no trained checkpoint."
             )
 
-        # ── Channel validation for snunet_cd_sar ──────────────────────────
+        # ── Channel validation ──────────────────────────
         t1_arr = np.array(pil_t1, dtype=np.float32)
         t2_arr = np.array(pil_t2, dtype=np.float32)
 
@@ -462,6 +462,11 @@ async def detect_uploaded_images(
                             f"Model 'snunet_cd_sar' requires exactly 2 channels (VV/VH)."
                         ),
                     )
+        elif model_name == "changeformer_v6":
+            for label, ch in [("T1", t1_channels), ("T2", t2_channels)]:
+                if ch != 3 and ch != 4:  # Allowing 4 (RGBA) which PIL handles
+                    # Check if it's 1-channel, we can convert but let's warn
+                    pass
 
         # Normalize to [0, 1] float32
         # Determine max value based on dtype for proper normalization
@@ -502,12 +507,17 @@ async def detect_uploaded_images(
 
         model_service = ModelService.get_instance()
         try:
-            prob_map, binary_mask = model_service.predict_change_rgb(
-                t1_tensor=t1_tensor,
-                t2_tensor=t2_tensor,
-                model_name=model_name,
-                threshold=threshold,
-            )
+            if model_name == "changeformer_v6":
+                prob_map, binary_mask = model_service.predict_changeformer(
+                    pil_t1, pil_t2
+                )
+            else:
+                prob_map, binary_mask = model_service.predict_change_rgb(
+                    t1_tensor=t1_tensor,
+                    t2_tensor=t2_tensor,
+                    model_name=model_name,
+                    threshold=threshold,
+                )
         except ValueError as ve:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

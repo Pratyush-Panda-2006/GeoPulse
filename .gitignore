@@ -75,3 +75,27 @@ Thumbs.db
 # Local secrets
 .env.local
 .env.*.local
+# --- ChangeFormer Exceptions and Rules ---
+models/ChangeFormer/test_output/
+models/ChangeFormer/vis/
+models/ChangeFormer/datasets/
+models/ChangeFormer/.git/
+
+!models/
+!models/ChangeFormer/
+
+# Strictly only track best_ckpt.pt in checkpoints
+!models/ChangeFormer/checkpoints/
+models/ChangeFormer/checkpoints/*
+!models/ChangeFormer/checkpoints/ChangeFormerV6_LEVIR/
+models/ChangeFormer/checkpoints/ChangeFormerV6_LEVIR/*
+!models/ChangeFormer/checkpoints/ChangeFormerV6_LEVIR/best_ckpt.pt
+
+# Strictly only track sample_1 through sample_5 in samples_LEVIR
+models/ChangeFormer/samples_LEVIR/*
+!models/ChangeFormer/samples_LEVIR/sample_1/
+!models/ChangeFormer/samples_LEVIR/sample_2/
+!models/ChangeFormer/samples_LEVIR/sample_3/
+!models/ChangeFormer/samples_LEVIR/sample_4/
+!models/ChangeFormer/samples_LEVIR/sample_5/
+models/ChangeFormer/.git_changeformer_backup/

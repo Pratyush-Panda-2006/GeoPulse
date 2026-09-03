@@ -13,6 +13,9 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
+import tempfile
+import subprocess
+from PIL import Image
 
 from src.detection.siamese_unet import SiameseUNet
 from src.detection.snunet_cd import SNUNetCD
@@ -158,3 +161,59 @@ class ModelService:
         binary_mask = (prob_map >= threshold).astype(np.uint8)
 
         return prob_map, binary_mask
+
+    def predict_changeformer(
+        self,
+        pil_t1: Image.Image,
+        pil_t2: Image.Image,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Run inference using ChangeFormerV6 via subprocess on its dedicated environment.
+        """
+        # Ensure RGB
+        if pil_t1.mode != "RGB":
+            pil_t1 = pil_t1.convert("RGB")
+        if pil_t2.mode != "RGB":
+            pil_t2 = pil_t2.convert("RGB")
+
+        # Paths
+        changeformer_dir = Path(r"D:\Projects\border surv\models\ChangeFormer")
+        python_exe = changeformer_dir / ".venv" / "Scripts" / "python.exe"
+        infer_script = changeformer_dir / "infer_single.py"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            t1_path = tmp_path / "t1.png"
+            t2_path = tmp_path / "t2.png"
+            out_dir = tmp_path / "out"
+            out_dir.mkdir()
+
+            pil_t1.save(t1_path)
+            pil_t2.save(t2_path)
+
+            # Build command
+            cmd = [
+                str(python_exe),
+                str(infer_script),
+                "--t1_path", str(t1_path),
+                "--t2_path", str(t2_path),
+                "--out_dir", str(out_dir),
+                "--gpu_ids", "-1"
+            ]
+
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
+            except subprocess.CalledProcessError as e:
+                logger.error(f"ChangeFormerV6 subprocess failed: {e.stderr}")
+                raise ValueError("ChangeFormerV6 inference failed.")
+
+            prob_path = out_dir / "prob_map.npy"
+            mask_path = out_dir / "binary_mask.npy"
+
+            if not prob_path.exists() or not mask_path.exists():
+                raise ValueError("ChangeFormerV6 outputs not found.")
+
+            prob_map = np.load(str(prob_path))
+            binary_mask = np.load(str(mask_path))
+
+            return prob_map, binary_mask
