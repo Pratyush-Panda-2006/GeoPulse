@@ -254,10 +254,10 @@
     <!-- Main Workspace Area -->
     <main class="flex-1 relative z-10 overflow-hidden pt-toolbar-width">
         <!-- Level 1 Panel: CDSE Acquisition Controls (Inner Sidebar) -->
-        <aside class="absolute top-24 bottom-6 left-6 w-[340px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 flex flex-col z-20 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] overflow-hidden">
+        <aside class="absolute top-20 max-h-[calc(100%-6rem)] left-6 w-[340px] bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 flex flex-col z-20 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] overflow-hidden">
             
             <!-- Panel Header -->
-            <div class="px-6 py-5 border-b border-white/10 flex justify-between items-center bg-white/5 shadow-inner">
+            <div class="px-6 py-5 border-b border-white/10 flex justify-between items-center bg-white/5 shadow-inner shrink-0">
                 <h2 class="font-ui-semibold text-ui-semibold text-white uppercase tracking-widest drop-shadow-md">Acquisition Controls</h2>
                 <span class="material-symbols-outlined text-white/90 text-sm">tune</span>
             </div>
@@ -419,7 +419,6 @@
                             <option class="bg-black text-white/90" value="256">256 x 256 px</option>
                             <option class="bg-black text-white/90" selected="" value="512">512 x 512 px</option>
                         </select>
-                        </select>
                     </div>
                     <!-- Model Selector -->
                     <div class="flex flex-col gap-1.5 mt-2">
@@ -430,42 +429,11 @@
                             <option class="bg-black text-white/90" value="changeformer_v6">ChangeFormerV6 (Optical)</option>
                         </select>
                     </div>
-                    <!-- Sensitivity Slider -->
-                    <div class="flex flex-col gap-2 mt-4">
-                        <div class="flex justify-between items-center">
-                            <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Detection Sensitivity</label>
-                            <span class="font-mono text-sm text-primary" id="sens-val">0.95</span>
-                        </div>
-                        <input id="sens-slider" class="w-full accent-primary h-1 bg-white/20 rounded-lg appearance-none cursor-pointer" max="1.0" min="0.1" step="0.05" type="range" value="0.95">
-                        <div class="flex justify-between font-mono text-[10px] text-white/40 uppercase tracking-widest mt-1">
-                            <span>COARSE</span>
-                            <span>FINE</span>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Quick Jump Locations -->
-                <section class="flex flex-col gap-4">
-                    <div class="flex items-center justify-between">
-                        <h3 class="font-mono text-xs text-white/90 uppercase tracking-widest">Saved Vectors</h3>
-                        <div class="h-px bg-white/20 flex-1 ml-4"></div>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button class="bg-white/5 border border-white/10 text-white/80 font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-md hover:border-primary/50 hover:bg-white/10 hover:text-primary transition-all flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-white/60 group-hover:text-primary">location_on</span> New Delhi Command
-                        </button>
-                        <button class="bg-white/5 border border-white/10 text-white/80 font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-md hover:border-primary/50 hover:bg-white/10 hover:text-primary transition-all flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-white/60 group-hover:text-primary">location_on</span> Mumbai Port
-                        </button>
-                        <a href="studio.html" class="bg-white/5 border border-white/10 text-white/80 font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-md hover:border-primary/50 hover:bg-white/10 hover:text-primary transition-all flex items-center justify-start gap-3 w-full group">
-                            <span class="material-symbols-outlined text-[16px] text-white/60 group-hover:text-primary">view_in_ar</span> Mumbai 3D Terrain
-                        </a>
-                    </div>
                 </section>
             </div>
 
             <!-- Primary Action Footer -->
-            <div class="p-6 border-t border-white/10 bg-white/5 mt-auto flex flex-col gap-3 shadow-[0_-8px_32px_0_rgba(0,0,0,0.2)]">
+            <div class="p-6 border-t border-white/10 bg-white/5 shrink-0 flex flex-col gap-3 shadow-[0_-8px_32px_0_rgba(0,0,0,0.2)]">
                 <!-- Availability Check Button -->
                 <button id="btn-check-availability" class="w-full bg-surface-container-high border border-outline/30 text-on-surface font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:border-primary/50 hover:text-primary transition-colors">
                     <span class="material-symbols-outlined text-[18px]">travel_explore</span>
@@ -658,16 +626,7 @@
         const terminal = document.getElementById('terminal-overlay');
         const logContent = document.getElementById('log-content');
         const hud = document.getElementById('map-hud-reticle');
-        const latDisplay = document.getElementById('display-lat');
-        const lngDisplay = document.getElementById('display-lng');
-        const sensSlider = document.getElementById('sens-slider');
-        const sensVal = document.getElementById('sens-val');
-
-        if (sensSlider && sensVal) {
-            sensSlider.addEventListener('input', (e) => {
-                sensVal.innerText = parseFloat(e.target.value).toFixed(2);
-            });
-        }
+        const DEFAULT_DETECTION_THRESHOLD = 0.60;
 
         // 1. ROI Box Interaction (Draggable)
         let isDragging = false;
@@ -882,7 +841,7 @@
                     resolution: [resVal, resVal],
                     max_scenes: sMax,
                     model_name: modelStr,
-                    threshold: parseFloat(sensSlider ? sensSlider.value : 0.95),
+                    threshold: DEFAULT_DETECTION_THRESHOLD,
                     min_region_area_px: 10
                 };
             } else {
@@ -892,7 +851,7 @@
                     date_range_t2: [fmtDate(d2Start), fmtDate(d2End)],
                     resolution: [resVal, resVal],
                     model_name: modelStr,
-                    threshold: parseFloat(sensSlider ? sensSlider.value : 0.95),
+                    threshold: DEFAULT_DETECTION_THRESHOLD,
                     min_region_area_px: 10
                 };
             }
@@ -1145,7 +1104,7 @@
                     const formData = new FormData();
                     formData.append('image_t1', t1File);
                     formData.append('image_t2', t2File);
-                    formData.append('threshold', sensSlider ? sensSlider.value : 0.95);
+                    formData.append('threshold', DEFAULT_DETECTION_THRESHOLD.toString());
                     formData.append('min_region_area_px', '10');
 
                     fetchUrl = apiBase + '/api/v1/detect/change-detection';
@@ -1336,26 +1295,6 @@
             }
         });
 
-        // 3. Vector Transitions
-        const locations = {
-            'New Delhi Command': { lat: '28.6139° N', lng: '77.2090° E', pos: 'center' },
-            'Mumbai Port': { lat: '18.9440° N', lng: '72.8359° E', pos: 'bottom left' }
-        };
-        document.querySelectorAll('aside button.group').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const name = btn.innerText.trim();
-                const loc = locations[name];
-                if (!loc) return;
-                const bg = document.getElementById('map-parallax-bg');
-                if (bg) {
-                    bg.style.transition = 'background-position 1.8s cubic-bezier(0.16, 1, 0.3, 1)';
-                    bg.style.backgroundPosition = loc.pos;
-                    setTimeout(() => bg.style.transition = 'transform 0.1s ease-out', 1800);
-                }
-                latDisplay.innerText = `LAT: ${loc.lat}`;
-                lngDisplay.innerText = `LNG: ${loc.lng}`;
-            });
-        });
     })();
 
 
