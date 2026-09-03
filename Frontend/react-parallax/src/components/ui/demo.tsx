@@ -1,4 +1,4 @@
-import React from 'react';
+// No imports needed
 import { ParallaxHero } from './wilderness';
 
 export default function ParallaxHeroDemo() {

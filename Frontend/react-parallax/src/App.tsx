@@ -1,9 +1,9 @@
-import ParallaxHeroDemo from './components/ui/demo'
+import Telemetry from './components/Telemetry'
 
 function App() {
   return (
     <>
-      <ParallaxHeroDemo />
+      <Telemetry />
     </>
   )
 }

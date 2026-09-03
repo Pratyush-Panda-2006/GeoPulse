@@ -19,11 +19,19 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from src.api.schemas import (
     ChangeDetectionResponse,
     DetectSentinelRequest,
+    AvailabilityResponse,
+    TimeSeriesRequest,
+    TimeSeriesResponse,
+    TimeSeriesAcquisition,
+    PairwiseChangeResult,
+    AnalyzeRequest,
+    AnalysisResult,
 )
 from src.data_ingestion.sentinel_client import (
     fetch_sentinel1_pair,
     SentinelAPIError,
 )
+from src.data_ingestion.sar_timeseries import fetch_sar_timeseries
 from src.data_ingestion.optical_client import fetch_optical_basemap
 from src.api.services.model_service import ModelService
 from src.api.services.change_analyzer import extract_changed_regions
@@ -41,6 +49,8 @@ from src.api.services.visualization import (
 )
 from src.preprocessing.sar_loader import load_sar_pair_for_inference
 from src.api.services.inference_service import run_change_detection
+from src.api.services.timeseries_service import run_timeseries_change_detection
+from src.api.services.analyze_service import run_analysis, load_missions
 
 router = APIRouter(prefix="/detect", tags=["Change Detection"])
 
@@ -70,6 +80,32 @@ def _get_or_create_scene(session: Session, meta: dict) -> SARScene:
         session.refresh(scene)
         
     return scene
+
+
+@router.post(
+    "/availability",
+    response_model=AvailabilityResponse,
+    summary="Check Satellite Imagery Availability",
+)
+async def check_availability(req: DetectSentinelRequest) -> AvailabilityResponse:
+    """
+    Check if Sentinel-1 SAR imagery is available for the given location and dates.
+    This is a lightweight metadata check that does not run inference.
+    """
+    try:
+        from src.data_ingestion.sentinel_client import SentinelHubClient, CDSEAuthManager
+        client = SentinelHubClient(CDSEAuthManager())
+        t1_meta = client.fetch_scene_metadata(req.bbox.to_list(), req.date_range_t1)
+        t2_meta = client.fetch_scene_metadata(req.bbox.to_list(), req.date_range_t2)
+        
+        return {
+            "t1_scene": t1_meta,
+            "t2_scene": t2_meta
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Availability check failed: {str(exc)}")
 
 
 @router.post(
@@ -300,6 +336,21 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
 
         elapsed = round(elapsed_sec, 3)
 
+        # Phase N4 & N5: Nemotron Multimodal Classification (with context)
+        from src.api.services.vision_pipeline import orchestrate_vision_classification
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        nemotron_interpretations = {}
+        try:
+            nemotron_interpretations = orchestrate_vision_classification(
+                t1_np=t1_np,
+                t2_np=t2_np,
+                regions=result.regions
+            )
+        except Exception as e:
+            logger.warning(f"Nemotron classification failed in upload: {e}")
+
         return ChangeDetectionResponse(
             job_id=job_id,
             status="success",
@@ -323,6 +374,7 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
             confidence_heatmap_base64=result.confidence_heatmap_base64,
             overlay_base64=result.overlay_base64,
             change_boxes_base64=result.change_boxes_base64,
+            nemotron_interpretations=nemotron_interpretations,
             execution_time_sec=elapsed,
         )
 
@@ -483,6 +535,21 @@ async def detect_uploaded_images(
         change_pct = round((changed_px / total_px) * 100.0, 3)
         elapsed = round(time.perf_counter() - t0, 3)
 
+        # Phase N4 & N5: Nemotron Multimodal Classification (with context)
+        from src.api.services.vision_pipeline import orchestrate_vision_classification
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        nemotron_interpretations = {}
+        try:
+            nemotron_interpretations = orchestrate_vision_classification(
+                t1_np=t1_np,
+                t2_np=t2_np,
+                regions=regions
+            )
+        except Exception as e:
+            logger.warning(f"Nemotron classification failed in upload: {e}")
+
         return ChangeDetectionResponse(
             status="success",
             model_used=model_name,
@@ -498,6 +565,7 @@ async def detect_uploaded_images(
             change_mask_base64=mask_b64,
             confidence_heatmap_base64=heatmap_b64,
             overlay_base64=overlay_b64,
+            nemotron_interpretations=nemotron_interpretations,
             execution_time_sec=elapsed,
         )
 
@@ -552,6 +620,18 @@ async def detect_sar_changes_from_upload(
 
         elapsed = round(time.perf_counter() - t0, 3)
 
+        # Nemotron Multimodal Classification
+        from src.api.services.vision_pipeline import orchestrate_vision_classification
+        nemotron_interpretations = {}
+        try:
+            nemotron_interpretations = orchestrate_vision_classification(
+                t1_np=t1_np,
+                t2_np=t2_np,
+                regions=result.regions
+            )
+        except Exception as e:
+            logger.warning(f"Nemotron classification failed in change-detection: {e}")
+
         return ChangeDetectionResponse(
             status="success",
             model_used="snunet_cd_sar",
@@ -572,6 +652,7 @@ async def detect_sar_changes_from_upload(
             confidence_heatmap_base64=result.confidence_heatmap_base64,
             overlay_base64=result.overlay_base64,
             change_boxes_base64=result.change_boxes_base64,
+            nemotron_interpretations=nemotron_interpretations,
             execution_time_sec=elapsed,
         )
 
@@ -629,3 +710,190 @@ def get_job_detections_geojson(job_id: int):
         }
     finally:
         session.close()
+
+
+@router.post(
+    "/timeseries-availability",
+    response_model=dict,
+    summary="Check Availability for Time-Series",
+)
+async def check_timeseries_availability(req: TimeSeriesRequest) -> dict:
+    """
+    Check Sentinel-1 SAR imagery availability for a date range without running inference.
+    """
+    try:
+        from src.data_ingestion.sentinel_client import SentinelHubClient, CDSEAuthManager
+        client = SentinelHubClient(CDSEAuthManager())
+        scenes = client.fetch_all_scene_metadata(req.bbox.to_list(), req.date_range, req.max_scenes)
+        return {
+            "status": "success",
+            "acquisitions_found": len(scenes),
+            "scenes": scenes,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Availability check failed: {str(exc)}")
+
+
+@router.post(
+    "/timeseries",
+    response_model=TimeSeriesResponse,
+    summary="Run Time-Series Change Detection",
+)
+async def detect_timeseries_changes(req: TimeSeriesRequest) -> TimeSeriesResponse:
+    """
+    Fetches a time series of Sentinel-1 acquisitions and runs pairwise inference across the sequence.
+    """
+    t0 = time.perf_counter()
+    try:
+        if req.model_name not in ["snunet_cd_sar"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Model '{req.model_name}' is not allowed or has no trained checkpoint."
+            )
+
+        db.init_db()
+        if db.SessionLocal is None:
+            raise HTTPException(status_code=500, detail="Database is not configured")
+        
+        # 1. Fetch all acquisitions and decode to tensors for oldest and latest
+        selection, t1_dict, t2_dict, all_meta = fetch_sar_timeseries(
+            bbox=req.bbox.to_list(),
+            date_range=req.date_range,
+            output_resolution=req.resolution,
+            max_scenes=req.max_scenes,
+        )
+        
+        # 2. Run pairwise inference ONLY for Oldest -> Latest
+        from src.api.services.inference_service import run_change_detection
+        inference_result = run_change_detection(
+            t1_np=t1_dict["array"],
+            t2_np=t2_dict["array"],
+            model_name=req.model_name,
+            threshold=req.threshold,
+            min_region_area_px=req.min_region_area_px,
+        )
+        
+        session: Session = db.SessionLocal()
+        
+        try:
+            t1_scene = _get_or_create_scene(session, t1_dict["meta"])
+            t2_scene = _get_or_create_scene(session, t2_dict["meta"])
+                
+            job = ChangeDetectionJob(
+                scene_before_id=t1_scene.id,
+                scene_after_id=t2_scene.id,
+                model_version=req.model_name,
+                status="success"
+            )
+            session.add(job)
+            session.commit()
+            session.refresh(job)
+            
+            # Insert detections
+            for region in inference_result.regions:
+                props = {
+                    "region_id": region.region_id,
+                    "area_px": region.area_px,
+                    "approx_area_sq_km": region.approx_area_sq_km,
+                    "mean_change_prob": region.mean_change_prob,
+                    "severity": region.severity,
+                    "label": region.label,
+                }
+                if region.geo_bbox and region.geo_centroid:
+                    min_lon, min_lat, max_lon, max_lat = region.geo_bbox
+                    cx, cy = region.geo_centroid
+                    
+                    geom = {
+                        "type": "Polygon",
+                        "coordinates": [[
+                            [min_lon, min_lat],
+                            [max_lon, min_lat],
+                            [max_lon, max_lat],
+                            [min_lon, max_lat],
+                            [min_lon, min_lat]
+                        ]]
+                    }
+                    props["centroid"] = [cx, cy]
+                    
+                    det = Detection(
+                        job_id=job.id,
+                        geometry=geom,
+                        properties=props
+                    )
+                    session.add(det)
+            
+            session.commit()
+            
+            # Phase N4 & N5: Nemotron Multimodal Classification (with context)
+            from src.api.services.vision_pipeline import orchestrate_vision_classification
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            nemotron_interpretations = {}
+            try:
+                nemotron_interpretations = orchestrate_vision_classification(
+                    t1_np=t1_dict["array"],
+                    t2_np=t2_dict["array"],
+                    regions=inference_result.regions
+                )
+            except Exception as e:
+                logger.warning(f"Nemotron classification failed: {e}")
+            
+            final_result = PairwiseChangeResult(
+                t1_acquisition=TimeSeriesAcquisition(
+                    scene_id=t1_dict["meta"]["scene_id"],
+                    acquisition_date=t1_dict["meta"]["acquisition_date"]
+                ),
+                t2_acquisition=TimeSeriesAcquisition(
+                    scene_id=t2_dict["meta"]["scene_id"],
+                    acquisition_date=t2_dict["meta"]["acquisition_date"]
+                ),
+                job_id=job.id,
+                change_percentage=inference_result.change_percentage,
+                num_change_clusters=inference_result.num_change_clusters,
+                total_changed_area_sq_km=inference_result.total_changed_area_sq_km,
+                regions=inference_result.regions,
+                t1_preview_base64=inference_result.t1_preview_base64,
+                t2_preview_base64=inference_result.t2_preview_base64,
+                change_mask_base64=inference_result.change_mask_base64,
+                confidence_heatmap_base64=inference_result.confidence_heatmap_base64,
+                overlay_base64=inference_result.overlay_base64,
+                nemotron_interpretations=nemotron_interpretations,
+            )
+            
+            all_acquisitions = [
+                TimeSeriesAcquisition(
+                    scene_id=m["scene_id"],
+                    acquisition_date=m["acquisition_date"],
+                    orbit_state=m.get("orbit_state"),
+                    relative_orbit=m.get("relative_orbit"),
+                    mode=m.get("mode"),
+                    polarizations=m.get("polarizations")
+                ) for m in all_meta
+            ]
+        finally:
+            session.close()
+
+        elapsed = round(time.perf_counter() - t0, 3)
+        
+        return TimeSeriesResponse(
+            status="success",
+            bbox=req.bbox.to_list(),
+            date_range=req.date_range,
+            acquisitions_found=len(all_meta),
+            acquisitions_used=2,
+            acquisition_dates=(t1_dict["meta"]["acquisition_date"], t2_dict["meta"]["acquisition_date"]),
+            all_acquisitions=all_acquisitions,
+            model_used=req.model_name,
+            threshold=req.threshold,
+            result=final_result,
+            execution_time_sec=elapsed,
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Time-Series change detection failed: {e}",
+        )

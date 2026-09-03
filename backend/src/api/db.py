@@ -19,6 +19,10 @@ def init_db():
     try:
         engine = create_engine(DATABASE_URL, pool_pre_ping=True)
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        
+        import src.api.models
+        Base.metadata.create_all(engine)
+        
         return engine
     except Exception as e:
         print(f"Error connecting to database: {e}")

@@ -232,6 +232,29 @@ function evaluatePixel(sample) {
 }
 """
 
+def _build_dem_evalscript() -> str:
+    """
+    Build a Sentinel Hub evalscript that returns the DEM elevation
+    as a float32 value.
+    """
+    return """
+//VERSION=3
+
+function setup() {
+    return {
+        input: ["DEM"],
+        output: {
+            bands: 1,
+            sampleType: "FLOAT32"
+        }
+    };
+}
+
+function evaluatePixel(sample) {
+    return [sample.DEM];
+}
+"""
+
 
 # ── Request body builder ───────────────────────────────────────────────────────
 
@@ -299,6 +322,41 @@ def _build_request_body(
             ],
         },
         "evalscript": _build_evalscript(),
+    }
+
+
+def _build_dem_request_body(
+    bbox: list[float],
+    output_resolution: tuple[int, int],
+) -> dict:
+    height, width = output_resolution
+
+    return {
+        "input": {
+            "bounds": {
+                "bbox": bbox,
+                "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"},
+            },
+            "data": [
+                {
+                    "type": "dem",
+                    "dataFilter": {
+                        "demInstance": "COPERNICUS_30"
+                    }
+                }
+            ],
+        },
+        "output": {
+            "width": width,
+            "height": height,
+            "responses": [
+                {
+                    "identifier": "default",
+                    "format": {"type": "image/tiff"},
+                }
+            ],
+        },
+        "evalscript": _build_dem_evalscript(),
     }
 
 
@@ -438,6 +496,69 @@ class SentinelHubClient:
             "bbox": feature["bbox"]
         }
 
+    def fetch_all_scene_metadata(
+        self,
+        bbox: list[float],
+        date_range: tuple[str, str],
+        max_pages: int = 50,
+    ) -> list[dict]:
+        """
+        Query the STAC Catalog API to find multiple Sentinel-1 GRD scenes
+        in the specified date range and bounding box, using pagination.
+        """
+        token = self._auth.get_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        
+        from_date, to_date = date_range
+        datetime_str = f"{from_date}T00:00:00Z/{to_date}T23:59:59Z"
+        
+        body = {
+            "collections": ["sentinel-1-grd"],
+            "bbox": bbox,
+            "datetime": datetime_str,
+            "limit": 100
+        }
+        
+        results = []
+        page_count = 0
+        
+        while page_count < max_pages:
+            logger.info("Searching Catalog for multiple scenes in %s (Page %d)", datetime_str, page_count + 1)
+            response = _post_with_retry(_CATALOG_URL, headers, body)
+            data = response.json()
+            
+            features = data.get("features", [])
+            for feature in features:
+                props = feature.get("properties", {})
+                results.append({
+                    "provider": "CDSE",
+                    "scene_id": feature.get("id"),
+                    "acquisition_date": props.get("datetime"),
+                    "bbox": feature.get("bbox"),
+                    "orbit_state": props.get("sat:orbit_state"),
+                    "relative_orbit": props.get("sat:relative_orbit"),
+                    "mode": props.get("sar:instrument_mode"),
+                    "polarizations": props.get("sar:polarizations", []),
+                })
+                
+            context = data.get("context", {})
+            next_token = context.get("next")
+            if not next_token:
+                break
+                
+            body["next"] = next_token
+            page_count += 1
+            
+        if not results:
+            raise SentinelSceneNotFoundError(
+                f"No valid Sentinel-1 scene found in catalog for bbox={bbox} dates={date_range}."
+            )
+            
+        return results
+
     def fetch_tile(
         self,
         bbox: list[float],
@@ -501,6 +622,50 @@ class SentinelHubClient:
         logger.info("Tile fetched: %.1f KB", len(content) / 1024)
         return content
 
+    def fetch_dem_tile(
+        self,
+        bbox: list[float],
+        output_resolution: tuple[int, int] = (512, 512),
+    ) -> bytes:
+        """
+        Fetch a Copernicus DEM GLO-30 tile as raw GeoTIFF bytes.
+
+        Parameters
+        ----------
+        bbox : list[float]
+            [west, south, east, north] in EPSG:4326.
+        output_resolution : tuple[int, int]
+            (width, height) in pixels.
+
+        Returns
+        -------
+        bytes
+            Raw GeoTIFF content.
+
+        Raises
+        ------
+        SentinelAPIError
+            For HTTP-level failures.
+        """
+        token = self._auth.get_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "image/tiff",
+        }
+
+        body = _build_dem_request_body(bbox, output_resolution)
+
+        logger.info("Fetching DEM tile: bbox=%s res=%s", bbox, output_resolution)
+
+        response = _post_with_retry(_PROCESS_URL, headers, body)
+
+        content = response.content
+        if len(content) < 128:
+            raise SentinelAPIError(0, f"No valid DEM data returned for bbox={bbox}")
+
+        logger.info("DEM Tile fetched: %.1f KB", len(content) / 1024)
+        return content
 
 # ── Top-level convenience function ─────────────────────────────────────────────
 
@@ -552,7 +717,7 @@ def fetch_sentinel1_pair(
         If CDSE credentials are not set.
     """
     # Lazy import to avoid circular dependency
-    from preprocessing.sar_loader import decode_geotiff_response, normalize_sar_tensor
+    from src.preprocessing.sar_loader import decode_geotiff_response, normalize_sar_tensor
 
     if auth is None:
         auth = CDSEAuthManager()

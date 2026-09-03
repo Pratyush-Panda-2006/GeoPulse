@@ -5,6 +5,7 @@ scipy              # ndimage filtering (visualization) + region labeling (change
 Pillow
 matplotlib
 scikit-learn
+scikit-image
 tqdm
 PyYAML
 
