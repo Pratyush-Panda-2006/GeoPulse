@@ -332,13 +332,11 @@
                         <button class="filter-btn px-3 py-1 rounded-none border border-tertiary-container/50 bg-tertiary-container/10 text-tertiary-container font-mono text-xs hover:bg-tertiary-container/20 transition-colors uppercase">Medium</button>
                         <button class="filter-btn px-3 py-1 rounded-none border border-outline/30 text-outline font-mono text-xs hover:bg-surface-variant/50 transition-colors uppercase">Low</button>
                         <button class="filter-btn px-3 py-1 rounded-none border border-outline/30 text-outline font-mono text-xs hover:bg-surface-variant/50 transition-colors uppercase">All</button>
-                        <div class="flex-1"></div>
-                        <button class="px-3 py-1 rounded-none border border-outline/30 text-outline font-mono text-[10px] hover:bg-surface-variant/50 transition-colors uppercase tracking-widest" id="zero-toggle">Simulate Zero-Detection (Debug)</button>
                     </div>
 
-                    <!-- Interactive Table & Tactical Spotlight Split Container -->
-                    <div class="flex-1 flex flex-col xl:flex-row overflow-hidden relative" id="table-container">
-                        <!-- Table Sub-panel (Left) -->
+                    <!-- Interactive Table Container -->
+                    <div class="flex-1 flex flex-col overflow-hidden relative" id="table-container">
+                        <!-- Table Sub-panel -->
                         <div class="flex-1 overflow-auto relative custom-scrollbar" id="table-scroll-area">
                             <div class="hidden absolute inset-0 flex items-center justify-center bg-surface-container-low/80 backdrop-blur-md z-20" id="zero-state">
                                 <span class="font-['JetBrains_Mono'] text-outline text-sm tracking-widest">[NO ANOMALIES DETECTED // 0 CLUSTERS FOUND]</span>
@@ -358,80 +356,6 @@
                                     <!-- Dynamic Content from SARStore -->
                                 </tbody>
                             </table>
-                        </div>
-
-                        <!-- Tactical Cluster Spotlight View (Right) -->
-                        <div id="cluster-spotlight-panel" class="w-full xl:w-[380px] border-t xl:border-t-0 xl:border-l border-outline/20 bg-slate-950/80 backdrop-blur-2xl flex flex-col p-5 shrink-0 select-none overflow-y-auto custom-scrollbar">
-                            <div class="flex items-center justify-between pb-3 border-b border-white/10">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                                    <span class="font-mono text-xs font-bold uppercase tracking-wider text-white">Cluster Target Lock</span>
-                                </div>
-                                <span id="spotlight-badge" class="px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary font-mono text-[10px] uppercase font-semibold">TRACKING</span>
-                            </div>
-
-                            <!-- Tactical Mini Radar Viewport -->
-                            <div class="relative w-full h-44 bg-slate-900/90 border border-primary/30 rounded-xl overflow-hidden shadow-inner my-4" id="radar-viewport">
-                                <!-- Radar background rings -->
-                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-                                    <div class="w-36 h-36 rounded-full border border-primary/30"></div>
-                                    <div class="w-24 h-24 rounded-full border border-primary/40"></div>
-                                    <div class="w-12 h-12 rounded-full border border-primary/60"></div>
-                                    <div class="w-full h-px bg-primary/30 absolute"></div>
-                                    <div class="h-full w-px bg-primary/30 absolute"></div>
-                                </div>
-                                <!-- Cluster Beacons Container -->
-                                <div id="radar-clusters-container" class="absolute inset-0 pointer-events-auto"></div>
-                                <!-- Tactical Targeting Crosshair Reticle -->
-                                <div id="radar-reticle" class="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-500 ease-out z-20 hidden">
-                                    <div class="w-full h-full border-2 border-primary rounded-full animate-ping opacity-60 absolute inset-0"></div>
-                                    <div class="w-full h-full border border-primary rounded-full absolute inset-0 shadow-[0_0_12px_rgba(78,222,163,0.8)]"></div>
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                                    </div>
-                                    <!-- Corner brackets -->
-                                    <div class="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-primary"></div>
-                                    <div class="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-primary"></div>
-                                    <div class="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-primary"></div>
-                                    <div class="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-primary"></div>
-                                </div>
-                            </div>
-
-                            <!-- Cluster Details Card -->
-                            <div class="bg-black/50 border border-outline/20 rounded-xl p-4 flex flex-col gap-3 shadow-md" id="spotlight-card">
-                                <div class="flex items-start justify-between">
-                                    <div>
-                                        <span class="text-[10px] font-mono text-outline uppercase tracking-widest block">Active Region</span>
-                                        <h3 id="spotlight-id" class="font-headline-md text-xl font-bold text-white tracking-tight">Select Cluster</h3>
-                                    </div>
-                                    <div id="spotlight-severity" class="inline-flex items-center gap-1 px-2 py-0.5 border border-primary/40 bg-primary/10 text-primary font-mono text-[10px] uppercase font-bold rounded">
-                                        --
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-2 text-xs font-mono pt-2 border-t border-white/10">
-                                    <div>
-                                        <span class="text-outline text-[10px] uppercase block">Coordinates</span>
-                                        <span id="spotlight-coords" class="text-white font-semibold">--</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-outline text-[10px] uppercase block">Disturbance Area</span>
-                                        <span id="spotlight-area" class="text-white font-semibold">--</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-outline text-[10px] uppercase block">Confidence</span>
-                                        <span id="spotlight-prob" class="text-primary font-semibold">--</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-outline text-[10px] uppercase block">Sensor / Pass</span>
-                                        <span id="spotlight-sensor" class="text-white/70">Sentinel-1 SAR</span>
-                                    </div>
-                                </div>
-
-                                <button id="spotlight-btn-studio" class="mt-2 w-full bg-primary/20 hover:bg-primary/30 border border-primary/60 hover:border-primary text-primary hover:text-white font-mono text-xs uppercase tracking-wider py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(78,222,163,0.2)]">
-                                    <span>[INSPECT IN 3D STUDIO →]</span>
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </section>
@@ -675,7 +599,7 @@
 
                 // 5. Update bottom HUD readout
                 if (coordReadout) {
-                    coordReadout.innerHTML = `<span class="material-symbols-outlined text-[16px] text-primary animate-pulse" data-icon="my_location">my_location</span> <span class="text-primary font-bold">TARGET LOCK: CL-${region.region_id}</span> <span class="text-white/80">(${coordStr})</span>`;
+                    coordReadout.innerHTML = `<span class="material-symbols-outlined text-[16px] text-primary" data-icon="my_location">my_location</span> <span class="text-primary font-bold">CLUSTER: CL-${region.region_id}</span> <span class="text-white/80">(${coordStr})</span>`;
                 }
                 if (zoomReadout) {
                     zoomReadout.innerHTML = `<span class="text-primary font-bold">ZOOM: 18.5x [ENGAGED]</span>`;
@@ -777,28 +701,7 @@
                 });
             });
 
-            // Zero Detection Simulator (UI Only)
-            const zeroToggle = document.getElementById('zero-toggle');
-            const zeroState = document.getElementById('zero-state');
-            const clusterVal = document.getElementById('clusters-detected-val');
-            let isZero = false;
-            
-            zeroToggle.addEventListener('click', () => {
-                isZero = !isZero;
-                if (isZero) {
-                    zeroToggle.classList.add('bg-primary/20', 'text-primary', 'border-primary/50');
-                    zeroState.classList.remove('hidden');
-                    tbody.style.opacity = '0';
-                    clusterVal.innerHTML = '0 <span class="text-sm font-normal text-on-surface-variant font-[\'Inter\']">clusters</span>';
-                    zeroToggle.innerText = 'Disable Zero-Detection (Debug)';
-                } else {
-                    zeroToggle.classList.remove('bg-primary/20', 'text-primary', 'border-primary/50');
-                    zeroState.classList.add('hidden');
-                    tbody.style.opacity = '1';
-                    clusterVal.innerHTML = `${fmtNum(metadata.num_change_clusters)} <span class="text-sm font-normal text-on-surface-variant font-[\'Inter\']">clusters</span>`;
-                    zeroToggle.innerText = 'Simulate Zero-Detection (Debug)';
-                }
-            });
+
 
             function bindRowClicks() {
                 document.querySelectorAll('tbody tr').forEach(row => {

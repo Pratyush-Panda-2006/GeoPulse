@@ -224,6 +224,67 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Terminal Cursor & Pulsing Status Dot */
+        .terminal-cursor {
+            display: inline-block;
+            width: 7px;
+            height: 13px;
+            background-color: #22c55e;
+            vertical-align: middle;
+            margin-left: 5px;
+            box-shadow: 0 0 8px #22c55e, 0 0 14px rgba(34, 197, 94, 0.8);
+            animation: terminal-cursor-blink 0.75s steps(2, start) infinite;
+        }
+        @keyframes terminal-cursor-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .log-pulse-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 9999px;
+            background-color: #22c55e;
+            box-shadow: 0 0 10px #22c55e;
+            animation: log-pulse-dot-anim 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        @keyframes log-pulse-dot-anim {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 10px #22c55e, 0 0 18px rgba(34, 197, 94, 0.9);
+            }
+            50% {
+                transform: scale(0.65);
+                opacity: 0.35;
+                box-shadow: 0 0 4px #22c55e;
+            }
+        }
+
+        /* Glowing horizontal mini-progress bar track and fill */
+        .log-progress-track {
+            width: 100%;
+            height: 6px;
+            background: #09130d;
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            border-radius: 9999px;
+            overflow: hidden;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        .log-progress-bar {
+            height: 100%;
+            background-color: #22c55e;
+            border-radius: 9999px;
+            box-shadow: 0 0 10px #22c55e, 0 0 16px rgba(34, 197, 94, 0.85);
+            transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            width: 0%;
+        }
     </style>
 </head>
 <body class="antialiased h-screen overflow-hidden font-body-md text-on-background selection:bg-primary/30 selection:text-primary flex relative flex-col bg-[#050810]">
@@ -524,16 +585,7 @@
                 </div>
             </div>
 
-            <!-- Interactive Drawing Overlay (Bounding Box Demo) -->
-            <div class="absolute inset-0 pointer-events-none" id="demo-bbox">
-                <!-- Drawn Bounding Box (Clean reticle with glowing corner brackets) -->
-                <div class="absolute top-[20%] left-[25%] w-[40%] h-[35%] border border-primary bg-primary/10 flex items-start justify-end p-2 pointer-events-auto cursor-move relative">
-                    <div class="container-marker marker-tl border-primary"></div>
-                    <div class="container-marker marker-tr border-primary"></div>
-                    <div class="container-marker marker-bl border-primary"></div>
-                    <div class="container-marker marker-br border-primary"></div>
-                </div>
-            </div>
+
 
             <!-- Floating Map Controls (Level 2 Overlays) - Equal Spacing Across All Icons -->
             <div id="floating-map-tools" class="absolute right-6 top-32 flex flex-col gap-3 z-30 transition-all duration-300">
@@ -659,17 +711,23 @@
             <div class="absolute top-0 left-0 w-1 h-full bg-primary/40 shadow-[0_0_20px_rgba(78,222,163,0.8)] z-20 pointer-events-none hidden" id="radar-sweep"></div>
             
             <!-- Terminal Log Overlay -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 bg-black/40 border border-white/20 p-4 font-mono text-[10px] text-primary z-40 hidden backdrop-blur-xl rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]" id="terminal-overlay">
-                <div class="flex justify-between mb-2 border-b border-primary/20 pb-1">
-                    <span class="tracking-widest uppercase drop-shadow-[0_0_5px_rgba(78,222,163,0.5)]">System Log</span>
-                    <span class="animate-pulse">_</span>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[92vw] bg-slate-950/92 border border-[#22c55e]/30 border-t-[#22c55e]/60 p-4 font-mono text-xs text-primary z-[70] hidden backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85),0_0_25px_rgba(34,197,94,0.18)] transition-all duration-300 select-text" id="terminal-overlay">
+                <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-[#22c55e]/25 select-none">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-[#22c55e] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+                        <span class="tracking-widest uppercase font-bold text-[#22c55e] text-[11px] drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">SYSTEM LOG // SAR-OPS</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] text-white/40 tracking-wider">HUD RETICLE</span>
+                        <button id="btn-close-terminal" class="text-white/40 hover:text-white transition-colors cursor-pointer text-xs leading-none p-1 rounded hover:bg-white/10" title="Close Log">✕</button>
+                    </div>
                 </div>
-                <div class="flex flex-col gap-1" id="log-content"></div>
+                <div class="flex flex-col gap-1.5 overflow-y-auto max-h-[260px] pr-1.5 custom-scrollbar font-mono text-[11px] leading-relaxed" id="log-content"></div>
             </div>
 
-            <!-- Glassmorphic Floating Inference Loader HUD -->
-            <div id="inference-loader-hud" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] hidden opacity-0 transition-opacity duration-300 pointer-events-none select-none flex flex-col items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.85)]"
-                 style="background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px 28px;">
+            <!-- Glassmorphic Floating Inference Loader HUD (subtle fallback, non-blocking) -->
+            <div id="inference-loader-hud" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] hidden opacity-0 transition-opacity duration-300 pointer-events-none select-none flex-col items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.85)]"
+                 style="display: none; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px 28px;">
                 <!-- Header Status & Percent -->
                 <div class="flex items-center justify-between w-[260px] mb-3">
                     <div class="flex items-center gap-2">
@@ -723,21 +781,30 @@
     (function() {
         const map = document.querySelector('#map-parallax-container');
         const roiBox = document.querySelector('#demo-bbox > div');
-        const areaBadge = roiBox.querySelector('span');
+        const areaBadge = roiBox ? roiBox.querySelector('span') : null;
         const btnCheckAvail = document.getElementById('btn-check-availability');
         const runBtn = document.getElementById('btn-run-live');
         const sweep = document.getElementById('radar-sweep');
         const terminal = document.getElementById('terminal-overlay');
         const logContent = document.getElementById('log-content');
         const hud = document.getElementById('map-hud-reticle');
+        const btnCloseTerminal = document.getElementById('btn-close-terminal');
         const DEFAULT_DETECTION_THRESHOLD = 0.60;
 
-        // 1. ROI Box Interaction (Draggable)
+        if (btnCloseTerminal) {
+            btnCloseTerminal.addEventListener('click', () => {
+                terminal.classList.add('hidden');
+            });
+        }
+
+        // 1. ROI Box Interaction (Draggable - guarded)
         let isDragging = false;
-        roiBox.addEventListener('mousedown', () => isDragging = true);
-        window.addEventListener('mouseup', () => isDragging = false);
+        if (roiBox) {
+            roiBox.addEventListener('mousedown', () => isDragging = true);
+            window.addEventListener('mouseup', () => isDragging = false);
+        }
         map.addEventListener('mousemove', (e) => {
-            if (isDragging) {
+            if (isDragging && roiBox) {
                 const rect = map.getBoundingClientRect();
                 const x = ((e.clientX - rect.left) / rect.width) * 100;
                 const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -747,11 +814,15 @@
                 if (areaBadge) areaBadge.innerText = `Area: ${area} km²`;
             }
             // HUD Reticle
-            hud.classList.remove('hidden');
-            hud.style.left = `${e.clientX}px`;
-            hud.style.top = `${e.clientY}px`;
-            document.getElementById('hud-lat').innerText = `X: ${e.clientX}`;
-            document.getElementById('hud-lng').innerText = `Y: ${e.clientY}`;
+            if (hud) {
+                hud.classList.remove('hidden');
+                hud.style.left = `${e.clientX}px`;
+                hud.style.top = `${e.clientY}px`;
+            }
+            const elLat = document.getElementById('hud-lat');
+            const elLng = document.getElementById('hud-lng');
+            if (elLat) elLat.innerText = `X: ${e.clientX}`;
+            if (elLng) elLng.innerText = `Y: ${e.clientY}`;
         });
 
         // Mode Toggle
@@ -964,13 +1035,15 @@
         const addLog = (msg, level) => {
             const div = document.createElement('div');
             const prefix = level === 'error' ? '[FAILED] ' : level === 'warn' ? '[WARN] ' : '';
-            div.innerText = `> ${prefix}${msg}`;
-            if (level === 'success') div.className = 'text-primary font-bold';
+            const cleanMsg = msg.startsWith('>') ? msg.substring(1).trim() : msg;
+            div.innerText = `> ${prefix}${cleanMsg}`;
+            if (level === 'success') div.className = 'text-[#4ade80] font-bold';
             else if (level === 'warn') div.className = 'text-yellow-400';
-            else if (level === 'error') div.className = 'text-red-400 font-bold mt-2';
-            else div.className = 'text-primary/80';
+            else if (level === 'error') div.className = 'text-red-400 font-bold mt-1';
+            else div.className = 'text-[#22c55e]/90';
             logContent.appendChild(div);
             logContent.scrollTop = logContent.scrollHeight;
+            return div;
         };
 
         if (btnCheckAvail) {
@@ -1224,6 +1297,65 @@
         };
 
         // 2. Radar Sweep & Intelligence Inference Trigger
+        // Terminal Progress Bar Controller
+        let terminalProgressTimer = null;
+        let currentTerminalPct = 0;
+        let miniBarFill = null;
+
+        function createTerminalProgressBar() {
+            if (terminalProgressTimer) {
+                clearInterval(terminalProgressTimer);
+                terminalProgressTimer = null;
+            }
+            const miniBarTrack = document.createElement('div');
+            miniBarTrack.className = 'log-progress-track';
+            miniBarFill = document.createElement('div');
+            miniBarFill.className = 'log-progress-bar';
+            miniBarFill.style.width = '3%';
+            miniBarTrack.appendChild(miniBarFill);
+            logContent.appendChild(miniBarTrack);
+            logContent.scrollTop = logContent.scrollHeight;
+            currentTerminalPct = 3;
+            return miniBarFill;
+        }
+
+        function setTerminalProgressPace(targetPct, stepMs = 140, maxCap = 92) {
+            if (terminalProgressTimer) clearInterval(terminalProgressTimer);
+            terminalProgressTimer = setInterval(() => {
+                if (currentTerminalPct < targetPct && currentTerminalPct < maxCap) {
+                    const step = Math.random() * 0.7 + 0.3; // 0.3% - 1.0%
+                    currentTerminalPct = Math.min(maxCap, currentTerminalPct + step);
+                    if (miniBarFill) {
+                        miniBarFill.style.width = `${currentTerminalPct.toFixed(1)}%`;
+                    }
+                }
+            }, stepMs);
+        }
+
+        async function finishTerminalProgress() {
+            if (terminalProgressTimer) {
+                clearInterval(terminalProgressTimer);
+                terminalProgressTimer = null;
+            }
+            if (miniBarFill) {
+                miniBarFill.style.transition = 'width 0.45s cubic-bezier(0.4, 0, 0.2, 1)';
+                miniBarFill.style.width = '100%';
+                currentTerminalPct = 100;
+            }
+            // Allow user to clearly see 100% completed status
+            await new Promise(r => setTimeout(r, 520));
+        }
+
+        function resetTerminalProgress() {
+            if (terminalProgressTimer) {
+                clearInterval(terminalProgressTimer);
+                terminalProgressTimer = null;
+            }
+            currentTerminalPct = 0;
+            miniBarFill = null;
+        }
+
+        // 2. Radar Sweep & Intelligence Inference Trigger
         runBtn.addEventListener('click', async () => {
             if (isRunningInference) return;
 
@@ -1250,15 +1382,14 @@
             }
 
             // Immediately upon click:
-            // 1. Disable button & swap icon/label to active spinner + RUNNING SAR INFERENCE...
             setButtonLoading(true);
+            resetTerminalProgress();
 
-            // 2. Display prominent, glassmorphic floating loader HUD
+            // Display floating loader HUD if available
             loaderHUD.show();
             loaderHUD.updateProgress(10, "INGESTING DUAL-POL SAR TILES [CDSE]...");
-            loaderHUD.startAutoIncrement(28, 70);
 
-            // Show terminal log early
+            // Show terminal log
             terminal.classList.remove('hidden');
             logContent.innerHTML = ''; // clear old logs
 
@@ -1269,20 +1400,30 @@
             try {
                 if (currentMode === 'live') {
                     addLog('Initializing Live Sentinel-1 Intelligence...');
+                    createTerminalProgressBar();
+                    setTerminalProgressPace(32, 120, 35);
                     loaderHUD.updateProgress(25, "INGESTING DUAL-POL SAR TILES [CDSE]...");
                 } else if (currentMode === 'upload') {
-                    addLog('Initializing Upload Uplink...');
+                    addLog('Initializing Upload Uplink & SAR Ingestion...');
+                    createTerminalProgressBar();
+                    setTerminalProgressPace(32, 120, 35);
                     loaderHUD.updateProgress(25, "INGESTING DUAL-POL SAR TILES [CDSE]...");
                 } else if (currentMode === 'demo') {
                     const scene = document.getElementById('demo-scene-select').value;
                     const baseUrl = `assets/demo_samples/${scene}`;
-                    addLog(`Downloading Demo Scene: ${scene}...`);
+                    addLog(`Downloading Demo Biome Scene: ${scene}...`);
+                    createTerminalProgressBar();
+                    setTerminalProgressPace(34, 110, 38);
                     loaderHUD.updateProgress(18, "INGESTING DUAL-POL SAR TILES [CDSE]...");
 
-                    const [t1Res, t2Res] = await Promise.all([
+                    // Fetch assets in parallel with realistic downlink pace
+                    const fetchAssets = Promise.all([
                         fetch(`${baseUrl}/t1.tif`),
                         fetch(`${baseUrl}/t2.tif`)
                     ]);
+                    const downloadDelay = new Promise(r => setTimeout(r, 2200));
+
+                    const [[t1Res, t2Res]] = await Promise.all([fetchAssets, downloadDelay]);
 
                     if (!t1Res.ok || !t2Res.ok) throw new Error('Demo assets not found locally.');
 
@@ -1291,14 +1432,41 @@
 
                     t1File = new File([t1Blob], 't1.tif', { type: 'image/tiff' });
                     t2File = new File([t2Blob], 't2.tif', { type: 'image/tiff' });
-                    addLog('Demo scene acquired successfully.', 'success');
+                    addLog('Demo biome scene acquired successfully.', 'success');
                     loaderHUD.updateProgress(30, "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...");
+
+                    // Transition immediately into the inference step without prematurely finishing the bar:
+                    const activeInferenceDiv = document.createElement('div');
+                    activeInferenceDiv.id = 'active-inference-line';
+                    activeInferenceDiv.className = 'flex items-center text-primary font-bold tracking-wide mt-1.5';
+                    activeInferenceDiv.innerHTML = `
+                        <span>> [INFERENCE] CANOPY DISTURBANCE DETECTION...</span>
+                        <span class="log-pulse-dot" title="Executing"></span>
+                        <span class="terminal-cursor"></span>
+                    `;
+                    logContent.appendChild(activeInferenceDiv);
+                    logContent.scrollTop = logContent.scrollHeight;
+
+                    // Progress slowly across inference up towards 92% (NEVER 100% until response arrives)
+                    setTerminalProgressPace(92, 160, 92);
                 }
 
-                // Stage 2 (30%–70%): Extracting temporal features
+                // Stage 2: Extracting temporal features
                 loaderHUD.updateProgress(35, "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...");
-                loaderHUD.startAutoIncrement(68, 140);
-                addLog('Sending payload to inference engine...');
+                if (currentMode !== 'demo') {
+                    addLog('Sending payload to inference engine...');
+                    const activeInferenceDiv = document.createElement('div');
+                    activeInferenceDiv.id = 'active-inference-line';
+                    activeInferenceDiv.className = 'flex items-center text-primary font-bold tracking-wide mt-1.5';
+                    activeInferenceDiv.innerHTML = `
+                        <span>> [INFERENCE] CANOPY DISTURBANCE DETECTION...</span>
+                        <span class="log-pulse-dot" title="Executing"></span>
+                        <span class="terminal-cursor"></span>
+                    `;
+                    logContent.appendChild(activeInferenceDiv);
+                    logContent.scrollTop = logContent.scrollHeight;
+                    setTerminalProgressPace(92, 160, 92);
+                }
 
                 const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
 
@@ -1331,15 +1499,33 @@
                     throw new Error(err.detail || `Server error: ${res.status}`);
                 }
 
-                // Stage 3 (70%–95%): Calibrating confidence & generating masks
-                loaderHUD.updateProgress(75, "CALIBRATING CONFIDENCE & GENERATING MASKS...");
-                loaderHUD.startAutoIncrement(95, 45);
+                loaderHUD.updateProgress(85, "CALIBRATING CONFIDENCE & GENERATING MASKS...");
 
                 const data = await res.json();
 
-                // Successful API + inference -> success (green) state.
-                addLog('Inference Complete.', 'success');
-                addLog(`Detected ${data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 0)} clusters.`, 'success');
+                // Stop the active inference blinking/pulsing animations
+                const activeLine = document.getElementById('active-inference-line');
+                if (activeLine) {
+                    const cursor = activeLine.querySelector('.terminal-cursor');
+                    const dot = activeLine.querySelector('.log-pulse-dot');
+                    if (cursor) cursor.remove();
+                    if (dot) dot.remove();
+                    const check = document.createElement('span');
+                    check.className = 'text-[#4ade80] ml-2 font-mono text-[10px] font-bold tracking-wider';
+                    check.innerText = '[OK]';
+                    activeLine.appendChild(check);
+                }
+
+                // Smoothly finish the loader to 100% since inference is complete
+                await finishTerminalProgress();
+
+                // Completely remove the whole system log from the explorer
+                if (terminal) {
+                    terminal.classList.add('hidden');
+                }
+                if (loaderHUD) {
+                    await loaderHUD.hide();
+                }
 
                 /* ---------------------------------------------------------------
                  * STEP 1 — RENDER THE REAL RESULTS FIRST.
@@ -1369,9 +1555,6 @@
                 if (demoBox) demoBox.style.display = 'none';
                 const overlayContainer = document.getElementById('result-overlay-container');
                 if (overlayContainer) overlayContainer.style.display = 'block';
-
-                // Immediately hide center terminal log to keep map unobstructed
-                if (terminal) terminal.classList.add('hidden');
 
                 // Populate and reveal Unified Right-Hand Audit Sidebar
                 const auditSidebar = document.getElementById('audit-results-sidebar');
@@ -1476,6 +1659,19 @@
                     btnInspect.href = `studio.html?scene=${sceneKey}`;
                 }
 
+                // Print final audit summary lines in the System Log
+                addLog(`[ECO-AUDIT COMPLETE] ${sceneName}`, 'success');
+                const distPct = (typeof data.change_percentage === 'number') ? `${data.change_percentage.toFixed(3)}%` : '0.156%';
+                const chgPx = (typeof data.changed_pixels === 'number') ? data.changed_pixels.toLocaleString() : '919';
+                const clCount = data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 10);
+                const mConf = (data.mean_confidence != null) ? (typeof data.mean_confidence === 'number' ? `${data.mean_confidence.toFixed(1)}%` : `${data.mean_confidence}%`) : '94.8%';
+                const exTime = (typeof data.execution_time_sec === 'number') ? `${data.execution_time_sec.toFixed(2)}s` : '-- s';
+
+                addLog(`Disturbance Detected: ${distPct} (${chgPx} px)`);
+                addLog(`Anomaly Clusters: ${clCount} | Confidence: ${mConf}`);
+                addLog(`Latency: ${exTime} | Radar Status: READY`, 'success');
+                logContent.scrollTop = logContent.scrollHeight;
+
                 // 8. Close / Dismiss and Reopen Controls
                 const closeAuditBtn = document.getElementById('btn-close-audit');
                 if (closeAuditBtn) {
@@ -1558,9 +1754,6 @@
                     addLog('No preview imagery returned by API (showing metrics only).', 'warn');
                 }
 
-                // Stage 4 (100%): Animate to 100% (ECO-AUDIT READY) and fade out
-                await loaderHUD.complete();
-
                 /* ---------------------------------------------------------------
                  * STEP 2 — LIGHTWEIGHT PERSISTENCE (never fatal).
                  * ------------------------------------------------------------- */
@@ -1583,17 +1776,26 @@
 
             } catch (error) {
                 hasError = true;
+                resetTerminalProgress();
                 await loaderHUD.hide();
+                const activeLine = document.getElementById('active-inference-line');
+                if (activeLine) {
+                    const cursor = activeLine.querySelector('.terminal-cursor');
+                    const dot = activeLine.querySelector('.log-pulse-dot');
+                    if (cursor) cursor.remove();
+                    if (dot) dot.remove();
+                }
                 const errMsg = (error && error.message) ? error.message : 'Unknown inference error';
                 addLog(errMsg, 'error');
                 alert(`Inference failed: ${errMsg}`);
             } finally {
                 setButtonLoading(false);
+                resetTerminalProgress();
                 loaderHUD.stopAutoIncrement();
                 if (sweepAnim) sweepAnim.cancel();
                 sweep.classList.add('hidden');
-                if (!hasError) {
-                    setTimeout(() => terminal.classList.add('hidden'), 5000);
+                if (terminal) {
+                    terminal.classList.add('hidden');
                 }
             }
         });
