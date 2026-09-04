@@ -1343,8 +1343,8 @@
                     const formData = new FormData();
                     formData.append('image_t1', t1File);
                     formData.append('image_t2', t2File);
-                    formData.append('threshold', sensSlider ? sensSlider.value : 0.95);
-                    formData.append('min_region_area_px', '10');
+                    formData.append('threshold', sensSlider ? sensSlider.value : 0.85);
+                    formData.append('min_region_area_px', '100');
 
                     fetchUrl = apiBase + '/api/v1/detect/change-detection';
                     fetchOpts = {

@@ -131,23 +131,7 @@
           },
         }
 
-            const modelSelector = document.getElementById('processing-model');
-            const thresholdSlider = document.getElementById('processing-threshold');
-            const thresholdValue = document.getElementById('threshold-val');
-            if (modelSelector && thresholdSlider && thresholdValue) {
-                modelSelector.addEventListener('change', (e) => {
-                    const model = e.target.value;
-                    if (model === 'snunet_cd_sar') {
-                        thresholdSlider.value = 0.85;
-                    } else if (model === 'changeformer_v6') {
-                        thresholdSlider.value = 0.50;
-                    }
-                    thresholdValue.innerText = Number(thresholdSlider.value).toFixed(2);
-                });
-                thresholdSlider.addEventListener('input', (e) => {
-                    thresholdValue.innerText = Number(e.target.value).toFixed(2);
-                });
-            }
+
 
 </script>
     <style>
@@ -421,7 +405,7 @@
                         <div class="h-px bg-white/20 flex-1 ml-4"></div>
                     </div>
                     <div class="flex flex-col gap-4" id="temporal-inputs">
-                        <div class="flex justify-end gap-2 mb-[-8px]">
+                        <div class="flex justify-end gap-2 mb-[-8px] relative z-10">
                              <button id="mode-live" class="text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10 rounded">LIVE</button>
                              <button id="mode-upload" class="text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 hover:text-primary hover:border-primary rounded transition-colors">UPLOAD</button>
                              <button id="mode-demo" class="text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 hover:text-primary hover:border-primary rounded transition-colors">DEMO</button>
@@ -526,19 +510,21 @@
                             <div class="flex flex-col gap-1.5">
                                 <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Demo Scene</label>
                                 <select id="demo-scene-select" class="glass-input rounded-md px-3 py-2 font-mono text-sm w-full appearance-none bg-black/40 border-white/20 text-white">
-
                                     <optgroup label="Optical Image">
-                                        <option value="sample_1_singapore">Singapore</option>
+                                        <option value="sample_1_singapore" selected>Singapore</option>
                                         <option value="sample_2_tokyo">Tokyo</option>
                                         <option value="sample_3_berlin">Berlin</option>
                                         <option value="sample_4_mumbai">Mumbai</option>
                                         <option value="sample_5_sydney">Sydney</option>
                                     </optgroup>
                                     <optgroup label="SAR Image">
-                                        <option value="demo_scene_1" selected>Demo Scene 1 (Chongqing)</option>
-                                        <option value="demo_scene_2">Demo Scene 2 (Dubai)</option>
+                                        <option value="01_dubai">Dubai</option>
+                                        <option value="02_lasvegas">Las Vegas</option>
+                                        <option value="03_chongqing">Chongqing</option>
+                                        <option value="04_montpellier">Montpellier</option>
+                                        <option value="05_rio">Rio</option>
                                     </optgroup>
-</select>
+                                </select>
                             </div>
                             <div class="text-[10px] font-mono text-white/50 leading-tight">
                                 Select a scene to automatically fetch predefined SAR T1/T2 image pairs.
@@ -744,6 +730,18 @@
                         </a>
                     </div>
                 </div>
+                    <!-- AI Interpretation Trigger -->
+                    <div class="mt-4 border-t border-white/10 pt-3">
+                        <button id="btn-interpret" class="w-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/40 hover:to-blue-500/40 border border-purple-500/50 text-white font-mono text-[10px] uppercase tracking-widest py-2 px-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                            <span class="material-symbols-outlined text-[14px]">psychology</span>
+                            <span>Analyze Changes with AI</span>
+                        </button>
+                    </div>
+
+                    <!-- AI Interpretations Display -->
+                    <div id="ai-interpretations-panel" class="mt-3 hidden flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+                        <!-- Cards will be injected here -->
+                    </div>
             </aside>
 
             <!-- Small Floating Re-Open Audit Button (Visible when audit is collapsed) -->
@@ -838,23 +836,7 @@
 
     <!-- Shared SAR result store (compact metadata in sessionStorage, previews in memory + IndexedDB) -->
     <script src="assets/sar-store.js">
-            const modelSelector = document.getElementById('processing-model');
-            const thresholdSlider = document.getElementById('processing-threshold');
-            const thresholdValue = document.getElementById('threshold-val');
-            if (modelSelector && thresholdSlider && thresholdValue) {
-                modelSelector.addEventListener('change', (e) => {
-                    const model = e.target.value;
-                    if (model === 'snunet_cd_sar') {
-                        thresholdSlider.value = 0.85;
-                    } else if (model === 'changeformer_v6') {
-                        thresholdSlider.value = 0.50;
-                    }
-                    thresholdValue.innerText = Number(thresholdSlider.value).toFixed(2);
-                });
-                thresholdSlider.addEventListener('input', (e) => {
-                    thresholdValue.innerText = Number(e.target.value).toFixed(2);
-                });
-            }
+
 
 </script>
     <script>
@@ -942,12 +924,18 @@
 
         modeDemo.addEventListener('click', () => {
             currentMode = 'demo';
-            modeDemo.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
-            modeLive.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
-            modeUpload.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10 rounded';
+            modeLive.className = 'text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 hover:text-primary hover:border-primary rounded transition-colors';
+            modeUpload.className = 'text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 hover:text-primary hover:border-primary rounded transition-colors';
             demoInputs.classList.remove('hidden');
             liveInputs.classList.add('hidden');
             uploadInputs.classList.add('hidden');
+
+            const pModel = document.getElementById('processing-model');
+            if (pModel && pModel.value !== 'changeformer_v6') {
+                pModel.value = 'changeformer_v6';
+                pModel.dispatchEvent(new Event('change'));
+            }
 
             btnCheckAvail.classList.add('hidden');
             runBtn.classList.remove('hidden');
@@ -1491,27 +1479,39 @@
                 } else if (currentMode === 'demo') {
                     const scene = document.getElementById('demo-scene-select').value;
                     const baseUrl = `assets/demo_samples/${scene}`;
-                    addLog(`Downloading Demo Biome Scene: ${scene}...`);
+                    const isOptical = scene.startsWith('sample_');
+                    const ext = isOptical ? 'png' : 'tif';
+                    const mime = isOptical ? 'image/png' : 'image/tiff';
+
+                    addLog(`Downloading Demo Scene: ${scene}...`);
                     createTerminalProgressBar();
                     setTerminalProgressPace(34, 110, 38);
-                    loaderHUD.updateProgress(18, "INGESTING DUAL-POL SAR TILES [CDSE]...");
+                    loaderHUD.updateProgress(18, `INGESTING ${isOptical ? 'OPTICAL RGB' : 'DUAL-POL SAR'} TILES...`);
 
-                    // Fetch assets in parallel with realistic downlink pace
-                    const fetchAssets = Promise.all([
-                        fetch(`${baseUrl}/t1.tif`),
-                        fetch(`${baseUrl}/t2.tif`)
-                    ]);
                     const downloadDelay = new Promise(r => setTimeout(r, 2200));
 
-                    const [[t1Res, t2Res]] = await Promise.all([fetchAssets, downloadDelay]);
+                    let t1Res = await fetch(`${baseUrl}/T1.${ext}`);
+                    let t2Res = await fetch(`${baseUrl}/T2.${ext}`);
 
-                    if (!t1Res.ok || !t2Res.ok) throw new Error('Demo assets not found locally.');
+                    if (!t1Res.ok || !t2Res.ok) {
+                        t1Res = await fetch(`${baseUrl}/t1.${ext}`);
+                        t2Res = await fetch(`${baseUrl}/t2.${ext}`);
+                    }
 
-                    const t1Blob = await t1Res.blob();
-                    const t2Blob = await t2Res.blob();
+                    const p1 = Promise.resolve([t1Res, t2Res]);
+                    const [[res1, res2]] = await Promise.all([p1, downloadDelay]);
 
-                    t1File = new File([t1Blob], 't1.tif', { type: 'image/tiff' });
-                    t2File = new File([t2Blob], 't2.tif', { type: 'image/tiff' });
+                    if (!res1.ok || !res2.ok) throw new Error('Demo assets not found locally.');
+
+                    let t1Blob = await res1.blob();
+                    let t2Blob = await res2.blob();
+
+                    // If backend needs png instead of tif, or we just want to ensure correct MIME type
+                    t1Blob = new Blob([t1Blob], { type: mime });
+                    t2Blob = new Blob([t2Blob], { type: mime });
+
+                    t1File = new File([t1Blob], `t1.${ext}`, { type: mime });
+                    t2File = new File([t2Blob], `t2.${ext}`, { type: mime });
                     addLog('Demo biome scene acquired successfully.', 'success');
                     loaderHUD.updateProgress(30, "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...");
 
@@ -1562,10 +1562,20 @@
                     const formData = new FormData();
                     formData.append('image_t1', t1File);
                     formData.append('image_t2', t2File);
-                    formData.append('threshold', DEFAULT_DETECTION_THRESHOLD.toString());
+
+                    const threshElement = document.getElementById('processing-threshold');
+                    const thresh = threshElement ? threshElement.value : "0.95";
+                    formData.append('threshold', thresh.toString());
                     formData.append('min_region_area_px', '100');
 
-                    fetchUrl = apiBase + '/api/v1/detect/change-detection';
+                    const pModel = document.getElementById('processing-model');
+                    if (pModel && pModel.value === 'changeformer_v6') {
+                        formData.append('model_name', 'changeformer_v6');
+                        fetchUrl = apiBase + '/api/v1/detect/upload';
+                    } else {
+                        fetchUrl = apiBase + '/api/v1/detect/change-detection';
+                    }
+
                     fetchOpts = {
                         method: 'POST',
                         body: formData
@@ -1653,9 +1663,29 @@
                 let sceneKey = "03_chongqing";
 
                 if (currentMode === 'demo') {
-                    const sceneVal = document.getElementById('demo-scene-select') ? document.getElementById('demo-scene-select').value : '03_chongqing';
+                    const sceneVal = document.getElementById('demo-scene-select') ? document.getElementById('demo-scene-select').value : 'sample_1_singapore';
                     sceneKey = sceneVal;
                     const sceneMap = {
+                        'sample_1_singapore': {
+                            title: 'Singapore (Demo Biome)',
+                            note: 'Extensive coastal reclamation and port expansion detected.'
+                        },
+                        'sample_2_tokyo': {
+                            title: 'Tokyo, Japan (Demo Biome)',
+                            note: 'High-density urban redevelopment and structural changes identified.'
+                        },
+                        'sample_3_berlin': {
+                            title: 'Berlin, Germany (Demo Biome)',
+                            note: 'Significant industrial zone clearing and new construction.'
+                        },
+                        'sample_4_mumbai': {
+                            title: 'Mumbai, India (Demo Biome)',
+                            note: 'Rapid suburban expansion and infrastructure development.'
+                        },
+                        'sample_5_sydney': {
+                            title: 'Sydney, Australia (Demo Biome)',
+                            note: 'Suburban fringe modification and localized terrain disturbance.'
+                        },
                         '01_dubai': {
                             title: 'Dubai, UAE (Demo Biome)',
                             note: 'Significant coastal & infrastructure expansion detected across offshore development sector.'
@@ -1789,6 +1819,46 @@
                 const boxesActiveCls  = 'bg-[#ffb000]/25 border border-[#ffb000] px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ffb000] font-bold shadow-[0_0_18px_rgba(255,176,0,0.45)] transition-all shrink-0';
                 const maskCaption = document.getElementById('mask-debug-caption');
 
+                // Generate bounding boxes overlay if missing from backend but regions exist
+                if (!livePreviews.boxes && Array.isArray(data.regions) && data.regions.length > 0) {
+                    const baseSrc = livePreviews.overlay || livePreviews.mask || livePreviews.t2;
+                    if (baseSrc) {
+                        try {
+                            const boxesDataUrl = await new Promise((resolve, reject) => {
+                                const img = new Image();
+                                img.crossOrigin = "Anonymous";
+                                img.onload = () => {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = img.width;
+                                    canvas.height = img.height;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, 0, 0);
+
+                                    ctx.strokeStyle = '#ffb000'; // Amber highlight
+                                    ctx.lineWidth = Math.max(2, Math.floor(img.width / 400));
+
+                                    data.regions.forEach(r => {
+                                        if (r.bbox_xy) {
+                                            const [min_y, min_x, max_y, max_x] = r.bbox_xy;
+                                            const w = max_x - min_x;
+                                            const h = max_y - min_y;
+                                            const pad = 4;
+                                            ctx.strokeRect(min_x - pad, min_y - pad, w + 2*pad, h + 2*pad);
+                                        }
+                                    });
+                                    resolve(canvas.toDataURL('image/png'));
+                                };
+                                img.onerror = reject;
+                                img.src = baseSrc;
+                            });
+                            livePreviews.boxes = boxesDataUrl;
+                            views['boxes'].src = boxesDataUrl;
+                        } catch (e) {
+                            console.error("Failed to generate highlight boxes:", e);
+                        }
+                    }
+                }
+
                 const setView = (v) => {
                     const def = views[v];
                     if (!def || !def.src || !resultImg) return;
@@ -1884,23 +1954,7 @@
 
 
 
-            const modelSelector = document.getElementById('processing-model');
-            const thresholdSlider = document.getElementById('processing-threshold');
-            const thresholdValue = document.getElementById('threshold-val');
-            if (modelSelector && thresholdSlider && thresholdValue) {
-                modelSelector.addEventListener('change', (e) => {
-                    const model = e.target.value;
-                    if (model === 'snunet_cd_sar') {
-                        thresholdSlider.value = 0.85;
-                    } else if (model === 'changeformer_v6') {
-                        thresholdSlider.value = 0.50;
-                    }
-                    thresholdValue.innerText = Number(thresholdSlider.value).toFixed(2);
-                });
-                thresholdSlider.addEventListener('input', (e) => {
-                    thresholdValue.innerText = Number(e.target.value).toFixed(2);
-                });
-            }
+
 
 </script>
 </body>

@@ -932,12 +932,7 @@
                 if (!targetRegion && metadata && Array.isArray(metadata.regions)) {
                     targetRegion = metadata.regions.find(r => r.region_id != null && String(r.region_id) === String(targetRegionId));
                 }
-
-                if (!targetRegion) {
-                    targetRegion = fallbackRegions.find(r => String(r.region_id) === String(targetRegionId));
-                }
-
-                if (targetRegion) {
+if (targetRegion) {
                     setTimeout(() => {
                         window.flyToCluster(targetRegion);
                     }, 120);
