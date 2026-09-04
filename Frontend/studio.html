@@ -933,6 +933,10 @@
                     duration: 0.9,
                     ease: "power2.inOut"
                 });
+                if (typeof setCurtainPos === 'function') {
+                    setCurtainPos(50);
+                }
+                window.setActiveLayer('t2');
                 const intelPanel = document.getElementById('intel-panel');
                 if (intelPanel) {
                     intelPanel.classList.add('hidden');
@@ -943,10 +947,14 @@
             // Read target cluster from URL params or sessionStorage
             const urlParams = new URLSearchParams(window.location.search);
             const targetRegionId = urlParams.get('cluster') || sessionStorage.getItem('target_cluster');
+            const storedClusterJson = sessionStorage.getItem('target_cluster_data');
             
+            // Immediately clean up one-time session handoff so direct visits / reloads show default comparison
+            sessionStorage.removeItem('target_cluster');
+            sessionStorage.removeItem('target_cluster_data');
+
             if (targetRegionId) {
                 let targetRegion = null;
-                const storedClusterJson = sessionStorage.getItem('target_cluster_data');
                 if (storedClusterJson) {
                     try {
                         targetRegion = JSON.parse(storedClusterJson);
@@ -966,6 +974,13 @@
                         window.flyToCluster(targetRegion);
                     }, 120);
                 }
+            } else {
+                // DEFAULT STUDIO COMPARISON VIEW (When user clicks Studio directly or from navbar)
+                if (typeof setCurtainPos === 'function') {
+                    setCurtainPos(50);
+                }
+                window.setActiveLayer('t2');
+                window.resetClusterFocus();
             }
         });
 

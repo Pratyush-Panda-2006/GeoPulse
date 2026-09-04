@@ -673,12 +673,6 @@
                     };
                 }
 
-                // Also update quick link if available
-                const quickStudioLink = document.querySelector('a[href="studio.html"]');
-                if (quickStudioLink) {
-                    quickStudioLink.href = `studio.html?cluster=${region.region_id}`;
-                }
-
                 // 5. Update bottom HUD readout
                 if (coordReadout) {
                     coordReadout.innerHTML = `<span class="material-symbols-outlined text-[16px] text-primary animate-pulse" data-icon="my_location">my_location</span> <span class="text-primary font-bold">TARGET LOCK: CL-${region.region_id}</span> <span class="text-white/80">(${coordStr})</span>`;
