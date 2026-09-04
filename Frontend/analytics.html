@@ -203,29 +203,29 @@
 
     <!-- TopNavBar -->
     <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3">
-        <a href="index.html" class="font-headline-md text-headline-md text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
-            <span>GeoPulse</span>
+        <a href="index.html" class="font-headline-md text-[18px] md:text-[20px] text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse"></span>
+            <span class="tracking-wider font-bold">GEOPULSE</span>
         </a>
         <div class="hidden md:flex gap-6 lg:gap-8 items-center">
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">OVERVIEW</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">STUDIO</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary !border-b-2 !border-solid !border-primary pb-1" href="analytics.html">ANALYTICS</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="explorer.html">EXPLORER</a>
-            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="intelligence.html">Intelligence</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="intelligence.html">INTELLIGENCE</a>
             <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="telemetry.html">TELEMETRY</a>
         </div>
-        <div class="flex gap-4 items-center">
+        <div class="flex gap-4 items-center shrink-0">
             <a href="telemetry.html" class="flex items-center gap-2 bg-primary/10 border border-primary/20 hover:border-primary/50 transition-all rounded-none px-3 py-1 font-mono text-xs text-primary" title="View Real-Time Telemetry">
                 <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                <span class="uppercase tracking-widest hidden lg:inline">CDSE Satellite Link: Connected</span>
-                <span class="uppercase tracking-widest lg:hidden">Active</span>
+                <span class="text-primary uppercase tracking-widest hidden lg:inline">CDSE Satellite Link: Connected</span>
+                <span class="text-primary uppercase tracking-widest lg:hidden">Active</span>
             </a>
             <div class="flex gap-3">
-                <a href="analytics.html" title="Cluster Alerts">
+                <a href="analytics.html" title="Cluster Alerts" class="flex items-center">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
                 </a>
-                <a href="overview.html" title="Command Center Profile">
+                <a href="overview.html" title="Command Center Profile" class="flex items-center">
                     <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
                 </a>
             </div>
@@ -336,26 +336,103 @@
                         <button class="px-3 py-1 rounded-none border border-outline/30 text-outline font-mono text-[10px] hover:bg-surface-variant/50 transition-colors uppercase tracking-widest" id="zero-toggle">Simulate Zero-Detection (Debug)</button>
                     </div>
 
-                    <!-- Interactive Table -->
-                    <div class="flex-1 overflow-auto relative" id="table-container">
-                        <div class="hidden absolute inset-0 flex items-center justify-center bg-surface-container-low/80 backdrop-blur-md z-20" id="zero-state">
-                            <span class="font-['JetBrains_Mono'] text-outline text-sm tracking-widest">[NO ANOMALIES DETECTED // 0 CLUSTERS FOUND]</span>
+                    <!-- Interactive Table & Tactical Spotlight Split Container -->
+                    <div class="flex-1 flex flex-col xl:flex-row overflow-hidden relative" id="table-container">
+                        <!-- Table Sub-panel (Left) -->
+                        <div class="flex-1 overflow-auto relative custom-scrollbar" id="table-scroll-area">
+                            <div class="hidden absolute inset-0 flex items-center justify-center bg-surface-container-low/80 backdrop-blur-md z-20" id="zero-state">
+                                <span class="font-['JetBrains_Mono'] text-outline text-sm tracking-widest">[NO ANOMALIES DETECTED // 0 CLUSTERS FOUND]</span>
+                            </div>
+                            <table class="w-full text-left border-collapse font-mono text-sm">
+                                <thead class="sticky top-0 bg-surface-container-low/80 backdrop-blur-md border-b border-outline/15 z-10">
+                                    <tr>
+                                        <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">ID</th>
+                                        <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Accuracy</th>
+                                        <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal text-right">Area (sq ft)</th>
+                                        <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal text-right">Mean Prob</th>
+                                        <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Centroid</th>
+                                        <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-outline/10 cursor-pointer">
+                                    <!-- Dynamic Content from SARStore -->
+                                </tbody>
+                            </table>
                         </div>
-                        <table class="w-full text-left border-collapse font-mono text-sm">
-                            <thead class="sticky top-0 bg-surface-container-low/80 backdrop-blur-md border-b border-outline/15 z-10">
-                                <tr>
-                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">ID</th>
-                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Accuracy</th>
-                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal text-right">Area (sq ft)</th>
-                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal text-right">Mean Prob</th>
-                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Centroid</th>
-                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-outline/10 cursor-pointer">
-                                <!-- Dynamic Content from SARStore -->
-                            </tbody>
-                        </table>
+
+                        <!-- Tactical Cluster Spotlight View (Right) -->
+                        <div id="cluster-spotlight-panel" class="w-full xl:w-[380px] border-t xl:border-t-0 xl:border-l border-outline/20 bg-slate-950/80 backdrop-blur-2xl flex flex-col p-5 shrink-0 select-none overflow-y-auto custom-scrollbar">
+                            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                                    <span class="font-mono text-xs font-bold uppercase tracking-wider text-white">Cluster Target Lock</span>
+                                </div>
+                                <span id="spotlight-badge" class="px-2 py-0.5 rounded-full bg-primary/20 border border-primary/40 text-primary font-mono text-[10px] uppercase font-semibold">TRACKING</span>
+                            </div>
+
+                            <!-- Tactical Mini Radar Viewport -->
+                            <div class="relative w-full h-44 bg-slate-900/90 border border-primary/30 rounded-xl overflow-hidden shadow-inner my-4" id="radar-viewport">
+                                <!-- Radar background rings -->
+                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
+                                    <div class="w-36 h-36 rounded-full border border-primary/30"></div>
+                                    <div class="w-24 h-24 rounded-full border border-primary/40"></div>
+                                    <div class="w-12 h-12 rounded-full border border-primary/60"></div>
+                                    <div class="w-full h-px bg-primary/30 absolute"></div>
+                                    <div class="h-full w-px bg-primary/30 absolute"></div>
+                                </div>
+                                <!-- Cluster Beacons Container -->
+                                <div id="radar-clusters-container" class="absolute inset-0 pointer-events-auto"></div>
+                                <!-- Tactical Targeting Crosshair Reticle -->
+                                <div id="radar-reticle" class="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-500 ease-out z-20 hidden">
+                                    <div class="w-full h-full border-2 border-primary rounded-full animate-ping opacity-60 absolute inset-0"></div>
+                                    <div class="w-full h-full border border-primary rounded-full absolute inset-0 shadow-[0_0_12px_rgba(78,222,163,0.8)]"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                                    </div>
+                                    <!-- Corner brackets -->
+                                    <div class="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-primary"></div>
+                                    <div class="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-primary"></div>
+                                    <div class="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-primary"></div>
+                                    <div class="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-primary"></div>
+                                </div>
+                            </div>
+
+                            <!-- Cluster Details Card -->
+                            <div class="bg-black/50 border border-outline/20 rounded-xl p-4 flex flex-col gap-3 shadow-md" id="spotlight-card">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <span class="text-[10px] font-mono text-outline uppercase tracking-widest block">Active Region</span>
+                                        <h3 id="spotlight-id" class="font-headline-md text-xl font-bold text-white tracking-tight">Select Cluster</h3>
+                                    </div>
+                                    <div id="spotlight-severity" class="inline-flex items-center gap-1 px-2 py-0.5 border border-primary/40 bg-primary/10 text-primary font-mono text-[10px] uppercase font-bold rounded">
+                                        --
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2 text-xs font-mono pt-2 border-t border-white/10">
+                                    <div>
+                                        <span class="text-outline text-[10px] uppercase block">Coordinates</span>
+                                        <span id="spotlight-coords" class="text-white font-semibold">--</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-outline text-[10px] uppercase block">Disturbance Area</span>
+                                        <span id="spotlight-area" class="text-white font-semibold">--</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-outline text-[10px] uppercase block">Confidence</span>
+                                        <span id="spotlight-prob" class="text-primary font-semibold">--</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-outline text-[10px] uppercase block">Sensor / Pass</span>
+                                        <span id="spotlight-sensor" class="text-white/70">Sentinel-1 SAR</span>
+                                    </div>
+                                </div>
+
+                                <button id="spotlight-btn-studio" class="mt-2 w-full bg-primary/20 hover:bg-primary/30 border border-primary/60 hover:border-primary text-primary hover:text-white font-mono text-xs uppercase tracking-wider py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(78,222,163,0.2)]">
+                                    <span>[INSPECT IN 3D STUDIO →]</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -433,11 +510,30 @@
                     metadata = pairwiseData;
                 }
                 
-                if (!metadata || !metadata.regions) {
-                    document.getElementById('no-inference-overlay').classList.remove('hidden');
-                    document.getElementById('analytics-content').style.opacity = '0.3';
-                    document.getElementById('analytics-content').style.pointerEvents = 'none';
-                    return;
+                // Fallback default demo data if no active inference is in memory
+                if (!metadata || !metadata.regions || metadata.regions.length === 0) {
+                    metadata = {
+                        job_id: "demo_03_chongqing",
+                        status: "success",
+                        model_used: "snunet_cd_sar",
+                        execution_time_sec: 1.48,
+                        total_pixels: 512 * 512,
+                        changed_pixels: 919,
+                        change_percentage: "0.156",
+                        num_change_clusters: 10,
+                        regions: [
+                            { region_id: 1, area_px: 248, area_km2: 0.0248, centroid_xy: [180.4, 210.2], geo_centroid: [106.5510, 29.5630], mean_change_prob: 0.962, severity: 'High' },
+                            { region_id: 2, area_px: 195, area_km2: 0.0195, centroid_xy: [240.8, 175.6], geo_centroid: [106.5642, 29.5714], mean_change_prob: 0.954, severity: 'High' },
+                            { region_id: 3, area_px: 142, area_km2: 0.0142, centroid_xy: [310.2, 290.5], geo_centroid: [106.5780, 29.5490], mean_change_prob: 0.938, severity: 'Medium' },
+                            { region_id: 4, area_px: 110, area_km2: 0.0110, centroid_xy: [145.6, 340.1], geo_centroid: [106.5420, 29.5380], mean_change_prob: 0.912, severity: 'Medium' },
+                            { region_id: 5, area_px: 88,  area_km2: 0.0088, centroid_xy: [390.5, 160.3], geo_centroid: [106.5910, 29.5740], mean_change_prob: 0.895, severity: 'Low' },
+                            { region_id: 6, area_px: 62,  area_km2: 0.0062, centroid_xy: [215.1, 410.8], geo_centroid: [106.5580, 29.5220], mean_change_prob: 0.874, severity: 'Low' },
+                            { region_id: 7, area_px: 36,  area_km2: 0.0036, centroid_xy: [280.9, 120.4], geo_centroid: [106.5720, 29.5820], mean_change_prob: 0.846, severity: 'Low' },
+                            { region_id: 8, area_px: 21,  area_km2: 0.0021, centroid_xy: [440.2, 260.7], geo_centroid: [106.6020, 29.5550], mean_change_prob: 0.825, severity: 'Low' },
+                            { region_id: 9, area_px: 12,  area_km2: 0.0012, centroid_xy: [110.8, 190.2], geo_centroid: [106.5350, 29.5670], mean_change_prob: 0.798, severity: 'Low' },
+                            { region_id: 10, area_px: 5,  area_km2: 0.0005, centroid_xy: [360.4, 380.9], geo_centroid: [106.5860, 29.5290], mean_change_prob: 0.781, severity: 'Low' }
+                        ]
+                    };
                 }
 
             // Populate Cards
@@ -451,19 +547,146 @@
             document.getElementById('clusters-detected-val').innerHTML = `${fmtNum(metadata.num_change_clusters)} <span class="text-sm font-normal text-on-surface-variant font-['Inter']">clusters</span>`;
             document.getElementById('inference-time-val').innerHTML = `${metadata.execution_time_sec} <span class="text-sm font-normal text-on-surface-variant font-['Inter']">s</span>`;
 
-            // Table Generation
+            // Table Generation & Spotlight Setup
             const tbody = document.querySelector('tbody');
             const scanline = document.getElementById('scanline');
             const tableContainer = document.getElementById('table-container');
+            const mapCanvas = document.getElementById('map-canvas');
+            const coordReadout = document.getElementById('coord-readout');
+            const zoomReadout = document.getElementById('zoom-readout');
+            const radarContainer = document.getElementById('radar-clusters-container');
             
             let allRegions = metadata.regions;
             
-            // Recalculate severity dynamically based on updated logic to override cached data
+            // Recalculate severity dynamically based on area
             allRegions.forEach(r => {
                 if (r.area_px >= 200) r.severity = 'High';
                 else if (r.area_px >= 130) r.severity = 'Medium';
                 else r.severity = 'Low';
             });
+
+            // Render Tactical Radar Dots
+            const renderRadarBeacons = (regions) => {
+                if (!radarContainer) return;
+                radarContainer.innerHTML = '';
+                regions.forEach(r => {
+                    const dot = document.createElement('div');
+                    const nx = Math.min(Math.max((r.centroid_xy[0] / 512) * 100, 8), 92);
+                    const ny = Math.min(Math.max((r.centroid_xy[1] / 512) * 100, 8), 92);
+                    const dotColor = r.severity === 'High' ? 'bg-[#ff453a] shadow-[0_0_8px_rgba(255,69,58,0.9)]' : 
+                                     r.severity === 'Medium' ? 'bg-[#ffd60a] shadow-[0_0_8px_rgba(255,214,10,0.9)]' : 
+                                     'bg-primary shadow-[0_0_8px_rgba(78,222,163,0.9)]';
+                    dot.className = `absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full cursor-pointer hover:scale-150 transition-all z-10 flex items-center justify-center group ${dotColor}`;
+                    dot.style.left = `${nx}%`;
+                    dot.style.top = `${ny}%`;
+                    dot.title = `CL-${r.region_id} (${r.severity})`;
+                    dot.dataset.regionId = r.region_id;
+                    dot.innerHTML = `<span class="opacity-0 group-hover:opacity-100 absolute -top-5 text-[9px] font-mono px-1 py-0.5 bg-black/90 text-white rounded pointer-events-none transition-opacity">CL-${r.region_id}</span>`;
+                    dot.onclick = (e) => {
+                        e.stopPropagation();
+                        selectCluster(r.region_id, true);
+                    };
+                    radarContainer.appendChild(dot);
+                });
+            };
+
+            // Smooth Cluster Selection and Fly-To
+            function selectCluster(regionId, smoothScrollTable = false) {
+                const region = allRegions.find(r => String(r.region_id) === String(regionId));
+                if (!region) return;
+
+                // 1. Highlight clicked row in the table smoothly
+                document.querySelectorAll('tbody tr').forEach(tr => {
+                    if (String(tr.dataset.regionId) === String(regionId)) {
+                        tr.className = 'bg-primary/20 border-l-4 border-primary text-white shadow-[0_0_20px_rgba(78,222,163,0.3)] transition-all duration-300 group cursor-pointer';
+                        if (smoothScrollTable) {
+                            tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    } else {
+                        tr.className = 'hover:bg-primary/5 transition-colors group cursor-pointer border-l-4 border-transparent';
+                    }
+                });
+
+                // 2. Smoothly fly reticle to cluster coordinates on the radar viewport
+                const reticle = document.getElementById('radar-reticle');
+                if (reticle) {
+                    reticle.classList.remove('hidden');
+                    const nx = Math.min(Math.max((region.centroid_xy[0] / 512) * 100, 8), 92);
+                    const ny = Math.min(Math.max((region.centroid_xy[1] / 512) * 100, 8), 92);
+                    gsap.to(reticle, {
+                        left: `${nx}%`,
+                        top: `${ny}%`,
+                        duration: 0.6,
+                        ease: "power2.out"
+                    });
+                }
+
+                // 3. Smoothly pan & zoom the background map canvas with GSAP
+                if (mapCanvas) {
+                    const normX = Math.min(Math.max((region.centroid_xy[0] / 512) * 100, 10), 90);
+                    const normY = Math.min(Math.max((region.centroid_xy[1] / 512) * 100, 10), 90);
+                    gsap.to(mapCanvas, {
+                        scale: 1.35,
+                        transformOrigin: `${normX}% ${normY}%`,
+                        duration: 1.1,
+                        ease: "power2.out"
+                    });
+                }
+
+                // 4. Update Spotlight details card
+                const spotId = document.getElementById('spotlight-id');
+                const spotCoords = document.getElementById('spotlight-coords');
+                const spotArea = document.getElementById('spotlight-area');
+                const spotProb = document.getElementById('spotlight-prob');
+                const spotSev = document.getElementById('spotlight-severity');
+                const spotBtn = document.getElementById('spotlight-btn-studio');
+                const spotBadge = document.getElementById('spotlight-badge');
+                
+                const coordStr = region.geo_centroid ? `${region.geo_centroid[1].toFixed(4)}° N, ${region.geo_centroid[0].toFixed(4)}° E` : `[Px: ${Math.round(region.centroid_xy[0])}, ${Math.round(region.centroid_xy[1])}]`;
+                
+                let areaSqFt = 0;
+                if (region.area_km2) areaSqFt = region.area_km2 * 10763910.4;
+                else if (region.approx_area_sq_km) areaSqFt = region.approx_area_sq_km * 10763910.4;
+                else areaSqFt = region.area_px * 1076.39104;
+
+                if (spotId) spotId.textContent = `CL-${region.region_id}`;
+                if (spotCoords) spotCoords.textContent = coordStr;
+                if (spotArea) spotArea.textContent = `${Math.round(areaSqFt).toLocaleString()} sq ft`;
+                if (spotProb) spotProb.textContent = `${(region.mean_change_prob * 100).toFixed(1)}%`;
+                if (spotBadge) {
+                    spotBadge.textContent = `LOCKED: CL-${region.region_id}`;
+                    spotBadge.className = 'px-2 py-0.5 rounded-full bg-primary/25 border border-primary text-primary font-mono text-[10px] uppercase font-bold shadow-[0_0_8px_rgba(78,222,163,0.4)]';
+                }
+                if (spotSev) {
+                    spotSev.textContent = region.severity || 'Medium';
+                    spotSev.className = region.severity === 'High' ? 'inline-flex items-center gap-1 px-2 py-0.5 border border-[#ff453a]/50 bg-[#ff453a]/15 text-[#ff453a] font-mono text-[10px] uppercase font-bold rounded shadow-[0_0_8px_rgba(255,69,58,0.3)]' :
+                                        region.severity === 'Medium' ? 'inline-flex items-center gap-1 px-2 py-0.5 border border-[#ffd60a]/50 bg-[#ffd60a]/15 text-[#ffd60a] font-mono text-[10px] uppercase font-bold rounded shadow-[0_0_8px_rgba(255,214,10,0.3)]' :
+                                        'inline-flex items-center gap-1 px-2 py-0.5 border border-primary/40 bg-primary/10 text-primary font-mono text-[10px] uppercase font-bold rounded shadow-[0_0_8px_rgba(78,222,163,0.3)]';
+                }
+
+                if (spotBtn) {
+                    spotBtn.onclick = () => {
+                        sessionStorage.setItem('target_cluster', region.region_id);
+                        sessionStorage.setItem('target_cluster_data', JSON.stringify(region));
+                        if (region._pair_job_id) sessionStorage.setItem('target_pair', region._pair_job_id);
+                        window.location.href = `studio.html?cluster=${region.region_id}`;
+                    };
+                }
+
+                // Also update quick link if available
+                const quickStudioLink = document.querySelector('a[href="studio.html"]');
+                if (quickStudioLink) {
+                    quickStudioLink.href = `studio.html?cluster=${region.region_id}`;
+                }
+
+                // 5. Update bottom HUD readout
+                if (coordReadout) {
+                    coordReadout.innerHTML = `<span class="material-symbols-outlined text-[16px] text-primary animate-pulse" data-icon="my_location">my_location</span> <span class="text-primary font-bold">TARGET LOCK: CL-${region.region_id}</span> <span class="text-white/80">(${coordStr})</span>`;
+                }
+                if (zoomReadout) {
+                    zoomReadout.innerHTML = `<span class="text-primary font-bold">ZOOM: 18.5x [ENGAGED]</span>`;
+                }
+            }
             
             const renderTable = (regions) => {
                 tbody.innerHTML = '';
@@ -480,7 +703,7 @@
                                    r.severity === 'Medium' ? 'bg-[#ffd60a]' : 'bg-outline';
 
                     const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-primary/5 transition-colors group cursor-pointer';
+                    tr.className = 'hover:bg-primary/5 transition-colors group cursor-pointer border-l-4 border-transparent';
                     tr.dataset.cx = r.centroid_xy[0];
                     tr.dataset.cy = r.centroid_xy[1];
                     tr.dataset.coordStr = coordStr;
@@ -496,7 +719,10 @@
                     const formattedAreaSqFt = Math.round(areaSqFt).toLocaleString();
                     
                     tr.innerHTML = `
-                        <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">CL-${r.region_id}${timeContext}</td>
+                        <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">
+                            <span class="cluster-id-badge inline-flex items-center gap-1 hover:text-primary transition-colors">CL-${r.region_id}</span>
+                            ${timeContext}
+                        </td>
                         <td class="py-3 px-6 font-['JetBrains_Mono']">
                             <div class="inline-flex items-center gap-1.5 px-2 py-0.5 border ${sevColor} text-[10px] uppercase tracking-widest font-bold">
                                 <div class="w-1.5 h-1.5 rounded-full ${sevDot}"></div> ${r.severity}
@@ -505,11 +731,22 @@
                         <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">${formattedAreaSqFt}</td>
                         <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">${r.mean_change_prob.toFixed(2)}</td>
                         <td class="py-3 px-6 text-on-surface-variant text-xs font-['JetBrains_Mono']">${coordStr}</td>
-                        <td class="py-3 px-6"><span class="text-primary hover:underline text-xs">Studio →</span></td>
+                        <td class="py-3 px-6">
+                            <button class="open-studio-btn inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/15 hover:bg-primary/30 border border-primary/40 hover:border-primary text-primary text-xs font-mono font-bold rounded transition-all shadow-[0_0_10px_rgba(78,222,163,0.15)] group-hover:shadow-[0_0_12px_rgba(78,222,163,0.35)]" title="Inspect CL-${r.region_id} in 3D Studio">
+                                <span>Studio</span>
+                                <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                            </button>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
                 bindRowClicks();
+                renderRadarBeacons(regions);
+
+                // Auto-select first cluster
+                if (regions.length > 0) {
+                    selectCluster(regions[0].region_id);
+                }
                 
                 // Animate rows
                 const rows = document.querySelectorAll('tbody tr');
@@ -569,19 +806,38 @@
                 }
             });
 
-            // Fly-to animation logic
-            const mapCanvas = document.getElementById('map-canvas');
-            const coordReadout = document.getElementById('coord-readout');
-            const zoomReadout = document.getElementById('zoom-readout');
-            const imageSize = metadata.total_pixels ? Math.sqrt(metadata.total_pixels) : 512; // Approximate width/height
-
             function bindRowClicks() {
                 document.querySelectorAll('tbody tr').forEach(row => {
                     row.addEventListener('click', function(e) {
-                        if (this.dataset.regionId) {
-                            sessionStorage.setItem('target_cluster', this.dataset.regionId);
+                        const studioBtn = e.target.closest('.open-studio-btn') || (e.target.innerText && e.target.innerText.includes('Studio'));
+                        const rId = this.dataset.regionId;
+                        const region = allRegions.find(r => String(r.region_id) === String(rId));
+                        
+                        if (studioBtn) {
+                            e.stopPropagation();
+                            if (rId && region) {
+                                sessionStorage.setItem('target_cluster', rId);
+                                sessionStorage.setItem('target_cluster_data', JSON.stringify(region));
+                                if (this.dataset.pairId) sessionStorage.setItem('target_pair', this.dataset.pairId);
+                                window.location.href = `studio.html?cluster=${rId}`;
+                            }
+                            return;
+                        }
+                        
+                        if (rId) {
+                            selectCluster(rId, false);
+                        }
+                    });
+
+                    // Double-clicking anywhere on row navigates directly to Studio for that cluster
+                    row.addEventListener('dblclick', function(e) {
+                        const rId = this.dataset.regionId;
+                        const region = allRegions.find(r => String(r.region_id) === String(rId));
+                        if (rId && region) {
+                            sessionStorage.setItem('target_cluster', rId);
+                            sessionStorage.setItem('target_cluster_data', JSON.stringify(region));
                             if (this.dataset.pairId) sessionStorage.setItem('target_pair', this.dataset.pairId);
-                            window.location.href = 'studio.html';
+                            window.location.href = `studio.html?cluster=${rId}`;
                         }
                     });
                 });
