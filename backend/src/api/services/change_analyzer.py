@@ -15,7 +15,7 @@ import numpy as np
 import scipy.ndimage as ndimage
 import pyproj
 from shapely.geometry import shape, MultiPolygon
-from shapely.ops import transform
+from shapely.ops import transform as shapely_transform
 from functools import partial
 
 from src.api.schemas import ChangedRegion
@@ -107,7 +107,13 @@ def extract_changed_regions(
     Returns:
         tuple (regions_list, total_changed_area_sq_km)
     """
-    labeled_array, num_features = ndimage.label(binary_mask > 0)
+    # 1. Morphological Noise Removal
+    # Opening removes small false positives (salt noise)
+    cleaned_mask = ndimage.binary_opening(binary_mask > 0, structure=np.ones((3, 3)))
+    # Closing bridges small gaps and completes structures (pepper noise/broken edges)
+    cleaned_mask = ndimage.binary_closing(cleaned_mask, structure=np.ones((5, 5)))
+    
+    labeled_array, num_features = ndimage.label(cleaned_mask)
     h, w = binary_mask.shape
 
     pixel_area_km2 = None
@@ -117,16 +123,23 @@ def extract_changed_regions(
     regions: List[ChangedRegion] = []
     region_slices = ndimage.find_objects(labeled_array)
 
-    total_changed_px = int(np.sum(binary_mask > 0))
+    total_changed_px = int(np.sum(cleaned_mask))
     total_changed_km2 = (
         round(total_changed_px * pixel_area_km2, 4)
         if pixel_area_km2 is not None
         else None
     )
 
-    MERGE_GAP_PX = 10
+    wgs84 = pyproj.Proj("EPSG:4326")
 
-    raw_regions = []
+    # For accurate geometry, we'll need rasterio.features
+    try:
+        from rasterio import features
+        has_features = True
+    except ImportError:
+        has_features = False
+
+    region_counter = 1
     for idx, slc in enumerate(region_slices, start=1):
         if slc is None:
             continue
@@ -152,70 +165,6 @@ def extract_changed_regions(
         region_probs = prob_map[slc][region_mask]
         mean_prob = float(np.mean(region_probs)) if len(region_probs) > 0 else 0.5
 
-        raw_regions.append({
-            "min_row": min_row,
-            "max_row": max_row,
-            "min_col": min_col,
-            "max_col": max_col,
-            "area_px": area_px,
-            "sum_c": global_centroid_c * area_px,
-            "sum_r": global_centroid_r * area_px,
-            "sum_prob": mean_prob * area_px,
-        })
-
-    # Transitive Merge
-    parent = list(range(len(raw_regions)))
-
-    def find(i: int) -> int:
-        if parent[i] == i:
-            return i
-        parent[i] = find(parent[i])
-        return parent[i]
-
-    def union(i: int, j: int):
-        root_i = find(i)
-        root_j = find(j)
-        if root_i != root_j:
-            parent[root_i] = root_j
-
-    for i in range(len(raw_regions)):
-        for j in range(i + 1, len(raw_regions)):
-            b1 = raw_regions[i]
-            b2 = raw_regions[j]
-            vert_gap = max(0, max(b1["min_row"], b2["min_row"]) - min(b1["max_row"], b2["max_row"]))
-            horiz_gap = max(0, max(b1["min_col"], b2["min_col"]) - min(b1["max_col"], b2["max_col"]))
-            if max(vert_gap, horiz_gap) <= MERGE_GAP_PX:
-                union(i, j)
-
-    merged_groups = {}
-    for i in range(len(raw_regions)):
-        root = find(i)
-        if root not in merged_groups:
-            merged_groups[root] = []
-        merged_groups[root].append(raw_regions[i])
-
-    regions: List[ChangedRegion] = []
-    region_counter = 1
-    
-    wgs84 = pyproj.Proj("EPSG:4326")
-
-    # For accurate geometry, we'll need rasterio.features
-    try:
-        from rasterio import features
-        has_features = True
-    except ImportError:
-        has_features = False
-
-    for root, group in merged_groups.items():
-        area_px = sum(g["area_px"] for g in group)
-        min_row = min(g["min_row"] for g in group)
-        max_row = max(g["max_row"] for g in group)
-        min_col = min(g["min_col"] for g in group)
-        max_col = max(g["max_col"] for g in group)
-        global_centroid_c = sum(g["sum_c"] for g in group) / area_px
-        global_centroid_r = sum(g["sum_r"] for g in group) / area_px
-        mean_prob = sum(g["sum_prob"] for g in group) / area_px
-
         # Geo-referencing if bbox or transform is available
         geo_bbox = None
         geo_centroid = None
@@ -231,26 +180,12 @@ def extract_changed_regions(
             # Extract precise polygon geometry and equal-area km2
             if has_features and transform is not None:
                 # We extract the mask for this specific merged group
-                group_mask = np.zeros_like(binary_mask, dtype=np.uint8)
-                for g in group:
-                    r_min, r_max, c_min, c_max = g["min_row"], g["max_row"], g["min_col"], g["max_col"]
-                    # Reconstruct exact pixels from labeled_array would be expensive, 
-                    # but we can just use the binary_mask within the merged bounds as an approximation
-                    # since we know it's a connected component.
-                    group_mask[r_min:r_max, c_min:c_max] = (binary_mask[r_min:r_max, c_min:c_max] > 0).astype(np.uint8)
-                
-                # Polygonize
-                shapes = list(features.shapes(group_mask[min_row:max_row, min_col:max_col], transform=transform))
-                polygons = []
-                for geom, val in shapes:
-                    if val == 1:
-                        # Translate by min_row, min_col if we didn't use the full transform?
-                        # Actually, if we use the full `transform` on the sliced array, we must adjust it.
-                        # Easier to polygonize the full array mask:
-                        pass
+                group_mask = np.zeros_like(cleaned_mask, dtype=np.uint8)
+                group_mask[min_row:max_row, min_col:max_col] = region_mask.astype(np.uint8)
                 
                 # Full array approach (safer for transform)
                 shapes = list(features.shapes(group_mask, transform=transform))
+                polygons = []
                 for geom, val in shapes:
                     if val == 1:
                         polygons.append(shape(geom))
@@ -260,20 +195,17 @@ def extract_changed_regions(
                     # Transform to WGS84 to ensure lat/lon for UTM calculation
                     try:
                         import rasterio.warp
-                        # If the source CRS is not 4326, we might need to reproject the geometry to 4326 first,
-                        # but if `transform` is already WGS84 (as is common for the API), we can proceed.
                     except ImportError:
                         pass
 
                     # Transform to UTM for equal-area
                     utm_proj = _get_utm_proj(c_lon, c_lat)
                     project = partial(pyproj.transform, wgs84, utm_proj)
-                    geom_utm = transform(project, geom)
+                    geom_utm = shapely_transform(project, geom)
                     area_km2 = geom_utm.area / 1e6
             
             # Fallback if area_km2 wasn't computed exactly
             if area_km2 is None and pixel_area_km2 is not None:
-                # Just use pixel area approx for now if rasterio features missing
                 area_km2 = round(area_px * pixel_area_km2, 6)
 
         approx_area_km2 = (

@@ -327,11 +327,20 @@
                             <div class="flex flex-col gap-1.5">
                                 <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Demo Scene</label>
                                 <select id="demo-scene-select" class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
-                                    <option class="bg-[#0a0a0a] text-outline" value="01_dubai">Dubai, UAE</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="02_lasvegas">Las Vegas, USA</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="03_chongqing">Chongqing, China</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="04_montpellier">Montpellier, France</option>
-                                    <option class="bg-[#0a0a0a] text-outline" value="05_rio">Rio de Janeiro, Brazil</option>
+                                    <optgroup label="SAR Image">
+                                        <option class="bg-[#0a0a0a] text-outline" value="01_dubai">Dubai, UAE</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="02_lasvegas">Las Vegas, USA</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="03_chongqing">Chongqing, China</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="04_montpellier">Montpellier, France</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="05_rio">Rio de Janeiro, Brazil</option>
+                                    </optgroup>
+                                    <optgroup label="Optical Image">
+                                        <option class="bg-[#0a0a0a] text-outline" value="sample_1_singapore">Singapore, Singapore</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="sample_2_tokyo">Tokyo, Japan</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="sample_3_berlin">Berlin, Germany</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="sample_4_mumbai">Mumbai, India</option>
+                                        <option class="bg-[#0a0a0a] text-outline" value="sample_5_sydney">Sydney, Australia</option>
+                                    </optgroup>
                                 </select>
                             </div>
                             <div class="text-[10px] font-mono text-outline/70 leading-tight">
@@ -762,21 +771,28 @@
                 const scene = document.getElementById('demo-scene-select').value;
                 // We assume demo_samples folder is hosted at /assets/demo_samples/
                 const baseUrl = `assets/demo_samples/${scene}`;
+                const isOptical = scene.startsWith('sample_');
+                const ext = isOptical ? 'png' : 'tif';
+                const mime = isOptical ? 'image/png' : 'image/tiff';
                 
                 addLog(`Downloading Demo Scene: ${scene}...`);
                 try {
-                    const [t1Res, t2Res] = await Promise.all([
-                        fetch(`${baseUrl}/t1.tif`),
-                        fetch(`${baseUrl}/t2.tif`)
-                    ]);
+                    // Try exact case first (T1.png/T2.png), fallback to lowercase (t1.tif/t2.tif)
+                    let t1Res = await fetch(`${baseUrl}/T1.${ext}`);
+                    let t2Res = await fetch(`${baseUrl}/T2.${ext}`);
+                    
+                    if (!t1Res.ok || !t2Res.ok) {
+                        t1Res = await fetch(`${baseUrl}/t1.${ext}`);
+                        t2Res = await fetch(`${baseUrl}/t2.${ext}`);
+                    }
                     
                     if (!t1Res.ok || !t2Res.ok) throw new Error('Demo assets not found locally.');
                     
                     const t1Blob = await t1Res.blob();
                     const t2Blob = await t2Res.blob();
                     
-                    t1File = new File([t1Blob], 't1.tif', { type: 'image/tiff' });
-                    t2File = new File([t2Blob], 't2.tif', { type: 'image/tiff' });
+                    t1File = new File([t1Blob], `t1.${ext}`, { type: mime });
+                    t2File = new File([t2Blob], `t2.${ext}`, { type: mime });
                     addLog('Demo scene acquired successfully.', 'success');
                 } catch (e) {
                     addLog(e.message, 'error');

@@ -345,6 +345,13 @@ class AnalyzeRequest(BaseModel):
     threshold: float = 0.5
     min_region_area_px: int = 10
 
+
+class InterpretRequest(BaseModel):
+    """Payload for on-demand semantic interpretation of change regions."""
+    t1_base64: str = Field(..., description="Base64 encoded JPEG of the T1 preview/image")
+    t2_base64: str = Field(..., description="Base64 encoded JPEG of the T2 preview/image")
+    regions: List[ChangedRegion] = Field(..., description="List of regions to interpret")
+
 # Rebuild models that contain forward references or deferred type hints
 # due to `from __future__ import annotations`.
 ChangedRegion.model_rebuild()

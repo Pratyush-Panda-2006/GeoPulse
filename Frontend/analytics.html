@@ -460,8 +460,8 @@
             
             // Recalculate severity dynamically based on updated logic to override cached data
             allRegions.forEach(r => {
-                if (r.area_px >= 200) r.severity = 'High';
-                else if (r.area_px >= 130) r.severity = 'Medium';
+                if (r.area_px >= 800) r.severity = 'High';
+                else if (r.area_px >= 300) r.severity = 'Medium';
                 else r.severity = 'Low';
             });
             

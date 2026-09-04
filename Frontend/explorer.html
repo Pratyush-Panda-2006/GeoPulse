@@ -392,11 +392,20 @@
                             <div class="flex flex-col gap-1.5">
                                 <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Demo Scene</label>
                                 <select id="demo-scene-select" class="glass-input rounded-md px-3 py-2 font-mono text-sm w-full appearance-none bg-black/40 border-white/20 text-white">
-                                    <option class="bg-[#0a0a0a] text-white/70" value="01_dubai">Dubai, UAE</option>
-                                    <option class="bg-[#0a0a0a] text-white/70" value="02_lasvegas">Las Vegas, USA</option>
-                                    <option class="bg-[#0a0a0a] text-white/70" value="03_chongqing">Chongqing, China</option>
-                                    <option class="bg-[#0a0a0a] text-white/70" value="04_montpellier">Montpellier, France</option>
-                                    <option class="bg-[#0a0a0a] text-white/70" value="05_rio">Rio de Janeiro, Brazil</option>
+                                    <optgroup label="SAR Image">
+                                        <option class="bg-[#0a0a0a] text-white/70" value="01_dubai">Dubai, UAE</option>
+                                        <option class="bg-[#0a0a0a] text-white/70" value="02_lasvegas">Las Vegas, USA</option>
+                                        <option class="bg-[#0a0a0a] text-white/70" value="03_chongqing">Chongqing, China</option>
+                                        <option class="bg-[#0a0a0a] text-white/70" value="04_montpellier">Montpellier, France</option>
+                                        <option class="bg-[#0a0a0a] text-white/70" value="05_rio">Rio de Janeiro, Brazil</option>
+                                    </optgroup>
+                                    <optgroup label="Optical Image">
+                                        <option class="bg-[#0a0a0a] text-white/70" value="sample_1_singapore">Singapore, Singapore</option>
+                                        <option class="bg-[#0a0a0a] text-white/70" value="sample_2_tokyo">Tokyo, Japan</option>
+                                        <option class="bg-[#0a0a0a] text-white/70" value="sample_3_berlin">Berlin, Germany</option>
+                                        <option class="bg-[#0a0a0a] text-white/70" value="sample_4_mumbai">Mumbai, India</option>
+                                        <option class="bg-[#0a0a0a] text-white/70" value="sample_5_sydney">Sydney, Australia</option>
+                                    </optgroup>
                                 </select>
                             </div>
                             <div class="text-[10px] font-mono text-white/50 leading-tight">
@@ -428,6 +437,12 @@
                             <option class="bg-black text-white/90" selected="" value="snunet">SNUNet-CD (Optimized)</option>
                             <option class="bg-black text-white/90" value="changeformer_v6">ChangeFormerV6 (Optical)</option>
                         </select>
+                    </div>
+                    <!-- Threshold Control -->
+                    <div class="flex flex-col gap-1.5 mt-2">
+                        <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Change Threshold</label>
+                        <input id="processing-threshold" type="range" min="0" max="1" step="0.01" value="0.85" class="w-full cursor-pointer accent-primary bg-black/20">
+                        <span id="threshold-val" class="font-mono text-[10px] text-primary text-right">0.85</span>
                     </div>
                 </section>
             </div>
@@ -538,6 +553,19 @@
                     <div class="flex justify-between"><span class="uppercase">Change %</span><span id="metric-percent" class="text-primary font-bold drop-shadow-[0_0_5px_rgba(78,222,163,0.5)]">--</span></div>
                     <div class="flex justify-between"><span class="uppercase">Clusters</span><span id="metric-clusters" class="text-white">--</span></div>
                 </div>
+                
+                <!-- AI Interpretation Trigger -->
+                <div class="mt-4 border-t border-primary/20 pt-3">
+                    <button id="btn-interpret" class="w-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/40 hover:to-blue-500/40 border border-purple-500/50 text-white font-mono text-[10px] uppercase tracking-widest py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all">
+                        <span class="material-symbols-outlined text-[14px]">psychology</span>
+                        <span>Analyze Changes with AI</span>
+                    </button>
+                </div>
+                
+                <!-- AI Interpretations Display -->
+                <div id="ai-interpretations-panel" class="mt-3 hidden flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+                    <!-- Cards will be injected here -->
+                </div>
             </div>
 
             <!-- TEMPORARY DEBUG: Model 3 binary change mask inspection (hidden until a real result loads) -->
@@ -623,6 +651,25 @@
         const btnCheckAvail = document.getElementById('btn-check-availability');
         const runBtn = document.getElementById('btn-run-live');
         const sweep = document.getElementById('radar-sweep');
+        const thresholdInput = document.getElementById('processing-threshold');
+        const thresholdVal = document.getElementById('threshold-val');
+
+        if (thresholdInput && thresholdVal) {
+            thresholdInput.addEventListener('input', (e) => {
+                thresholdVal.innerText = parseFloat(e.target.value).toFixed(2);
+            });
+        }
+
+        const modelSelect = document.getElementById('processing-model');
+        if (modelSelect && thresholdInput && thresholdVal) {
+            modelSelect.addEventListener('change', (e) => {
+                const model = e.target.value;
+                const newThreshold = model === 'changeformer_v6' ? '0.50' : '0.85';
+                thresholdInput.value = newThreshold;
+                thresholdVal.innerText = newThreshold;
+            });
+        }
+
         const terminal = document.getElementById('terminal-overlay');
         const logContent = document.getElementById('log-content');
         const hud = document.getElementById('map-hud-reticle');
@@ -717,6 +764,7 @@
 
         // Sub-Mode Logic (Pairwise vs Series)
         let currentSubMode = 'pairwise';
+        let lastInferenceResult = null;
         const submodePairwise = document.getElementById('submode-pairwise');
         const submodeSeries = document.getElementById('submode-series');
         const livePairwiseInputs = document.getElementById('live-pairwise-inputs');
@@ -830,6 +878,7 @@
             const resVal = resSelect ? parseInt(resSelect.value) : 512;
             let modelStr = modSelect ? modSelect.value : 'snunet';
             if (modelStr === 'snunet') modelStr = 'snunet_cd_sar';
+            const threshVal = thresholdInput ? parseFloat(thresholdInput.value) : DEFAULT_DETECTION_THRESHOLD;
             
             if (currentSubMode === 'series') {
                 const sStart = document.getElementById('live-series-start') ? document.getElementById('live-series-start').value : '2024-01-01';
@@ -841,7 +890,7 @@
                     resolution: [resVal, resVal],
                     max_scenes: sMax,
                     model_name: modelStr,
-                    threshold: DEFAULT_DETECTION_THRESHOLD,
+                    threshold: threshVal,
                     min_region_area_px: 10
                 };
             } else {
@@ -851,7 +900,7 @@
                     date_range_t2: [fmtDate(d2Start), fmtDate(d2End)],
                     resolution: [resVal, resVal],
                     model_name: modelStr,
-                    threshold: DEFAULT_DETECTION_THRESHOLD,
+                    threshold: threshVal,
                     min_region_area_px: 10
                 };
             }
@@ -1061,21 +1110,28 @@
                 const scene = document.getElementById('demo-scene-select').value;
                 // We assume demo_samples folder is hosted at /assets/demo_samples/
                 const baseUrl = `assets/demo_samples/${scene}`;
+                const isOptical = scene.startsWith('sample_');
+                const ext = isOptical ? 'png' : 'tif';
+                const mime = isOptical ? 'image/png' : 'image/tiff';
                 
                 addLog(`Downloading Demo Scene: ${scene}...`);
                 try {
-                    const [t1Res, t2Res] = await Promise.all([
-                        fetch(`${baseUrl}/t1.tif`),
-                        fetch(`${baseUrl}/t2.tif`)
-                    ]);
+                    // Try exact case first (T1.png/T2.png), fallback to lowercase (t1.tif/t2.tif)
+                    let t1Res = await fetch(`${baseUrl}/T1.${ext}`);
+                    let t2Res = await fetch(`${baseUrl}/T2.${ext}`);
+                    
+                    if (!t1Res.ok || !t2Res.ok) {
+                        t1Res = await fetch(`${baseUrl}/t1.${ext}`);
+                        t2Res = await fetch(`${baseUrl}/t2.${ext}`);
+                    }
                     
                     if (!t1Res.ok || !t2Res.ok) throw new Error('Demo assets not found locally.');
                     
                     const t1Blob = await t1Res.blob();
                     const t2Blob = await t2Res.blob();
                     
-                    t1File = new File([t1Blob], 't1.tif', { type: 'image/tiff' });
-                    t2File = new File([t2Blob], 't2.tif', { type: 'image/tiff' });
+                    t1File = new File([t1Blob], `t1.${ext}`, { type: mime });
+                    t2File = new File([t2Blob], `t2.${ext}`, { type: mime });
                     addLog('Demo scene acquired successfully.', 'success');
                 } catch (e) {
                     addLog(e.message, 'error');
@@ -1104,10 +1160,18 @@
                     const formData = new FormData();
                     formData.append('image_t1', t1File);
                     formData.append('image_t2', t2File);
-                    formData.append('threshold', DEFAULT_DETECTION_THRESHOLD.toString());
-                    formData.append('min_region_area_px', '10');
+                    const thresh = document.getElementById('processing-threshold')?.value || "0.95";
+                    formData.append('threshold', thresh.toString());
+                    formData.append('min_region_area_px', '100');
 
-                    fetchUrl = apiBase + '/api/v1/detect/change-detection';
+                    const pModel = document.getElementById('processing-model');
+                    if (pModel && pModel.value === 'changeformer_v6') {
+                        formData.append('model_name', 'changeformer_v6');
+                        fetchUrl = apiBase + '/api/v1/detect/upload';
+                    } else {
+                        fetchUrl = apiBase + '/api/v1/detect/change-detection';
+                    }
+
                     fetchOpts = {
                         method: 'POST',
                         body: formData
@@ -1122,6 +1186,7 @@
                 }
                 
                 const data = await res.json();
+                lastInferenceResult = data;
 
                 // Successful API + inference -> success (green) state.
                 addLog('Inference Complete.', 'success');
@@ -1236,6 +1301,46 @@
                     });
                 };
 
+                // Generate bounding boxes overlay for ChangeFormerV6 using existing regions
+                if (data.model_used === 'changeformer_v6' && Array.isArray(data.regions) && data.regions.length > 0) {
+                    const baseSrc = livePreviews.overlay || livePreviews.mask || livePreviews.t2;
+                    if (baseSrc) {
+                        try {
+                            const boxesDataUrl = await new Promise((resolve, reject) => {
+                                const img = new Image();
+                                img.crossOrigin = "Anonymous";
+                                img.onload = () => {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = img.width;
+                                    canvas.height = img.height;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, 0, 0);
+                                    
+                                    ctx.strokeStyle = '#ffb000'; // Amber highlight
+                                    ctx.lineWidth = Math.max(2, Math.floor(img.width / 400));
+                                    
+                                    data.regions.forEach(r => {
+                                        if (r.bbox_xy) {
+                                            const [min_y, min_x, max_y, max_x] = r.bbox_xy;
+                                            const w = max_x - min_x;
+                                            const h = max_y - min_y;
+                                            const pad = 4;
+                                            ctx.strokeRect(min_x - pad, min_y - pad, w + 2*pad, h + 2*pad);
+                                        }
+                                    });
+                                    resolve(canvas.toDataURL('image/png'));
+                                };
+                                img.onerror = reject;
+                                img.src = baseSrc;
+                            });
+                            livePreviews.boxes = boxesDataUrl;
+                            views['boxes'].src = boxesDataUrl;
+                        } catch (e) {
+                            console.warn("Failed to generate ChangeFormerV6 bounding boxes", e);
+                        }
+                    }
+                }
+
                 Object.keys(views).forEach(k => {
                     const val = views[k];
                     if (!val.btn) return;
@@ -1294,6 +1399,117 @@
                 }
             }
         });
+
+        const btnInterpret = document.getElementById('btn-interpret');
+        const aiPanel = document.getElementById('ai-interpretations-panel');
+        if (btnInterpret) {
+            btnInterpret.addEventListener('click', async () => {
+                if (!lastInferenceResult || !lastInferenceResult.regions || lastInferenceResult.regions.length === 0) {
+                    addLog("No regions to analyze.", "warn");
+                    return;
+                }
+                
+                const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
+                
+                // Only analyze regions with high confidence
+                const highConfRegions = lastInferenceResult.regions.filter(r => r.mean_change_prob >= 0.7);
+                if (highConfRegions.length === 0) {
+                    addLog("No high-confidence regions found for analysis.", "warn");
+                    return;
+                }
+                
+                const payload = {
+                    t1_base64: lastInferenceResult.t1_preview_base64,
+                    t2_base64: lastInferenceResult.t2_preview_base64,
+                    regions: highConfRegions
+                };
+                
+                btnInterpret.disabled = true;
+                btnInterpret.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">refresh</span><span>Analyzing...</span>';
+                aiPanel.classList.remove('hidden');
+                aiPanel.innerHTML = '<div class="text-white/60 font-mono text-[10px] p-2 text-center">NVIDIA Nemotron is analyzing the scene...</div>';
+                
+                if (terminal) terminal.classList.remove('hidden');
+                addLog(`Requesting semantic interpretation for ${highConfRegions.length} regions...`, 'info');
+                
+                try {
+                    const res = await fetch(apiBase + '/api/v1/detect/interpret', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.detail || `Server error: ${res.status}`);
+                    }
+                    
+                    const data = await res.json();
+                    const interpretations = data.interpretations;
+                    
+                    aiPanel.innerHTML = '';
+                    if (Object.keys(interpretations).length === 0) {
+                        aiPanel.innerHTML = '<div class="text-white/60 font-mono text-[10px] p-2 text-center">No conclusive interpretations.</div>';
+                        addLog('AI returned no conclusive interpretations.', 'warn');
+                    } else {
+                        let html = '';
+                        Object.keys(interpretations).forEach(regId => {
+                            const val = interpretations[regId];
+                            
+                            if (val.status === 'unavailable') {
+                                html += `
+                                <div class="bg-red-500/10 border border-red-500/30 p-2 rounded-lg">
+                                    <div class="text-red-400 font-mono text-[10px] mb-1 font-bold">Region ${val.region_id}</div>
+                                    <div class="text-white/60 text-[10px] font-sans">NVIDIA Nemotron Unavailable</div>
+                                </div>`;
+                                return;
+                            }
+                            
+                            if (val.status === 'skipped_small_crop') {
+                                html += `
+                                <div class="bg-gray-500/10 border border-gray-500/30 p-2 rounded-lg">
+                                    <div class="text-gray-400 font-mono text-[10px] mb-1 font-bold">Region ${val.region_id}</div>
+                                    <div class="text-white/60 text-[10px] font-sans">Crop too small for analysis</div>
+                                </div>`;
+                                return;
+                            }
+                            
+                            if (val.status === 'error' || val.status === 'malformed_response') {
+                                html += `
+                                <div class="bg-orange-500/10 border border-orange-500/30 p-2 rounded-lg">
+                                    <div class="text-orange-400 font-mono text-[10px] mb-1 font-bold">Region ${val.region_id}</div>
+                                    <div class="text-white/60 text-[10px] font-sans">Analysis failed</div>
+                                </div>`;
+                                return;
+                            }
+
+                            html += `
+                            <div class="bg-purple-500/10 border border-purple-500/30 p-2 rounded-lg">
+                                <div class="text-purple-400 font-mono text-[10px] mb-1 font-bold">Region ${val.region_id}</div>
+                                <div class="text-white/90 text-[10px] font-sans">
+                                    <div><span class="text-white/60">CHANGE:</span> ${val.category || "Unknown"}</div>
+                                    <div><span class="text-white/60">CONFIDENCE:</span> ${val.visual_confidence || "Unknown"}</div>
+                                    <div class="mt-1"><span class="text-white/60">EVIDENCE:</span><br/>${val.short_summary || "No description provided."}</div>
+                                </div>
+                            </div>
+                            `;
+                        });
+                        if (!html) {
+                            html = '<div class="text-white/60 font-mono text-[10px] p-2 text-center">All regions marked as uncertain.</div>';
+                        }
+                        aiPanel.innerHTML = html;
+                        addLog('Nemotron analysis complete.', 'success');
+                    }
+                } catch (e) {
+                    addLog(e.message, 'error');
+                    aiPanel.innerHTML = `<div class="text-red-400 font-mono text-[10px] p-2">Failed: ${e.message}</div>`;
+                } finally {
+                    btnInterpret.disabled = false;
+                    btnInterpret.innerHTML = '<span class="material-symbols-outlined text-[14px]">psychology</span><span>Analyze Changes with AI</span>';
+                    setTimeout(() => { if(terminal) terminal.classList.add('hidden'); }, 3000);
+                }
+            });
+        }
 
     })();
 

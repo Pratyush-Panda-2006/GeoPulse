@@ -26,6 +26,7 @@ from src.api.schemas import (
     PairwiseChangeResult,
     AnalyzeRequest,
     AnalysisResult,
+    InterpretRequest,
 )
 from src.data_ingestion.sentinel_client import (
     fetch_sentinel1_pair,
@@ -336,20 +337,7 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
 
         elapsed = round(elapsed_sec, 3)
 
-        # Phase N4 & N5: Nemotron Multimodal Classification (with context)
-        from src.api.services.vision_pipeline import orchestrate_vision_classification
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        nemotron_interpretations = {}
-        try:
-            nemotron_interpretations = orchestrate_vision_classification(
-                t1_np=t1_np,
-                t2_np=t2_np,
-                regions=result.regions
-            )
-        except Exception as e:
-            logger.warning(f"Nemotron classification failed in upload: {e}")
+        nemotron_interpretations = None
 
         return ChangeDetectionResponse(
             job_id=job_id,
@@ -402,9 +390,9 @@ async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetection
 async def detect_uploaded_images(
     image_t1: UploadFile = File(..., description="Reference (T1) image file (PNG/JPEG)"),
     image_t2: UploadFile = File(..., description="Target (T2) image file (PNG/JPEG)"),
-    model_name: str = Form("snunet_cd_sar", description="Model architecture: 'snunet_cd_sar'"),
-    threshold: float = Form(0.5, ge=0.0, le=1.0, description="Decision threshold"),
-    min_region_area_px: int = Form(10, ge=1, description="Minimum cluster pixel area"),
+    model_name: str = Form("snunet_cd_sar", description="Model architecture"),
+    threshold: float = Form(0.50, ge=0.0, le=1.0, description="Detection threshold"),
+    min_region_area_px: int = Form(100, ge=1, description="Minimum cluster pixel area"),
 ) -> ChangeDetectionResponse:
     """
     Change Detection on custom uploaded image pair (RGB or Grayscale).
@@ -508,9 +496,10 @@ async def detect_uploaded_images(
         model_service = ModelService.get_instance()
         try:
             if model_name == "changeformer_v6":
-                prob_map, binary_mask = model_service.predict_changeformer(
+                prob_map, _ = model_service.predict_changeformer(
                     pil_t1, pil_t2
                 )
+                binary_mask = (prob_map >= threshold).astype(np.uint8)
             else:
                 prob_map, binary_mask = model_service.predict_change_rgb(
                     t1_tensor=t1_tensor,
@@ -545,20 +534,7 @@ async def detect_uploaded_images(
         change_pct = round((changed_px / total_px) * 100.0, 3)
         elapsed = round(time.perf_counter() - t0, 3)
 
-        # Phase N4 & N5: Nemotron Multimodal Classification (with context)
-        from src.api.services.vision_pipeline import orchestrate_vision_classification
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        nemotron_interpretations = {}
-        try:
-            nemotron_interpretations = orchestrate_vision_classification(
-                t1_np=t1_np,
-                t2_np=t2_np,
-                regions=regions
-            )
-        except Exception as e:
-            logger.warning(f"Nemotron classification failed in upload: {e}")
+        nemotron_interpretations = None
 
         return ChangeDetectionResponse(
             status="success",
@@ -597,8 +573,8 @@ async def detect_uploaded_images(
 async def detect_sar_changes_from_upload(
     image_t1: UploadFile = File(..., description="Reference (T1) SAR image file (.tif)"),
     image_t2: UploadFile = File(..., description="Target (T2) SAR image file (.tif)"),
-    threshold: float = Form(0.95, ge=0.0, le=1.0, description="Decision threshold"),
-    min_region_area_px: int = Form(10, ge=1, description="Minimum cluster pixel area"),
+    threshold: float = Form(0.85, ge=0.0, le=1.0, description="Decision threshold"),
+    min_region_area_px: int = Form(100, ge=1, description="Minimum cluster pixel area"),
 ) -> ChangeDetectionResponse:
     """
     Change Detection on custom uploaded Sentinel-1 SAR image pair (TIFF format).
@@ -630,17 +606,7 @@ async def detect_sar_changes_from_upload(
 
         elapsed = round(time.perf_counter() - t0, 3)
 
-        # Nemotron Multimodal Classification
-        from src.api.services.vision_pipeline import orchestrate_vision_classification
-        nemotron_interpretations = {}
-        try:
-            nemotron_interpretations = orchestrate_vision_classification(
-                t1_np=t1_np,
-                t2_np=t2_np,
-                regions=result.regions
-            )
-        except Exception as e:
-            logger.warning(f"Nemotron classification failed in change-detection: {e}")
+        nemotron_interpretations = None
 
         return ChangeDetectionResponse(
             status="success",
@@ -673,6 +639,34 @@ async def detect_sar_changes_from_upload(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"SAR Inference on uploaded images failed: {e}",
+        )
+
+
+@router.post(
+    "/interpret",
+    response_model=dict,
+    summary="Semantic interpretation of detected change regions",
+)
+async def interpret_regions(req: InterpretRequest) -> dict:
+    """
+    On-demand AI interpretation for high-confidence change detections.
+    """
+    from src.api.services.vision_pipeline import orchestrate_vision_classification_from_rgb
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        interpretations = orchestrate_vision_classification_from_rgb(
+            t1_b64=req.t1_base64,
+            t2_b64=req.t2_base64,
+            regions=req.regions
+        )
+        return {"interpretations": interpretations}
+    except Exception as e:
+        logger.error(f"Interpretation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Semantic interpretation failed: {e}"
         )
 
 
