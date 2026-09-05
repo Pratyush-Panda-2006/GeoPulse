@@ -15,6 +15,11 @@ import numpy as np
 import torch
 import tempfile
 import subprocess
+import uuid
+import atexit
+import threading
+import time
+from multiprocessing.connection import Client
 from PIL import Image
 
 from src.detection.siamese_unet import SiameseUNet
@@ -35,6 +40,54 @@ class ModelService:
 
         self._models: Dict[str, torch.nn.Module] = {}
         self._load_default_models()
+
+        # ChangeFormer Worker Setup
+        self._cf_lock = threading.Lock()
+        self._cf_pipe_name = r'\\.\pipe\ChangeFormerWorker_' + str(uuid.uuid4()).replace('-', '')
+        self._cf_worker_process = self._start_cf_worker()
+        atexit.register(self._stop_cf_worker)
+
+    def _start_cf_worker(self):
+        logger.info(f"Starting ChangeFormer persistent worker on pipe: {self._cf_pipe_name}")
+        changeformer_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "models" / "ChangeFormer"
+        python_exe = changeformer_dir / ".venv" / "Scripts" / "python.exe"
+        worker_script = changeformer_dir / "infer_worker.py"
+        
+        cmd = [
+            str(python_exe),
+            str(worker_script),
+            "--pipe_name", self._cf_pipe_name,
+            "--gpu_ids", "-1"
+        ]
+        proc = subprocess.Popen(cmd)
+        
+        # Wait for the worker to bind the pipe
+        start_wait = time.time()
+        while time.time() - start_wait < 15:
+            if proc.poll() is not None:
+                logger.error(f"Worker process exited early with code {proc.poll()}")
+                break
+            try:
+                # Try to connect just to see if the pipe is ready, then close
+                with Client(self._cf_pipe_name) as conn:
+                    conn.send("PING")
+                break
+            except Exception:
+                time.sleep(0.5)
+        return proc
+
+    def _stop_cf_worker(self):
+        if hasattr(self, '_cf_worker_process') and self._cf_worker_process and self._cf_worker_process.poll() is None:
+            logger.info("Stopping ChangeFormer worker...")
+            try:
+                with Client(self._cf_pipe_name) as conn:
+                    conn.send("STOP")
+            except Exception as e:
+                logger.error(f"Error stopping worker: {e}")
+            try:
+                self._cf_worker_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self._cf_worker_process.kill()
 
     @classmethod
     def get_instance(cls) -> "ModelService":
@@ -168,52 +221,31 @@ class ModelService:
         pil_t2: Image.Image,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Run inference using ChangeFormerV6 via subprocess on its dedicated environment.
+        Run inference using ChangeFormerV6 via persistent worker over IPC.
         """
+        start_time = time.time()
+        
         # Ensure RGB
         if pil_t1.mode != "RGB":
             pil_t1 = pil_t1.convert("RGB")
         if pil_t2.mode != "RGB":
             pil_t2 = pil_t2.convert("RGB")
+            
+        t1_np = np.array(pil_t1).astype(np.float32)
+        t2_np = np.array(pil_t2).astype(np.float32)
+        
+        prep_time = time.time()
 
-        # Paths
-        changeformer_dir = Path(r"D:\Projects\border surv\models\ChangeFormer")
-        python_exe = changeformer_dir / ".venv" / "Scripts" / "python.exe"
-        infer_script = changeformer_dir / "infer_single.py"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir)
-            t1_path = tmp_path / "t1.png"
-            t2_path = tmp_path / "t2.png"
-            out_dir = tmp_path / "out"
-            out_dir.mkdir()
-
-            pil_t1.save(t1_path)
-            pil_t2.save(t2_path)
-
-            # Build command
-            cmd = [
-                str(python_exe),
-                str(infer_script),
-                "--t1_path", str(t1_path),
-                "--t2_path", str(t2_path),
-                "--out_dir", str(out_dir),
-                "--gpu_ids", "-1"
-            ]
-
+        with self._cf_lock:
             try:
-                subprocess.run(cmd, check=True, capture_output=True, text=True)
-            except subprocess.CalledProcessError as e:
-                logger.error(f"ChangeFormerV6 subprocess failed: {e.stderr}")
-                raise ValueError("ChangeFormerV6 inference failed.")
+                with Client(self._cf_pipe_name) as conn:
+                    conn.send((t1_np, t2_np))
+                    prob_map, binary_mask = conn.recv()
+            except Exception as e:
+                logger.error(f"ChangeFormerV6 IPC failed: {e}")
+                raise ValueError("ChangeFormerV6 inference failed due to IPC error.")
 
-            prob_path = out_dir / "prob_map.npy"
-            mask_path = out_dir / "binary_mask.npy"
-
-            if not prob_path.exists() or not mask_path.exists():
-                raise ValueError("ChangeFormerV6 outputs not found.")
-
-            prob_map = np.load(str(prob_path))
-            binary_mask = np.load(str(mask_path))
-
-            return prob_map, binary_mask
+        end_time = time.time()
+        
+        logger.info(f"ChangeFormerV6 Inference complete. Preprocessing: {prep_time - start_time:.3f}s | IPC+Model: {end_time - prep_time:.3f}s | Total: {end_time - start_time:.3f}s")
+        return prob_map, binary_mask
