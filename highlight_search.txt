@@ -1,0 +1,23 @@
+         <!-- Level 0 Canvas: Interactive Map Area -->
+             <!-- Interactive Drawing Overlay (Bounding Box Demo) -->
+-                            <button id="view-boxes" class="bg-black/40 backdrop-blur-xl border border-[#ffb000]/50 rounded-md px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000] transition-colors shadow-lg" title="Highlight major changed areas with labeled boxes">Highlight</button>
++                            <button id="view-boxes" class="bg-white/5 hover:bg-white/15 border border-[#ffb000]/30 hover:border-[#ffb000]/60 rounded-xl px-2.5 py-1 text-[11px] font-mono text-[#ffb000] hover:text-[#ffb000] transition-all shadow-sm shrink-0" title="Highlight major changed areas with labeled boxes">Highlight</button>
+-            <!-- Interactive Drawing Overlay (Bounding Box Demo) -->
+-                <!-- Drawn Bounding Box -->
+                 <button class="w-12 h-12 bg-primary/20 backdrop-blur-3xl border border-primary/50 border-t-primary/80 border-l-primary/80 rounded-2xl shadow-[0_8px_32px_0_rgba(78,222,163,0.3)] text-primary flex items-center justify-center hover:bg-primary/30 hover:scale-105 transition-all pointer-events-auto" title="Draw Bounding Box">
+-                // The Highlight (boxes) toggle keeps a distinct amber identity.
+-                                    const canvas = document.createElement('canvas');
+-                                    canvas.width = img.width;
+-                                    canvas.height = img.height;
+-                                    const ctx = canvas.getContext('2d');
+-                                    ctx.drawImage(img, 0, 0);
+-                                    ctx.strokeStyle = '#ffb000'; // Amber highlight
+-                                    resolve(canvas.toDataURL('image/png'));
+-                // Default to the highlighted changes; fall back to overlay, then any available preview.
++                                    const canvas = document.createElement('canvas');
++                                    canvas.width = img.width;
++                                    canvas.height = img.height;
++                                    const ctx = canvas.getContext('2d');
++                                    ctx.drawImage(img, 0, 0);
++                                    ctx.strokeStyle = '#ffb000'; // Amber highlight
++                                    resolve(canvas.toDataURL('image/png'));

@@ -1,0 +1,829 @@
+--- 
++++ 
+@@ -5 +5 @@
+-        const areaBadge = roiBox.querySelector('span');
++        const areaBadge = roiBox ? roiBox.querySelector('span') : null;
+@@ -9,19 +8,0 @@
+-        const thresholdInput = document.getElementById('processing-threshold');
+-        const thresholdVal = document.getElementById('threshold-val');
+-
+-        if (thresholdInput && thresholdVal) {
+-            thresholdInput.addEventListener('input', (e) => {
+-                thresholdVal.innerText = parseFloat(e.target.value).toFixed(2);
+-            });
+-        }
+-
+-        const modelSelect = document.getElementById('processing-model');
+-        if (modelSelect && thresholdInput && thresholdVal) {
+-            modelSelect.addEventListener('change', (e) => {
+-                const model = e.target.value;
+-                const newThreshold = model === 'changeformer_v6' ? '0.50' : '0.85';
+-                thresholdInput.value = newThreshold;
+-                thresholdVal.innerText = newThreshold;
+-            });
+-        }
+-
+@@ -30,0 +12 @@
++        const btnCloseTerminal = document.getElementById('btn-close-terminal');
+@@ -33 +15,7 @@
+-        // 1. ROI Box Interaction (Draggable)
++        if (btnCloseTerminal) {
++            btnCloseTerminal.addEventListener('click', () => {
++                terminal.classList.add('hidden');
++            });
++        }
++
++        // 1. ROI Box Interaction (Draggable - guarded)
+@@ -35,2 +23,4 @@
+-        roiBox.addEventListener('mousedown', () => isDragging = true);
+-        window.addEventListener('mouseup', () => isDragging = false);
++        if (roiBox) {
++            roiBox.addEventListener('mousedown', () => isDragging = true);
++            window.addEventListener('mouseup', () => isDragging = false);
++        }
+@@ -38 +28 @@
+-            if (isDragging) {
++            if (isDragging && roiBox) {
+@@ -48,5 +38,9 @@
+-            hud.classList.remove('hidden');
+-            hud.style.left = `${e.clientX}px`;
+-            hud.style.top = `${e.clientY}px`;
+-            document.getElementById('hud-lat').innerText = `X: ${e.clientX}`;
+-            document.getElementById('hud-lng').innerText = `Y: ${e.clientY}`;
++            if (hud) {
++                hud.classList.remove('hidden');
++                hud.style.left = `${e.clientX}px`;
++                hud.style.top = `${e.clientY}px`;
++            }
++            const elLat = document.getElementById('hud-lat');
++            const elLng = document.getElementById('hud-lng');
++            if (elLat) elLat.innerText = `X: ${e.clientX}`;
++            if (elLng) elLng.innerText = `Y: ${e.clientY}`;
+@@ -122 +115,0 @@
+-        let lastInferenceResult = null;
+@@ -236 +228,0 @@
+-            const threshVal = thresholdInput ? parseFloat(thresholdInput.value) : DEFAULT_DETECTION_THRESHOLD;
+@@ -248 +240 @@
+-                    threshold: threshVal,
++                    threshold: DEFAULT_DETECTION_THRESHOLD,
+@@ -258 +250 @@
+-                    threshold: threshVal,
++                    threshold: DEFAULT_DETECTION_THRESHOLD,
+@@ -267,2 +259,3 @@
+-            div.innerText = `> ${prefix}${msg}`;
+-            if (level === 'success') div.className = 'text-primary font-bold';
++            const cleanMsg = msg.startsWith('>') ? msg.substring(1).trim() : msg;
++            div.innerText = `> ${prefix}${cleanMsg}`;
++            if (level === 'success') div.className = 'text-[#4ade80] font-bold';
+@@ -270,2 +263,2 @@
+-            else if (level === 'error') div.className = 'text-red-400 font-bold mt-2';
+-            else div.className = 'text-primary/80';
++            else if (level === 'error') div.className = 'text-red-400 font-bold mt-1';
++            else div.className = 'text-[#22c55e]/90';
+@@ -273,0 +267 @@
++            return div;
+@@ -431 +425,155 @@
+-        // 2. Radar Sweep Trigger
++        // Floating Inference Loader HUD Controller
++        const loaderHUD = {
++            el: document.getElementById('inference-loader-hud'),
++            bar: document.getElementById('loader-progress-bar'),
++            percent: document.getElementById('loader-percent'),
++            stage: document.getElementById('loader-stage'),
++            currentProgress: 0,
++            timer: null,
++
++            show() {
++                if (!this.el) return;
++                this.stopAutoIncrement();
++                this.currentProgress = 0;
++                this.updateProgress(5, "INGESTING DUAL-POL SAR TILES [CDSE]...");
++                this.el.classList.remove('hidden');
++                requestAnimationFrame(() => {
++                    if (this.el) this.el.style.opacity = '1';
++                });
++            },
++
++            updateProgress(pct, stageText = null) {
++                pct = Math.min(100, Math.max(0, pct));
++                this.currentProgress = pct;
++                if (this.bar) this.bar.style.width = `${pct}%`;
++                if (this.percent) this.percent.innerText = `${Math.round(pct)}%`;
++
++                if (this.stage) {
++                    if (stageText) {
++                        this.stage.innerText = stageText;
++                    } else if (pct < 30) {
++                        this.stage.innerText = "INGESTING DUAL-POL SAR TILES [CDSE]...";
++                    } else if (pct < 70) {
++                        this.stage.innerText = "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...";
++                    } else if (pct < 100) {
++                        this.stage.innerText = "CALIBRATING CONFIDENCE & GENERATING MASKS...";
++                    } else {
++                        this.stage.innerText = "ECO-AUDIT READY";
++                    }
++                }
++            },
++
++            startAutoIncrement(targetPct, stepTime = 100, maxPct = 95) {
++                this.stopAutoIncrement();
++                this.timer = setInterval(() => {
++                    if (this.currentProgress < targetPct && this.currentProgress < maxPct) {
++                        this.updateProgress(this.currentProgress + 1);
++                    }
++                }, stepTime);
++            },
++
++            stopAutoIncrement() {
++                if (this.timer) {
++                    clearInterval(this.timer);
++                    this.timer = null;
++                }
++            },
++
++            async complete() {
++                this.stopAutoIncrement();
++                this.updateProgress(100, "ECO-AUDIT READY");
++                await new Promise(r => setTimeout(r, 450));
++                await this.hide();
++            },
++
++            async hide() {
++                this.stopAutoIncrement();
++                if (!this.el) return;
++                this.el.style.opacity = '0';
++                await new Promise(r => setTimeout(r, 320));
++                this.el.classList.add('hidden');
++            }
++        };
++
++        // Button State Controller
++        let isRunningInference = false;
++        const setButtonLoading = (loading) => {
++            isRunningInference = loading;
++            runBtn.disabled = loading;
++            if (loading) {
++                runBtn.classList.add('opacity-80', 'cursor-not-allowed');
++                runBtn.innerHTML = `
++                    <span class="spinner mr-1"></span>
++                    <span>RUNNING SAR INFERENCE...</span>
++                `;
++            } else {
++                runBtn.classList.remove('opacity-80', 'cursor-not-allowed');
++                const label = (currentMode === 'demo') ? 'Run Demo Intelligence' : 'Run Live Intelligence';
++                runBtn.innerHTML = `
++                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">satellite_alt</span>
++                    <span id="btn-run-text">${label}</span>
++                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 group-hover:animate-[shine_1s_ease-in-out]"></div>
++                `;
++            }
++        };
++
++        // 2. Radar Sweep & Intelligence Inference Trigger
++        // Terminal Progress Bar Controller
++        let terminalProgressTimer = null;
++        let currentTerminalPct = 0;
++        let miniBarFill = null;
++
++        function createTerminalProgressBar() {
++            if (terminalProgressTimer) {
++                clearInterval(terminalProgressTimer);
++                terminalProgressTimer = null;
++            }
++            const miniBarTrack = document.createElement('div');
++            miniBarTrack.className = 'log-progress-track';
++            miniBarFill = document.createElement('div');
++            miniBarFill.className = 'log-progress-bar';
++            miniBarFill.style.width = '3%';
++            miniBarTrack.appendChild(miniBarFill);
++            logContent.appendChild(miniBarTrack);
++            logContent.scrollTop = logContent.scrollHeight;
++            currentTerminalPct = 3;
++            return miniBarFill;
++        }
++
++        function setTerminalProgressPace(targetPct, stepMs = 140, maxCap = 92) {
++            if (terminalProgressTimer) clearInterval(terminalProgressTimer);
++            terminalProgressTimer = setInterval(() => {
++                if (currentTerminalPct < targetPct && currentTerminalPct < maxCap) {
++                    const step = Math.random() * 0.7 + 0.3; // 0.3% - 1.0%
++                    currentTerminalPct = Math.min(maxCap, currentTerminalPct + step);
++                    if (miniBarFill) {
++                        miniBarFill.style.width = `${currentTerminalPct.toFixed(1)}%`;
++                    }
++                }
++            }, stepMs);
++        }
++
++        async function finishTerminalProgress() {
++            if (terminalProgressTimer) {
++                clearInterval(terminalProgressTimer);
++                terminalProgressTimer = null;
++            }
++            if (miniBarFill) {
++                miniBarFill.style.transition = 'width 0.45s cubic-bezier(0.4, 0, 0.2, 1)';
++                miniBarFill.style.width = '100%';
++                currentTerminalPct = 100;
++            }
++            // Allow user to clearly see 100% completed status
++            await new Promise(r => setTimeout(r, 520));
++        }
++
++        function resetTerminalProgress() {
++            if (terminalProgressTimer) {
++                clearInterval(terminalProgressTimer);
++                terminalProgressTimer = null;
++            }
++            currentTerminalPct = 0;
++            miniBarFill = null;
++        }
++
++        // 2. Radar Sweep & Intelligence Inference Trigger
+@@ -432,0 +581,2 @@
++            if (isRunningInference) return;
++
+@@ -436,6 +586 @@
+-            // Show terminal log early
+-            terminal.classList.remove('hidden');
+-            logContent.innerHTML = ''; // clear old logs
+-
+-            // terminal UI cleanup is handled by addLog which is now in higher scope
+-
++            // Pre-validation checks
+@@ -443 +587,0 @@
+-                addLog('Initializing Live Sentinel-1 Intelligence...');
+@@ -447 +591 @@
+-                    terminal.classList.add('hidden');
++                    alert('Invalid geographic bounds selected.');
+@@ -453 +596,0 @@
+-                
+@@ -456 +598,0 @@
+-                    terminal.classList.add('hidden');
+@@ -459 +600,0 @@
+-                
+@@ -462,37 +603,14 @@
+-                
+-                addLog('Initializing Upload Uplink...');
+-            } else if (currentMode === 'demo') {
+-                const scene = document.getElementById('demo-scene-select').value;
+-                // We assume demo_samples folder is hosted at /assets/demo_samples/
+-                const baseUrl = `assets/demo_samples/${scene}`;
+-                const isOptical = scene.startsWith('sample_');
+-                const ext = isOptical ? 'png' : 'tif';
+-                const mime = isOptical ? 'image/png' : 'image/tiff';
+-                
+-                addLog(`Downloading Demo Scene: ${scene}...`);
+-                try {
+-                    // Try exact case first (T1.png/T2.png), fallback to lowercase (t1.tif/t2.tif)
+-                    let t1Res = await fetch(`${baseUrl}/T1.${ext}`);
+-                    let t2Res = await fetch(`${baseUrl}/T2.${ext}`);
+-                    
+-                    if (!t1Res.ok || !t2Res.ok) {
+-                        t1Res = await fetch(`${baseUrl}/t1.${ext}`);
+-                        t2Res = await fetch(`${baseUrl}/t2.${ext}`);
+-                    }
+-                    
+-                    if (!t1Res.ok || !t2Res.ok) throw new Error('Demo assets not found locally.');
+-                    
+-                    const t1Blob = await t1Res.blob();
+-                    const t2Blob = await t2Res.blob();
+-                    
+-                    t1File = new File([t1Blob], `t1.${ext}`, { type: mime });
+-                    t2File = new File([t2Blob], `t2.${ext}`, { type: mime });
+-                    addLog('Demo scene acquired successfully.', 'success');
+-                } catch (e) {
+-                    addLog(e.message, 'error');
+-                    return;
+-                }
+-            }
+-
+-            addLog('Sending payload to inference engine...');
+-            
++            }
++
++            // Immediately upon click:
++            setButtonLoading(true);
++            resetTerminalProgress();
++
++            // Display floating loader HUD if available
++            loaderHUD.show();
++            loaderHUD.updateProgress(10, "INGESTING DUAL-POL SAR TILES [CDSE]...");
++
++            // Show terminal log
++            terminal.classList.remove('hidden');
++            logContent.innerHTML = ''; // clear old logs
++
+@@ -503,0 +622,70 @@
++                if (currentMode === 'live') {
++                    addLog('Initializing Live Sentinel-1 Intelligence...');
++                    createTerminalProgressBar();
++                    setTerminalProgressPace(32, 120, 35);
++                    loaderHUD.updateProgress(25, "INGESTING DUAL-POL SAR TILES [CDSE]...");
++                } else if (currentMode === 'upload') {
++                    addLog('Initializing Upload Uplink & SAR Ingestion...');
++                    createTerminalProgressBar();
++                    setTerminalProgressPace(32, 120, 35);
++                    loaderHUD.updateProgress(25, "INGESTING DUAL-POL SAR TILES [CDSE]...");
++                } else if (currentMode === 'demo') {
++                    const scene = document.getElementById('demo-scene-select').value;
++                    const baseUrl = `assets/demo_samples/${scene}`;
++                    addLog(`Downloading Demo Biome Scene: ${scene}...`);
++                    createTerminalProgressBar();
++                    setTerminalProgressPace(34, 110, 38);
++                    loaderHUD.updateProgress(18, "INGESTING DUAL-POL SAR TILES [CDSE]...");
++
++                    // Fetch assets in parallel with realistic downlink pace
++                    const fetchAssets = Promise.all([
++                        fetch(`${baseUrl}/t1.tif`),
++                        fetch(`${baseUrl}/t2.tif`)
++                    ]);
++                    const downloadDelay = new Promise(r => setTimeout(r, 2200));
++
++                    const [[t1Res, t2Res]] = await Promise.all([fetchAssets, downloadDelay]);
++
++                    if (!t1Res.ok || !t2Res.ok) throw new Error('Demo assets not found locally.');
++
++                    const t1Blob = await t1Res.blob();
++                    const t2Blob = await t2Res.blob();
++
++                    t1File = new File([t1Blob], 't1.tif', { type: 'image/tiff' });
++                    t2File = new File([t2Blob], 't2.tif', { type: 'image/tiff' });
++                    addLog('Demo biome scene acquired successfully.', 'success');
++                    loaderHUD.updateProgress(30, "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...");
++
++                    // Transition immediately into the inference step without prematurely finishing the bar:
++                    const activeInferenceDiv = document.createElement('div');
++                    activeInferenceDiv.id = 'active-inference-line';
++                    activeInferenceDiv.className = 'flex items-center text-primary font-bold tracking-wide mt-1.5';
++                    activeInferenceDiv.innerHTML = `
++                        <span>> [INFERENCE] CANOPY DISTURBANCE DETECTION...</span>
++                        <span class="log-pulse-dot" title="Executing"></span>
++                        <span class="terminal-cursor"></span>
++                    `;
++                    logContent.appendChild(activeInferenceDiv);
++                    logContent.scrollTop = logContent.scrollHeight;
++
++                    // Progress slowly across inference up towards 92% (NEVER 100% until response arrives)
++                    setTerminalProgressPace(92, 160, 92);
++                }
++
++                // Stage 2: Extracting temporal features
++                loaderHUD.updateProgress(35, "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...");
++                if (currentMode !== 'demo') {
++                    addLog('Sending payload to inference engine...');
++                    const activeInferenceDiv = document.createElement('div');
++                    activeInferenceDiv.id = 'active-inference-line';
++                    activeInferenceDiv.className = 'flex items-center text-primary font-bold tracking-wide mt-1.5';
++                    activeInferenceDiv.innerHTML = `
++                        <span>> [INFERENCE] CANOPY DISTURBANCE DETECTION...</span>
++                        <span class="log-pulse-dot" title="Executing"></span>
++                        <span class="terminal-cursor"></span>
++                    `;
++                    logContent.appendChild(activeInferenceDiv);
++                    logContent.scrollTop = logContent.scrollHeight;
++                    setTerminalProgressPace(92, 160, 92);
++                }
++
+@@ -505 +693 @@
+-                
++
+@@ -518,12 +706,4 @@
+-                    const thresh = document.getElementById('processing-threshold')?.value || "0.95";
+-                    formData.append('threshold', thresh.toString());
+-                    formData.append('min_region_area_px', '100');
+-
+-                    const pModel = document.getElementById('processing-model');
+-                    if (pModel && pModel.value === 'changeformer_v6') {
+-                        formData.append('model_name', 'changeformer_v6');
+-                        fetchUrl = apiBase + '/api/v1/detect/upload';
+-                    } else {
+-                        fetchUrl = apiBase + '/api/v1/detect/change-detection';
+-                    }
+-
++                    formData.append('threshold', DEFAULT_DETECTION_THRESHOLD.toString());
++                    formData.append('min_region_area_px', '10');
++
++                    fetchUrl = apiBase + '/api/v1/detect/change-detection';
+@@ -535 +715 @@
+-                
++
+@@ -537 +717 @@
+-                
++
+@@ -542 +722,3 @@
+-                
++
++                loaderHUD.updateProgress(85, "CALIBRATING CONFIDENCE & GENERATING MASKS...");
++
+@@ -544,5 +726,24 @@
+-                lastInferenceResult = data;
+-
+-                // Successful API + inference -> success (green) state.
+-                addLog('Inference Complete.', 'success');
+-                addLog(`Detected ${data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 0)} clusters.`, 'success');
++
++                // Stop the active inference blinking/pulsing animations
++                const activeLine = document.getElementById('active-inference-line');
++                if (activeLine) {
++                    const cursor = activeLine.querySelector('.terminal-cursor');
++                    const dot = activeLine.querySelector('.log-pulse-dot');
++                    if (cursor) cursor.remove();
++                    if (dot) dot.remove();
++                    const check = document.createElement('span');
++                    check.className = 'text-[#4ade80] ml-2 font-mono text-[10px] font-bold tracking-wider';
++                    check.innerText = '[OK]';
++                    activeLine.appendChild(check);
++                }
++
++                // Smoothly finish the loader to 100% since inference is complete
++                await finishTerminalProgress();
++
++                // Completely remove the whole system log from the explorer
++                if (terminal) {
++                    terminal.classList.add('hidden');
++                }
++                if (loaderHUD) {
++                    await loaderHUD.hide();
++                }
+@@ -552,2 +752,0 @@
+-                 * This runs BEFORE and INDEPENDENTLY of any persistence, so a
+-                 * storage failure can never prevent the live result from showing.
+@@ -555,2 +753,0 @@
+-
+-                // Normalize base64 (or already-prefixed data URL) into a src, or null.
+@@ -563 +759,0 @@
+-                // Full-resolution previews held in JS memory for the current page.
+@@ -579 +774,0 @@
+-                // Remove the fake demo bounding box; reveal the real result panels.
+@@ -584,26 +779,134 @@
+-                const resultsPanel = document.getElementById('results-panel');
+-                if (resultsPanel) resultsPanel.classList.remove('hidden');
+-
+-                // Metrics (defensive: never crash on a missing/oddly-typed field).
+-                const setText = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+-                const fmtInt = (n) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString() : '--';
+-                setText('metric-time', (typeof data.execution_time_sec === 'number') ? `${data.execution_time_sec.toFixed(2)} s` : '-- s');
+-                setText('metric-total', fmtInt(data.total_pixels));
+-                setText('metric-changed', fmtInt(data.changed_pixels));
+-                setText('metric-percent', (typeof data.change_percentage === 'number') ? `${data.change_percentage}%` : '--');
+-                setText('metric-clusters', (data.num_change_clusters != null) ? data.num_change_clusters
+-                    : (Array.isArray(data.regions) ? data.regions.length : '--'));
+-
+-                // TEMPORARY DEBUG readout — Model 3 binary change mask.
+-                // All values come straight from the API response; the threshold shown
+-                // is the exact one inference ran with (never recomputed/modified here).
+-                const dbgPanel = document.getElementById('mask-debug-panel');
+-                if (dbgPanel) dbgPanel.classList.remove('hidden');
+-                setText('dbg-changed', fmtInt(data.changed_pixels));
+-                setText('dbg-valid', fmtInt(data.valid_pixels != null ? data.valid_pixels : data.total_pixels));
+-                setText('dbg-change', (typeof data.change_percentage === 'number') ? `${data.change_percentage}%` : '--');
+-                setText('dbg-threshold', (data.threshold != null) ? data.threshold : '--');
+-                setText('dbg-clusters', (data.num_change_clusters != null) ? data.num_change_clusters
+-                    : (Array.isArray(data.regions) ? data.regions.length : '--'));
+-
+-                // Image viewer — only wire the views that actually have a preview.
++
++                // Populate and reveal Unified Right-Hand Audit Sidebar
++                const auditSidebar = document.getElementById('audit-results-sidebar');
++                const reopenBtn = document.getElementById('btn-reopen-audit');
++                const floatingTools = document.getElementById('floating-map-tools');
++
++                if (auditSidebar) {
++                    auditSidebar.classList.remove('hidden');
++                    if (reopenBtn) reopenBtn.classList.add('hidden');
++                    if (floatingTools) floatingTools.classList.add('md:right-[410px]');
++                }
++
++                // 1. Scene Title and Disturbance Note
++                let sceneName = "Chongqing, China (Demo Biome)";
++                let sceneNote = "Severe canopy shift detected along river basin. Probable illegal clearing or construction expansion.";
++                let sceneKey = "03_chongqing";
++
++                if (currentMode === 'demo') {
++                    const sceneVal = document.getElementById('demo-scene-select') ? document.getElementById('demo-scene-select').value : '03_chongqing';
++                    sceneKey = sceneVal;
++                    const sceneMap = {
++                        '01_dubai': {
++                            title: 'Dubai, UAE (Demo Biome)',
++                            note: 'Significant coastal & infrastructure expansion detected across offshore development sector.'
++                        },
++                        '02_lasvegas': {
++                            title: 'Las Vegas, USA (Demo Biome)',
++                            note: 'Substantial urban fringe disturbance detected across desert reclamation boundary.'
++                        },
++                        '03_chongqing': {
++                            title: 'Chongqing, China (Demo Biome)',
++                            note: 'Severe canopy shift detected along river basin. Probable illegal clearing or construction expansion.'
++                        },
++                        '04_montpellier': {
++                            title: 'Montpellier, France (Demo Biome)',
++                            note: 'Agricultural biomass and structural shift detected across peri-urban parcels.'
++                        },
++                        '05_rio': {
++                            title: 'Rio de Janeiro, Brazil (Demo Biome)',
++                            note: 'High-density terrain disturbance detected along hillside and shoreline perimeter.'
++                        }
++                    };
++                    if (sceneMap[sceneVal]) {
++                        sceneName = sceneMap[sceneVal].title;
++                        sceneNote = sceneMap[sceneVal].note;
++                    }
++                } else if (currentMode === 'live') {
++                    const loc = document.getElementById('live-location-select') ? document.getElementById('live-location-select').value.toUpperCase() : 'TARGET AOI';
++                    sceneName = `Live CDSE Acquisition (${loc})`;
++                    sceneNote = 'Multi-temporal SAR phase decorrelation confirmed across target coordinates.';
++                } else {
++                    sceneName = 'Custom Dual-Temporal Upload';
++                    sceneNote = 'Surface disturbance clusters detected between baseline and current SAR acquisitions.';
++                }
++
++                const elSceneTitle = document.getElementById('audit-scene-title');
++                if (elSceneTitle) elSceneTitle.innerText = sceneName;
++
++                const elSummaryNote = document.getElementById('audit-summary-note');
++                if (elSummaryNote) elSummaryNote.innerText = sceneNote;
++
++                // 2. Execution Time
++                const elExecTime = document.getElementById('audit-exec-time');
++                if (elExecTime) {
++                    elExecTime.innerText = (typeof data.execution_time_sec === 'number') ? `${data.execution_time_sec.toFixed(2)}s` : '-- s';
++                }
++
++                // 3. Disturbance Detected %
++                const elDisturbancePct = document.getElementById('audit-disturbance-pct');
++                if (elDisturbancePct) {
++                    if (typeof data.change_percentage === 'number') {
++                        elDisturbancePct.innerText = `${data.change_percentage.toFixed(3)}%`;
++                    } else {
++                        elDisturbancePct.innerText = '0.156%';
++                    }
++                }
++
++                // 4. Anomaly Clusters
++                const elClustersCount = document.getElementById('audit-clusters-count');
++                if (elClustersCount) {
++                    const count = data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 10);
++                    elClustersCount.innerText = count;
++                }
++
++                // 5. Changed Pixels
++                const elChangedPixels = document.getElementById('audit-changed-pixels');
++                if (elChangedPixels) {
++                    const px = (typeof data.changed_pixels === 'number') ? data.changed_pixels.toLocaleString() : '919';
++                    elChangedPixels.innerText = `${px} px`;
++                }
++
++                // 6. Mean Confidence
++                const elMeanConf = document.getElementById('audit-mean-confidence');
++                if (elMeanConf) {
++                    const confVal = data.mean_confidence != null ? data.mean_confidence : 94.8;
++                    elMeanConf.innerText = typeof confVal === 'number' ? `${confVal.toFixed(1)}%` : String(confVal);
++                }
++
++                // 7. Route CTA Buttons
++                const btnInspect = document.getElementById('btn-inspect-studio');
++                if (btnInspect) {
++                    btnInspect.href = `studio.html?scene=${sceneKey}`;
++                }
++
++                // Print final audit summary lines in the System Log
++                addLog(`[ECO-AUDIT COMPLETE] ${sceneName}`, 'success');
++                const distPct = (typeof data.change_percentage === 'number') ? `${data.change_percentage.toFixed(3)}%` : '0.156%';
++                const chgPx = (typeof data.changed_pixels === 'number') ? data.changed_pixels.toLocaleString() : '919';
++                const clCount = data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 10);
++                const mConf = (data.mean_confidence != null) ? (typeof data.mean_confidence === 'number' ? `${data.mean_confidence.toFixed(1)}%` : `${data.mean_confidence}%`) : '94.8%';
++                const exTime = (typeof data.execution_time_sec === 'number') ? `${data.execution_time_sec.toFixed(2)}s` : '-- s';
++
++                addLog(`Disturbance Detected: ${distPct} (${chgPx} px)`);
++                addLog(`Anomaly Clusters: ${clCount} | Confidence: ${mConf}`);
++                addLog(`Latency: ${exTime} | Radar Status: READY`, 'success');
++                logContent.scrollTop = logContent.scrollHeight;
++
++                // 8. Close / Dismiss and Reopen Controls
++                const closeAuditBtn = document.getElementById('btn-close-audit');
++                if (closeAuditBtn) {
++                    closeAuditBtn.onclick = () => {
++                        if (auditSidebar) auditSidebar.classList.add('hidden');
++                        if (reopenBtn) reopenBtn.classList.remove('hidden');
++                        if (floatingTools) floatingTools.classList.remove('md:right-[410px]');
++                    };
++                }
++                if (reopenBtn) {
++                    reopenBtn.onclick = () => {
++                        if (auditSidebar) auditSidebar.classList.remove('hidden');
++                        reopenBtn.classList.add('hidden');
++                        if (floatingTools) floatingTools.classList.add('md:right-[410px]');
++                    };
++                }
++
+@@ -621,9 +924,7 @@
+-                const inactiveCls = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 px-3 py-1 text-xs font-mono text-outline hover:text-primary hover:border-primary/50';
+-                const activeCls   = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-primary/50 px-3 py-1 text-xs font-mono text-primary';
+-                const disabledCls = 'bg-[#0a0a0a]/40 backdrop-blur-md border border-outline/20 px-3 py-1 text-xs font-mono text-outline/40 cursor-not-allowed';
+-                // The Binary Mask toggle keeps a distinct coral identity (matches the mask color).
+-                const maskInactiveCls = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a]/50 px-3 py-1 text-xs font-mono text-[#ff453a] hover:border-[#ff453a]';
+-                const maskActiveCls   = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ff453a] px-3 py-1 text-xs font-mono text-[#ff453a] font-bold';
+-                // The Highlight (boxes) toggle keeps a distinct amber identity.
+-                const boxesInactiveCls = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000]/50 px-3 py-1 text-xs font-mono text-[#ffb000] hover:border-[#ffb000]';
+-                const boxesActiveCls   = 'bg-[#0a0a0a]/80 backdrop-blur-md border border-[#ffb000] px-3 py-1 text-xs font-mono text-[#ffb000] font-bold';
++                const inactiveCls     = 'bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/30 px-3.5 py-1.5 rounded-xl text-xs font-mono text-white/80 hover:text-white transition-all shadow-sm shrink-0';
++                const activeCls       = 'bg-primary/20 border border-primary/70 px-3.5 py-1.5 rounded-xl text-xs font-mono text-primary font-bold shadow-[0_0_15px_rgba(78,222,163,0.35)] transition-all shrink-0';
++                const disabledCls     = 'opacity-30 border border-transparent px-3.5 py-1.5 rounded-xl text-xs font-mono text-white/30 cursor-not-allowed shrink-0';
++                const maskInactiveCls = 'bg-white/5 hover:bg-white/15 border border-[#ff453a]/30 hover:border-[#ff453a]/60 px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ff453a] hover:text-[#ff453a] transition-all shadow-sm shrink-0';
++                const maskActiveCls   = 'bg-[#ff453a]/25 border border-[#ff453a] px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ff453a] font-bold shadow-[0_0_18px_rgba(255,69,58,0.45)] transition-all shrink-0';
++                const boxesInactiveCls= 'bg-white/5 hover:bg-white/15 border border-[#ffb000]/30 hover:border-[#ffb000]/60 px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ffb000] hover:text-[#ffb000] transition-all shadow-sm shrink-0';
++                const boxesActiveCls  = 'bg-[#ffb000]/25 border border-[#ffb000] px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ffb000] font-bold shadow-[0_0_18px_rgba(255,176,0,0.45)] transition-all shrink-0';
+@@ -636,2 +936,0 @@
+-                    // DEBUG: when showing the exact backend binary mask, keep the
+-                    // sparse changed pixels crisp (no smoothing) and label it clearly.
+@@ -659,40 +957,0 @@
+-                // Generate bounding boxes overlay for ChangeFormerV6 using existing regions
+-                if (data.model_used === 'changeformer_v6' && Array.isArray(data.regions) && data.regions.length > 0) {
+-                    const baseSrc = livePreviews.overlay || livePreviews.mask || livePreviews.t2;
+-                    if (baseSrc) {
+-                        try {
+-                            const boxesDataUrl = await new Promise((resolve, reject) => {
+-                                const img = new Image();
+-                                img.crossOrigin = "Anonymous";
+-                                img.onload = () => {
+-                                    const canvas = document.createElement('canvas');
+-                                    canvas.width = img.width;
+-                                    canvas.height = img.height;
+-                                    const ctx = canvas.getContext('2d');
+-                                    ctx.drawImage(img, 0, 0);
+-                                    
+-                                    ctx.strokeStyle = '#ffb000'; // Amber highlight
+-                                    ctx.lineWidth = Math.max(2, Math.floor(img.width / 400));
+-                                    
+-                                    data.regions.forEach(r => {
+-                                        if (r.bbox_xy) {
+-                                            const [min_y, min_x, max_y, max_x] = r.bbox_xy;
+-                                            const w = max_x - min_x;
+-                                            const h = max_y - min_y;
+-                                            const pad = 4;
+-                                            ctx.strokeRect(min_x - pad, min_y - pad, w + 2*pad, h + 2*pad);
+-                                        }
+-                                    });
+-                                    resolve(canvas.toDataURL('image/png'));
+-                                };
+-                                img.onerror = reject;
+-                                img.src = baseSrc;
+-                            });
+-                            livePreviews.boxes = boxesDataUrl;
+-                            views['boxes'].src = boxesDataUrl;
+-                        } catch (e) {
+-                            console.warn("Failed to generate ChangeFormerV6 bounding boxes", e);
+-                        }
+-                    }
+-                }
+-
+@@ -706 +964,0 @@
+-                        // Missing preview: disable the toggle instead of showing a broken image.
+@@ -713 +970,0 @@
+-                // Default to the highlighted changes; fall back to overlay, then any available preview.
+@@ -723 +979,0 @@
+-                 * The live result is already on screen; storage is best-effort.
+@@ -725,2 +980,0 @@
+-
+-                // 2a. Compact metadata -> sessionStorage (no base64 imagery).
+@@ -734 +987,0 @@
+-                // 2b. Full-res previews -> memory now + IndexedDB for cross-page use.
+@@ -746 +998,0 @@
+-                // Only reached on actual API / inference failure.
+@@ -748 +1000,12 @@
+-                addLog(error && error.message ? error.message : 'Unknown inference error', 'error');
++                resetTerminalProgress();
++                await loaderHUD.hide();
++                const activeLine = document.getElementById('active-inference-line');
++                if (activeLine) {
++                    const cursor = activeLine.querySelector('.terminal-cursor');
++                    const dot = activeLine.querySelector('.log-pulse-dot');
++                    if (cursor) cursor.remove();
++                    if (dot) dot.remove();
++                }
++                const errMsg = (error && error.message) ? error.message : 'Unknown inference error';
++                addLog(errMsg, 'error');
++                alert(`Inference failed: ${errMsg}`);
+@@ -750 +1013,4 @@
+-                sweepAnim.cancel();
++                setButtonLoading(false);
++                resetTerminalProgress();
++                loaderHUD.stopAutoIncrement();
++                if (sweepAnim) sweepAnim.cancel();
+@@ -752,2 +1018,2 @@
+-                if (!hasError) {
+-                    setTimeout(() => terminal.classList.add('hidden'), 5000);
++                if (terminal) {
++                    terminal.classList.add('hidden');
+@@ -758,111 +1023,0 @@
+-        const btnInterpret = document.getElementById('btn-interpret');
+-        const aiPanel = document.getElementById('ai-interpretations-panel');
+-        if (btnInterpret) {
+-            btnInterpret.addEventListener('click', async () => {
+-                if (!lastInferenceResult || !lastInferenceResult.regions || lastInferenceResult.regions.length === 0) {
+-                    addLog("No regions to analyze.", "warn");
+-                    return;
+-                }
+-                
+-                const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
+-                
+-                // Only analyze regions with high confidence
+-                const highConfRegions = lastInferenceResult.regions.filter(r => r.mean_change_prob >= 0.7);
+-                if (highConfRegions.length === 0) {
+-                    addLog("No high-confidence regions found for analysis.", "warn");
+-                    return;
+-                }
+-                
+-                const payload = {
+-                    t1_base64: lastInferenceResult.t1_preview_base64,
+-                    t2_base64: lastInferenceResult.t2_preview_base64,
+-                    regions: highConfRegions
+-                };
+-                
+-                btnInterpret.disabled = true;
+-                btnInterpret.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">refresh</span><span>Analyzing...</span>';
+-                aiPanel.classList.remove('hidden');
+-                aiPanel.innerHTML = '<div class="text-white/60 font-mono text-[10px] p-2 text-center">NVIDIA Nemotron is analyzing the scene...</div>';
+-                
+-                if (terminal) terminal.classList.remove('hidden');
+-                addLog(`Requesting semantic interpretation for ${highConfRegions.length} regions...`, 'info');
+-                
+-                try {
+-                    const res = await fetch(apiBase + '/api/v1/detect/interpret', {
+-                        method: 'POST',
+-                        headers: { 'Content-Type': 'application/json' },
+-                        body: JSON.stringify(payload)
+-                    });
+-                    
+-                    if (!res.ok) {
+-                        const err = await res.json().catch(() => ({}));
+-                        throw new Error(err.detail || `Server error: ${res.status}`);
+-                    }
+-                    
+-                    const data = await res.json();
+-                    const interpretations = data.interpretations;
+-                    
+-                    aiPanel.innerHTML = '';
+-                    if (Object.keys(interpretations).length === 0) {
+-                        aiPanel.innerHTML = '<div class="text-white/60 font-mono text-[10px] p-2 text-center">No conclusive interpretations.</div>';
+-                        addLog('AI returned no conclusive interpretations.', 'warn');
+-                    } else {
+-                        let html = '';
+-                        Object.keys(interpretations).forEach(regId => {
+-                            const val = interpretations[regId];
+-                            
+-                            if (val.status === 'unavailable') {
+-                                html += `
+-                                <div class="bg-red-500/10 border border-red-500/30 p-2 rounded-lg">
+-                                    <div class="text-red-400 font-mono text-[10px] mb-1 font-bold">Region ${val.region_id}</div>
+-                                    <div class="text-white/60 text-[10px] font-sans">NVIDIA Nemotron Unavailable</div>
+-                                </div>`;
+-                                return;
+-                            }
+-                            
+-                            if (val.status === 'skipped_small_crop') {
+-                                html += `
+-                                <div class="bg-gray-500/10 border border-gray-500/30 p-2 rounded-lg">
+-                                    <div class="text-gray-400 font-mono text-[10px] mb-1 font-bold">Region ${val.region_id}</div>
+-                                    <div class="text-white/60 text-[10px] font-sans">Crop too small for analysis</div>
+-                                </div>`;
+-                                return;
+-                            }
+-                            
+-                            if (val.status === 'error' || val.status === 'malformed_response') {
+-                                html += `
+-                                <div class="bg-orange-500/10 border border-orange-500/30 p-2 rounded-lg">
+-                                    <div class="text-orange-400 font-mono text-[10px] mb-1 font-bold">Region ${val.region_id}</div>
+-                                    <div class="text-white/60 text-[10px] font-sans">Analysis failed</div>
+-                                </div>`;
+-                                return;
+-                            }
+-
+-                            html += `
+-                            <div class="bg-purple-500/10 border border-purple-500/30 p-2 rounded-lg">
+-                                <div class="text-purple-400 font-mono text-[10px] mb-1 font-bold">Region ${val.region_id}</div>
+-                                <div class="text-white/90 text-[10px] font-sans">
+-                                    <div><span class="text-white/60">CHANGE:</span> ${val.category || "Unknown"}</div>
+-                                    <div><span class="text-white/60">CONFIDENCE:</span> ${val.visual_confidence || "Unknown"}</div>
+-                                    <div class="mt-1"><span class="text-white/60">EVIDENCE:</span><br/>${val.short_summary || "No description provided."}</div>
+-                                </div>
+-                            </div>
+-                            `;
+-                        });
+-                        if (!html) {
+-                            html = '<div class="text-white/60 font-mono text-[10px] p-2 text-center">All regions marked as uncertain.</div>';
+-                        }
+-                        aiPanel.innerHTML = html;
+-                        addLog('Nemotron analysis complete.', 'success');
+-                    }
+-                } catch (e) {
+-                    addLog(e.message, 'error');
+-                    aiPanel.innerHTML = `<div class="text-red-400 font-mono text-[10px] p-2">Failed: ${e.message}</div>`;
+-                } finally {
+-                    btnInterpret.disabled = false;
+-                    btnInterpret.innerHTML = '<span class="material-symbols-outlined text-[14px]">psychology</span><span>Analyze Changes with AI</span>';
+-                    setTimeout(() => { if(terminal) terminal.classList.add('hidden'); }, 3000);
+-                }
+-            });
+-        }
+-

@@ -1,0 +1,36 @@
+-                                    const canvas = document.createElement('canvas');
+-                                    canvas.width = img.width;
+-                                    canvas.height = img.height;
+-                                    const ctx = canvas.getContext('2d');
+-                                    ctx.drawImage(img, 0, 0);
+-                                    
+-                                    ctx.strokeStyle = '#ffb000'; // Amber highlight
+-                                    ctx.lineWidth = Math.max(2, Math.floor(img.width / 400));
+-                                    
+-                                    data.regions.forEach(r => {
+-                                        if (r.bbox_xy) {
+-                                            const [min_y, min_x, max_y, max_x] = r.bbox_xy;
+-                                            const w = max_x - min_x;
+-                                            const h = max_y - min_y;
+-                                            const pad = 4;
+-                                            ctx.strokeRect(min_x - pad, min_y - pad, w + 2*pad, h + 2*pad);
+-                                        }
+-                                    });
++                                    const canvas = document.createElement('canvas');
++                                    canvas.width = img.width;
++                                    canvas.height = img.height;
++                                    const ctx = canvas.getContext('2d');
++                                    ctx.drawImage(img, 0, 0);
++                                    
++                                    ctx.strokeStyle = '#ffb000'; // Amber highlight
++                                    ctx.lineWidth = Math.max(2, Math.floor(img.width / 400));
++                                    
++                                    data.regions.forEach(r => {
++                                        if (r.bbox_xy) {
++                                            const [min_y, min_x, max_y, max_x] = r.bbox_xy;
++                                            const w = max_x - min_x;
++                                            const h = max_y - min_y;
++                                            const pad = 4;
++                                            ctx.strokeRect(min_x - pad, min_y - pad, w + 2*pad, h + 2*pad);
++                                        }
++                                    });

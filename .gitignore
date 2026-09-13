@@ -99,3 +99,5 @@ models/ChangeFormer/samples_LEVIR/*
 !models/ChangeFormer/samples_LEVIR/sample_4/
 !models/ChangeFormer/samples_LEVIR/sample_5/
 models/ChangeFormer/.git_changeformer_backup/
+.neon
+node_modules/

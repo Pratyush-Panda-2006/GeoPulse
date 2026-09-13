@@ -1,0 +1,147 @@
+DIFF FOR ANALYTICS.HTML PART 3
++                        ]
++                    };
+@@ -454 +474 @@
+-            // Table Generation
++            // Table Generation & Spotlight Setup
+@@ -457,0 +478,4 @@
++            const mapCanvas = document.getElementById('map-canvas');
++            const coordReadout = document.getElementById('coord-readout');
++            const zoomReadout = document.getElementById('zoom-readout');
++            const radarContainer = document.getElementById('radar-clusters-container');
+@@ -461 +485 @@
+-            // Recalculate severity dynamically based on updated logic to override cached data
++            // Recalculate severity dynamically based on area
+@@ -463,2 +487,2 @@
+-                if (r.area_px >= 800) r.severity = 'High';
+-                else if (r.area_px >= 300) r.severity = 'Medium';
++                if (r.area_px >= 200) r.severity = 'High';
++                else if (r.area_px >= 130) r.severity = 'Medium';
+@@ -466,0 +491,117 @@
++
++            // Render Tactical Radar Dots
++            const renderRadarBeacons = (regions) => {
++                if (!radarContainer) return;
++                radarContainer.innerHTML = '';
++                regions.forEach(r => {
++                    const dot = document.createElement('div');
++                    const nx = Math.min(Math.max((r.centroid_xy[0] / 512) * 100, 8), 92);
++                    const ny = Math.min(Math.max((r.centroid_xy[1] / 512) * 100, 8), 92);
++                    const dotColor = r.severity === 'High' ? 'bg-[#ff453a] shadow-[0_0_8px_rgba(255,69,58,0.9)]' : 
++                                     r.severity === 'Medium' ? 'bg-[#ffd60a] shadow-[0_0_8px_rgba(255,214,10,0.9)]' : 
++                                     'bg-primary shadow-[0_0_8px_rgba(78,222,163,0.9)]';
++                    dot.className = `absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full cursor-pointer hover:scale-150 transition-all z-10 flex items-center justify-center group ${dotColor}`;
++                    dot.style.left = `${nx}%`;
++                    dot.style.top = `${ny}%`;
++                    dot.title = `CL-${r.region_id} (${r.severity})`;
++                    dot.dataset.regionId = r.region_id;
++                    dot.innerHTML = `<span class="opacity-0 group-hover:opacity-100 absolute -top-5 text-[9px] font-mono px-1 py-0.5 bg-black/90 text-white rounded pointer-events-none transition-opacity">CL-${r.region_id}</span>`;
++                    dot.onclick = (e) => {
++                        e.stopPropagation();
++                        selectCluster(r.region_id, true);
++                    };
++                    radarContainer.appendChild(dot);
++                });
++            };
++
++            // Smooth Cluster Selection and Fly-To
++            function selectCluster(regionId, smoothScrollTable = false) {
++                const region = allRegions.find(r => String(r.region_id) === String(regionId));
++                if (!region) return;
++
++                // 1. Highlight clicked row in the table smoothly
++                document.querySelectorAll('tbody tr').forEach(tr => {
++                    if (String(tr.dataset.regionId) === String(regionId)) {
++                        tr.className = 'bg-primary/20 border-l-4 border-primary text-white shadow-[0_0_20px_rgba(78,222,163,0.3)] transition-all duration-300 group cursor-pointer';
++                        if (smoothScrollTable) {
++                            tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
++                        }
++                    } else {
++                        tr.className = 'hover:bg-primary/5 transition-colors group cursor-pointer border-l-4 border-transparent';
++                    }
++                });
++
++                // 2. Smoothly fly reticle to cluster coordinates on the radar viewport
++                const reticle = document.getElementById('radar-reticle');
++                if (reticle) {
++                    reticle.classList.remove('hidden');
++                    const nx = Math.min(Math.max((region.centroid_xy[0] / 512) * 100, 8), 92);
++                    const ny = Math.min(Math.max((region.centroid_xy[1] / 512) * 100, 8), 92);
++                    gsap.to(reticle, {
++                        left: `${nx}%`,
++                        top: `${ny}%`,
++                        duration: 0.6,
++                        ease: "power2.out"
++                    });
++                }
++
++                // 3. Smoothly pan & zoom the background map canvas with GSAP
++                if (mapCanvas) {
++                    const normX = Math.min(Math.max((region.centroid_xy[0] / 512) * 100, 10), 90);
++                    const normY = Math.min(Math.max((region.centroid_xy[1] / 512) * 100, 10), 90);
++                    gsap.to(mapCanvas, {
++                        scale: 1.35,
++                        transformOrigin: `${normX}% ${normY}%`,
++                        duration: 1.1,
++                        ease: "power2.out"
++                    });
++                }
++
++                // 4. Update Spotlight details card
++                const spotId = document.getElementById('spotlight-id');
++                const spotCoords = document.getElementById('spotlight-coords');
++                const spotArea = document.getElementById('spotlight-area');
++                const spotProb = document.getElementById('spotlight-prob');
++                const spotSev = document.getElementById('spotlight-severity');
++                const spotBtn = document.getElementById('spotlight-btn-studio');
++                const spotBadge = document.getElementById('spotlight-badge');
++                
++                const coordStr = region.geo_centroid ? `${region.geo_centroid[1].toFixed(4)}° N, ${region.geo_centroid[0].toFixed(4)}° E` : `[Px: ${Math.round(region.centroid_xy[0])}, ${Math.round(region.centroid_xy[1])}]`;
++                
++                let areaSqFt = 0;
++                if (region.area_km2) areaSqFt = region.area_km2 * 10763910.4;
++                else if (region.approx_area_sq_km) areaSqFt = region.approx_area_sq_km * 10763910.4;
++                else areaSqFt = region.area_px * 1076.39104;
++
++                if (spotId) spotId.textContent = `CL-${region.region_id}`;
++                if (spotCoords) spotCoords.textContent = coordStr;
++                if (spotArea) spotArea.textContent = `${Math.round(areaSqFt).toLocaleString()} sq ft`;
++                if (spotProb) spotProb.textContent = `${(region.mean_change_prob * 100).toFixed(1)}%`;
++                if (spotBadge) {
++                    spotBadge.textContent = `LOCKED: CL-${region.region_id}`;
++                    spotBadge.className = 'px-2 py-0.5 rounded-full bg-primary/25 border border-primary text-primary font-mono text-[10px] uppercase font-bold shadow-[0_0_8px_rgba(78,222,163,0.4)]';
++                }
++                if (spotSev) {
++                    spotSev.textContent = region.severity || 'Medium';
++                    spotSev.className = region.severity === 'High' ? 'inline-flex items-center gap-1 px-2 py-0.5 border border-[#ff453a]/50 bg-[#ff453a]/15 text-[#ff453a] font-mono text-[10px] uppercase font-bold rounded shadow-[0_0_8px_rgba(255,69,58,0.3)]' :
++                                        region.severity === 'Medium' ? 'inline-flex items-center gap-1 px-2 py-0.5 border border-[#ffd60a]/50 bg-[#ffd60a]/15 text-[#ffd60a] font-mono text-[10px] uppercase font-bold rounded shadow-[0_0_8px_rgba(255,214,10,0.3)]' :
++                                        'inline-flex items-center gap-1 px-2 py-0.5 border border-primary/40 bg-primary/10 text-primary font-mono text-[10px] uppercase font-bold rounded shadow-[0_0_8px_rgba(78,222,163,0.3)]';
++                }
++
++                if (spotBtn) {
++                    spotBtn.onclick = () => {
++                        sessionStorage.setItem('target_cluster', region.region_id);
++                        sessionStorage.setItem('target_cluster_data', JSON.stringify(region));
++                        if (region._pair_job_id) sessionStorage.setItem('target_pair', region._pair_job_id);
++                        window.location.href = `studio.html?cluster=${region.region_id}`;
++                    };
++                }
++
++                // 5. Update bottom HUD readout
++                if (coordReadout) {
++                    coordReadout.innerHTML = `<span class="material-symbols-outlined text-[16px] text-primary" data-icon="my_location">my_location</span> <span class="text-primary font-bold">CLUSTER: CL-${region.region_id}</span> <span class="text-white/80">(${coordStr})</span>`;
++                }
++                if (zoomReadout) {
++                    zoomReadout.innerHTML = `<span class="text-primary font-bold">ZOOM: 18.5x [ENGAGED]</span>`;
++                }
++            }
+@@ -483 +624 @@
+-                    tr.className = 'hover:bg-primary/5 transition-colors group cursor-pointer';
++                    tr.className = 'hover:bg-primary/5 transition-colors group cursor-pointer border-l-4 border-transparent';
+@@ -499 +640,4 @@
+-                        <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">CL-${r.region_id}${timeContext}</td>
++                        <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">
++                            <span class="cluster-id-badge inline-flex items-center gap-1 hover:text-primary transition-colors">CL-${r.region_id}</span>
++                            ${timeContext}
++                        </td>
+@@ -508 +652,6 @@

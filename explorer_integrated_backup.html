@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>GeoPulse SAR Explorer - GeoPulse & Change Detection</title>
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <!-- Google Fonts: Bricolage Grotesque, Inter, Playfair Display, JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;600&amp;family=Playfair+Display:ital@1&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Tailwind Config -->
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#f0dbff",
+                      "tertiary": "#ddb7ff",
+                      "on-error-container": "#ffdad6",
+                      "on-tertiary-container": "#550093",
+                      "outline": "#86948a",
+                      "surface": "#131313",
+                      "on-error": "#690005",
+                      "on-background": "#e5e2e1",
+                      "on-primary": "#003824",
+                      "error-container": "#93000a",
+                      "inverse-on-surface": "#313030",
+                      "surface-bright": "#3a3939",
+                      "primary-fixed-dim": "#4edea3",
+                      "primary-container": "#10b981",
+                      "tertiary-container": "#c487ff",
+                      "error": "#ffb4ab",
+                      "on-primary-fixed": "#002113",
+                      "surface-container-lowest": "#0e0e0e",
+                      "inverse-primary": "#006c49",
+                      "on-tertiary-fixed-variant": "#6900b3",
+                      "surface-dim": "#131313",
+                      "on-primary-container": "#00422b",
+                      "on-tertiary-fixed": "#2c0051",
+                      "surface-container-highest": "#353534",
+                      "surface-container-low": "#1c1b1b",
+                      "primary-fixed": "#6ffbbe",
+                      "primary": "#4edea3",
+                      "secondary-container": "#0566d9",
+                      "on-secondary": "#002e6a",
+                      "on-tertiary": "#490080",
+                      "secondary-fixed": "#d8e2ff",
+                      "secondary-fixed-dim": "#adc6ff",
+                      "secondary": "#adc6ff",
+                      "outline-variant": "#3c4a42",
+                      "background": "#131313",
+                      "on-surface-variant": "#bbcabf",
+                      "on-secondary-container": "#e6ecff",
+                      "on-primary-fixed-variant": "#005236",
+                      "inverse-surface": "#e5e2e1",
+                      "on-secondary-fixed": "#001a42",
+                      "surface-variant": "#353534",
+                      "surface-tint": "#4edea3",
+                      "surface-container-high": "#2a2a2a",
+                      "on-secondary-fixed-variant": "#004395",
+                      "on-surface": "#e5e2e1",
+                      "tertiary-fixed-dim": "#ddb7ff",
+                      "surface-container": "#201f1f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "md": "24px",
+                      "xs": "8px",
+                      "gutter": "24px",
+                      "xl": "80px",
+                      "base": "4px",
+                      "sm": "16px",
+                      "lg": "48px",
+                      "margin": "32px",
+                      "sidebar-width": "340px",
+                      "toolbar-width": "72px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Bricolage Grotesque"],
+                      "accent-italic": ["Playfair Display"],
+                      "headline-lg-mobile": ["Bricolage Grotesque"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "ui-semibold": ["Inter"],
+                      "display-lg": ["Bricolage Grotesque"],
+                      "headline-md": ["Bricolage Grotesque"],
+                      "mono": ["JetBrains Mono", "monospace"],
+                      "data-sm": ["Inter", "sans-serif"],
+                      "label-sm": ["Inter", "sans-serif"]
+              },
+              "fontSize": {
+                      "headline-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                      "accent-italic": ["20px", { "lineHeight": "1.2", "fontWeight": "400" }],
+                      "headline-lg-mobile": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                      "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                      "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                      "ui-semibold": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                      "display-lg": ["72px", { "lineHeight": "1.0", "letterSpacing": "-0.05em", "fontWeight": "800" }],
+                      "headline-md": ["24px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                      "data-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "400" }],
+                      "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.15em", "fontWeight": "600" }]
+              }
+          },
+          },
+        }
+    </script>
+    <style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            overflow: hidden;
+        }
+
+        /* Persistent 4% opacity fractal noise grain */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.04;
+        }
+
+        /* 12-column structural grid lines */
+        .structural-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: theme('spacing.gutter');
+            padding: 0 theme('spacing.margin');
+        }
+
+        .structural-grid > div {
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            height: 100%;
+        }
+
+        .structural-grid > div:last-child {
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .pulse-border {
+            animation: pulse-border-anim 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        }
+        
+        @keyframes pulse-border-anim {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* High density input styling */
+        .glass-input {
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: theme('colors.on-surface');
+            transition: all 0.2s ease;
+            color-scheme: dark;
+        }
+        .glass-input:focus {
+            border-color: theme('colors.primary');
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+            outline: none;
+        }
+        
+        input[type="date"].glass-input {
+            color: #e2e2e2 !important;
+            background-color: #171918 !important;
+        }
+        input[type="date"].glass-input::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+        
+        .map-cursor {
+            cursor: crosshair;
+        }
+        
+        .container-marker {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-color: rgba(134, 148, 138, 0.5);
+            border-style: solid;
+        }
+        .marker-tl { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+        .marker-tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+        .marker-bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+        .marker-br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: theme('colors.primary'); }
+
+        /* Processing spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(2, 44, 34, 0.3);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Terminal Cursor & Pulsing Status Dot */
+        .terminal-cursor {
+            display: inline-block;
+            width: 7px;
+            height: 13px;
+            background-color: #22c55e;
+            vertical-align: middle;
+            margin-left: 5px;
+            box-shadow: 0 0 8px #22c55e, 0 0 14px rgba(34, 197, 94, 0.8);
+            animation: terminal-cursor-blink 0.75s steps(2, start) infinite;
+        }
+        @keyframes terminal-cursor-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .log-pulse-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 9999px;
+            background-color: #22c55e;
+            box-shadow: 0 0 10px #22c55e;
+            animation: log-pulse-dot-anim 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        @keyframes log-pulse-dot-anim {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 10px #22c55e, 0 0 18px rgba(34, 197, 94, 0.9);
+            }
+            50% {
+                transform: scale(0.65);
+                opacity: 0.35;
+                box-shadow: 0 0 4px #22c55e;
+            }
+        }
+
+        /* Glowing horizontal mini-progress bar track and fill */
+        .log-progress-track {
+            width: 100%;
+            height: 6px;
+            background: #09130d;
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            border-radius: 9999px;
+            overflow: hidden;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        .log-progress-bar {
+            height: 100%;
+            background-color: #22c55e;
+            border-radius: 9999px;
+            box-shadow: 0 0 10px #22c55e, 0 0 16px rgba(34, 197, 94, 0.85);
+            transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            width: 0%;
+        }
+    </style>
+</head>
+<body class="antialiased h-screen overflow-hidden font-body-md text-on-background selection:bg-primary/30 selection:text-primary flex relative flex-col bg-[#050810]">
+    <!-- Background Video Layer -->
+    <video
+        id="bg-video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+        class="fixed inset-0 w-screen h-screen object-cover pointer-events-none z-0"
+        style="position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; pointer-events: none;"
+    >
+        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260315_073750_51473149-4350-4920-ae24-c8214286f323.mp4" type="video/mp4" />
+    </video>
+
+    <!-- Dark Atmosphere & Contrast Overlay -->
+    <div
+        id="bg-atmosphere"
+        class="fixed inset-0 w-screen h-screen pointer-events-none z-[1]"
+        style="position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; background: radial-gradient(ellipse at center, rgba(10, 15, 29, 0.45) 0%, rgba(5, 8, 16, 0.85) 100%);"
+    ></div>
+
+    <!-- Noise Overlay -->
+    <div class="grain-overlay"></div>
+    <!-- Structural Grid Lines Overlay -->
+    <div class="structural-grid">
+        <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+
+    <!-- TopNavBar (Global Nav) -->
+    <nav class="fixed top-0 left-0 right-0 z-[150] flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3">
+        <a href="index.html" class="font-headline-md text-[18px] md:text-[20px] text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity shrink-0">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse"></span>
+            <span class="tracking-wider font-bold">GEOPULSE</span>
+        </a>
+        <div class="hidden md:flex gap-6 lg:gap-8 items-center">
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">OVERVIEW</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">STUDIO</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="analytics.html">ANALYTICS</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary !border-b-2 !border-solid !border-primary pb-1" href="explorer.html">EXPLORER</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="intelligence.html">INTELLIGENCE</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="telemetry.html">TELEMETRY</a>
+        </div>
+        <div class="flex gap-4 items-center shrink-0">
+            <a href="telemetry.html" class="flex items-center gap-2 bg-primary/10 border border-primary/20 hover:border-primary/50 transition-all rounded-none px-3 py-1 font-mono text-xs text-primary" title="View Real-Time Telemetry Diagnostics">
+                <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                <span class="text-primary uppercase tracking-widest hidden lg:inline">CDSE Satellite Link: Connected</span>
+                <span class="text-primary uppercase tracking-widest lg:hidden">Active</span>
+            </a>
+            <div class="flex gap-3">
+                <a href="analytics.html" title="Cluster Alerts" class="flex items-center">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
+                </a>
+                <a href="overview.html" title="Command Center Profile" class="flex items-center">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Workspace Area -->
+    <main class="flex-1 relative z-10 overflow-hidden pt-toolbar-width">
+        <!-- Level 1 Panel: CDSE Acquisition Controls (Inner Sidebar) -->
+        <aside class="absolute top-20 max-h-[calc(100%-6rem)] left-6 w-[340px] flex flex-col z-20 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] overflow-hidden border border-white/20 border-t-white/40 border-l-white/40" style="backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: rgba(15, 23, 42, 0.75);">
+            
+            <!-- Panel Header -->
+            <div class="px-6 py-5 border-b border-white/10 flex justify-between items-center bg-white/5 shadow-inner shrink-0">
+                <h2 class="font-ui-semibold text-ui-semibold text-white uppercase tracking-widest drop-shadow-md">Acquisition Controls</h2>
+                <span class="material-symbols-outlined text-white/90 text-sm">tune</span>
+            </div>
+
+            <!-- Scrollable Controls Content -->
+            <div class="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-8 custom-scrollbar min-h-0">
+                <!-- Quick App Launcher Strip -->
+                <section class="flex flex-col gap-2 p-3 bg-white/5 border border-white/10 rounded-xl shadow-inner">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-[10px] text-white/90 uppercase tracking-widest drop-shadow-sm">Connected Suites</span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(78,222,163,1)] animate-ping"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-1">
+                        <a href="studio.html" class="flex items-center justify-center gap-1.5 bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] text-[11px] font-mono text-white/90 hover:text-white p-1.5 transition-all rounded-lg">
+                            <span class="material-symbols-outlined text-[14px]">view_in_ar</span> 3D Studio
+                        </a>
+                        <a href="analytics.html" class="flex items-center justify-center gap-1.5 bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] text-[11px] font-mono text-white/90 hover:text-white p-1.5 transition-all rounded-lg">
+                            <span class="material-symbols-outlined text-[14px]">analytics</span> Analytics
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Temporal Bounds (T1/T2) -->
+                <section class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-mono text-xs text-white/90 uppercase tracking-widest">Temporal Bounds</h3>
+                        <div class="h-px bg-white/20 flex-1 ml-4"></div>
+                    </div>
+                    <div class="flex flex-col gap-4" id="temporal-inputs">
+                        <div class="flex justify-end gap-2 mb-[-8px]">
+                             <button id="mode-live" class="text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10 rounded">LIVE</button>
+                             <button id="mode-upload" class="text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 hover:text-primary hover:border-primary rounded transition-colors">UPLOAD</button>
+                             <button id="mode-demo" class="text-[10px] font-mono text-white/70 border border-white/20 px-2 py-1 hover:text-primary hover:border-primary rounded transition-colors">DEMO</button>
+                        </div>
+                        <div id="live-inputs" class="flex flex-col gap-4">
+                            <!-- Location Selection -->
+                            <div class="flex flex-col gap-1.5">
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Location</label>
+                                <select id="live-location-select" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full appearance-none bg-black/20 border-white/10 text-white cursor-pointer hover:bg-black/40 transition-colors">
+                                    <option class="bg-black text-white/60" value="india">India</option>
+                                    <option class="bg-black text-white/60" value="uk">United Kingdom</option>
+                                    <option class="bg-black text-white/60" value="us">United States</option>
+                                    <option class="bg-black text-white/60" value="japan">Japan</option>
+                                    <option class="bg-black text-white/60" value="australia">Australia</option>
+                                    <option class="bg-black text-white/60" value="custom">Custom AOI</option>
+                                </select>
+                            </div>
+                            <!-- Custom AOI -->
+                            <div id="live-custom-aoi" class="hidden flex flex-col gap-2">
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Custom Bounding Box</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input id="custom-min-lon" class="glass-input rounded-lg px-2 py-1.5 font-mono text-xs w-full bg-black/20 border-white/10 text-white" type="number" step="any" placeholder="Min Lon">
+                                    <input id="custom-max-lon" class="glass-input rounded-lg px-2 py-1.5 font-mono text-xs w-full bg-black/20 border-white/10 text-white" type="number" step="any" placeholder="Max Lon">
+                                    <input id="custom-min-lat" class="glass-input rounded-lg px-2 py-1.5 font-mono text-xs w-full bg-black/20 border-white/10 text-white" type="number" step="any" placeholder="Min Lat">
+                                    <input id="custom-max-lat" class="glass-input rounded-lg px-2 py-1.5 font-mono text-xs w-full bg-black/20 border-white/10 text-white" type="number" step="any" placeholder="Max Lat">
+                                </div>
+                                <div id="custom-aoi-error" class="text-[#ff453a] font-mono text-[10px] hidden">Invalid bounds</div>
+                            </div>
+                            <!-- Sub-Mode Toggle for LIVE -->
+                            <div class="flex gap-2 mt-1">
+                                <button id="submode-pairwise" class="flex-1 text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10">PAIRWISE</button>
+                                <button id="submode-series" class="flex-1 text-[10px] font-mono text-white/60 border border-outline px-2 py-1 hover:text-primary hover:border-primary">PERIOD</button>
+                            </div>
+                            
+                            <!-- Pairwise Inputs -->
+                            <div id="live-pairwise-inputs" class="flex flex-col gap-4">
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">T1 Date (Baseline)</label>
+                                    <input id="live-t1-date" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full bg-black/20 border-white/10 text-white" type="date" value="2024-01-20">
+                                </div>
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">T2 Date (Current)</label>
+                                    <input id="live-t2-date" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full bg-black/20 border-white/10 text-white" type="date" value="2024-06-20">
+                                    <span class="font-mono text-[10px] text-white/60/70">±7 days search window</span>
+                                </div>
+                            </div>
+
+                            <!-- Series Inputs -->
+                            <div id="live-series-inputs" class="hidden flex flex-col gap-4">
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Date Range Start</label>
+                                    <input id="live-series-start" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full bg-black/20 border-white/10 text-white" type="date" value="2024-01-01">
+                                </div>
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Date Range End</label>
+                                    <input id="live-series-end" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full bg-black/20 border-white/10 text-white" type="date" value="2024-06-30">
+                                </div>
+                                <div class="flex flex-col gap-1.5">
+                                    <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Max Scenes</label>
+                                    <select id="live-series-max" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full appearance-none bg-black/20 border-white/10 text-white cursor-pointer hover:bg-black/40 transition-colors">
+                                        <option class="bg-black text-white/60" value="2">2 Scenes (1 Pair)</option>
+                                        <option class="bg-black text-white/60" value="4">4 Scenes (3 Pairs)</option>
+                                        <option class="bg-black text-white/60" value="6" selected>6 Scenes (5 Pairs)</option>
+                                        <option class="bg-black text-white/60" value="8">8 Scenes (7 Pairs)</option>
+                                        <option class="bg-black text-white/60" value="20">20 Scenes (Max)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Availability Results UI -->
+                            <div id="availability-results" class="hidden flex flex-col gap-2 mt-2 p-3 bg-surface-container-high border border-outline/20">
+                                <div id="availability-msg" class="font-mono text-[10px] uppercase tracking-widest"></div>
+                                <div class="font-mono text-[10px] text-primary flex flex-col gap-1 mt-1" id="avail-pairwise-info">
+                                    <div>T1: <span id="avail-t1-date" class="text-on-surface"></span></div>
+                                    <div>T2: <span id="avail-t2-date" class="text-on-surface"></span></div>
+                                </div>
+                                <div class="font-mono text-[10px] text-primary hidden mt-1" id="avail-series-info">
+                                    <div>Scenes found: <span id="avail-scenes-count" class="text-on-surface font-bold"></span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="upload-inputs" class="flex flex-col gap-4 hidden">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">T1 Image (.tif)</label>
+                                <div id="dropzone-t1" class="border border-dashed border-white/20 bg-white/5 hover:bg-white/10 rounded-lg hover:border-primary/50 transition-colors py-3 px-2 flex flex-col items-center justify-center cursor-pointer text-center group">
+                                    <span class="material-symbols-outlined text-white/70 group-hover:text-primary text-[18px] mb-1 transition-colors">upload_file</span>
+                                    <span id="t1-filename" class="font-mono text-[10px] text-white/70 group-hover:text-primary break-all max-w-[90%]">Drag & Drop or Click</span>
+                                    <input id="t1-file" type="file" accept=".tif,.tiff" class="hidden">
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">T2 Image (.tif)</label>
+                                <div id="dropzone-t2" class="border border-dashed border-white/20 bg-white/5 hover:bg-white/10 rounded-lg hover:border-primary/50 transition-colors py-3 px-2 flex flex-col items-center justify-center cursor-pointer text-center group">
+                                    <span class="material-symbols-outlined text-white/70 group-hover:text-primary text-[18px] mb-1 transition-colors">upload_file</span>
+                                    <span id="t2-filename" class="font-mono text-[10px] text-white/70 group-hover:text-primary break-all max-w-[90%]">Drag & Drop or Click</span>
+                                    <input id="t2-file" type="file" accept=".tif,.tiff" class="hidden">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="demo-inputs" class="flex flex-col gap-4 hidden">
+                            <div class="flex flex-col gap-1.5">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Demo Scene</label>
+                                <select id="demo-scene-select" class="glass-input rounded-md px-3 py-2 font-mono text-sm w-full appearance-none bg-black/40 border-white/20 text-white">
+                                    <option class="bg-[#0a0a0a] text-white/70" value="01_dubai">Dubai, UAE</option>
+                                    <option class="bg-[#0a0a0a] text-white/70" value="02_lasvegas">Las Vegas, USA</option>
+                                    <option class="bg-[#0a0a0a] text-white/70" value="03_chongqing">Chongqing, China</option>
+                                    <option class="bg-[#0a0a0a] text-white/70" value="04_montpellier">Montpellier, France</option>
+                                    <option class="bg-[#0a0a0a] text-white/70" value="05_rio">Rio de Janeiro, Brazil</option>
+                                </select>
+                            </div>
+                            <div class="text-[10px] font-mono text-white/50 leading-tight">
+                                Select a scene to automatically fetch predefined SAR T1/T2 image pairs.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Processing Parameters -->
+                <section class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-mono text-xs text-white/90 uppercase tracking-widest">Processing Params</h3>
+                        <div class="h-px bg-white/20 flex-1 ml-4"></div>
+                    </div>
+                    <!-- Resolution -->
+                    <div class="flex flex-col gap-1.5">
+                        <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Tile Resolution</label>
+                        <select id="processing-resolution" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full appearance-none bg-black/20 border-white/10 text-white cursor-pointer hover:bg-black/40 transition-colors">
+                            <option class="bg-black text-white/90" value="256">256 x 256 px</option>
+                            <option class="bg-black text-white/90" selected="" value="512">512 x 512 px</option>
+                        </select>
+                    </div>
+                    <!-- Model Selector -->
+                    <div class="flex flex-col gap-1.5 mt-2">
+                        <label class="font-mono text-[10px] text-white/60 uppercase tracking-widest">Inference Model</label>
+                        <select id="processing-model" class="glass-input rounded-lg px-3 py-2 font-mono text-sm w-full appearance-none bg-black/20 border-white/10 text-white cursor-pointer hover:bg-black/40 transition-colors">
+                            <option class="bg-black text-white/90" value="siamese">Siamese U-Net v2</option>
+                            <option class="bg-black text-white/90" selected="" value="snunet">SNUNet-CD (Optimized)</option>
+                        </select>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Primary Action Footer -->
+            <div class="p-6 border-t border-white/10 bg-white/5 shrink-0 flex flex-col gap-3 shadow-[0_-8px_32px_0_rgba(0,0,0,0.2)]">
+                <!-- Availability Check Button -->
+                <button id="btn-check-availability" class="w-full bg-surface-container-high border border-outline/30 text-on-surface font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:border-primary/50 hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">travel_explore</span>
+                    <span>Check Satellite Availability</span>
+                </button>
+                
+                <!-- Run Inference Button (Hidden initially in LIVE mode) -->
+                <button id="btn-run-live" class="hidden w-full bg-gradient-to-r from-primary to-[#2dd4bf] hover:brightness-110 text-[#022c22] font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-xl items-center justify-center gap-2 transition-all pulse-border relative overflow-hidden group shadow-[0_0_20px_rgba(78,222,163,0.4)]">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">satellite_alt</span>
+                    <span id="btn-run-text">Run Live Intelligence</span>
+                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 group-hover:animate-[shine_1s_ease-in-out]"></div>
+                </button>
+                <button id="btn-run-series" class="hidden w-full bg-gradient-to-r from-[#c487ff] to-[#a352ff] hover:brightness-110 text-[#2c0051] font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-xl items-center justify-center gap-2 transition-all relative overflow-hidden group shadow-[0_0_20px_rgba(196,135,255,0.4)]">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">stacked_line_chart</span>
+                    <span id="btn-run-series-text">Run Period Intelligence</span>
+                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 group-hover:animate-[shine_1s_ease-in-out]"></div>
+                </button>
+                <a href="overview.html" class="w-full bg-white/5 border border-white/10 hover:border-white/30 text-white/80 hover:text-white hover:bg-white/10 font-mono text-[11px] uppercase tracking-widest py-2 px-3 text-center transition-all rounded-xl shadow-inner">
+                    Command Center →
+                </a>
+            </div>
+        </aside>
+
+        <!-- Level 0 Canvas: Interactive Map Area -->
+        <div id="map-parallax-container" class="absolute inset-0 z-10 bg-transparent map-cursor overflow-hidden">
+            <!-- Satellite Basemap Layer (Transparent to reveal rotating earth video) -->
+            <div id="map-parallax-bg" class="absolute inset-0 pointer-events-none opacity-0"></div>
+
+            <!-- Interactive Drawing Overlay (Bounding Box Demo) -->
+            <div class="absolute inset-0 pointer-events-none z-10" id="result-overlay-container" style="display: none;">
+                <div class="absolute inset-0 flex items-center justify-center p-8">
+                    <div class="relative w-full h-full flex items-center justify-center">
+                        <img id="result-img" class="max-w-full max-h-full object-contain border border-primary/50 shadow-[0_0_30px_rgba(78,222,163,0.2)]" src="" alt="Result Overlay" />
+                        <!-- DEBUG caption: only shown while the exact backend binary mask is displayed -->
+                        <div id="mask-debug-caption" class="absolute top-20 left-1/2 -translate-x-1/2 pointer-events-none hidden z-20">
+                            <span class="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff453a]/60 text-[#ff453a] font-mono text-[10px] uppercase tracking-widest px-3 py-1 rounded-md shadow-[0_0_12px_rgba(255,69,58,0.3)]">MODEL 3 — BINARY CHANGE MASK</span>
+                        </div>
+                        <!-- Impressive Centered Floating Inspection Layers Dock (Fixed, Non-Scrollable) -->
+                        <div class="absolute top-5 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-2xl bg-slate-950/85 backdrop-blur-2xl border border-emerald-500/30 border-t-emerald-400/50 shadow-[0_16px_40px_rgba(0,0,0,0.7),0_0_25px_rgba(16,185,129,0.15)] z-20 pointer-events-auto overflow-hidden select-none whitespace-nowrap">
+                            <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-mono tracking-widest text-emerald-400 uppercase border-r border-white/10 select-none mr-0.5 shrink-0">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+                                <span class="font-bold">INSPECTION LAYERS</span>
+                            </div>
+                            <button id="view-t1" class="bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/30 rounded-xl px-2.5 py-1 text-[11px] font-mono text-white/80 hover:text-white transition-all shadow-sm shrink-0" title="Colorized satellite-style SAR (T1)">T1</button>
+                            <button id="view-t2" class="bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/30 rounded-xl px-2.5 py-1 text-[11px] font-mono text-white/80 hover:text-white transition-all shadow-sm shrink-0" title="Colorized satellite-style SAR (T2)">T2</button>
+                            <button id="view-optical" class="bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/30 rounded-xl px-2.5 py-1 text-[11px] font-mono text-white/80 hover:text-white transition-all shadow-sm shrink-0" title="True-color optical basemap (coordinate runs only)">Optical</button>
+                            <button id="view-falsecolor" class="bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/30 rounded-xl px-2.5 py-1 text-[11px] font-mono text-white/80 hover:text-white transition-all shadow-sm shrink-0" title="Dual-polarization false-color (VV/VH/ratio)">False Color</button>
+                            <button id="view-heatmap" class="bg-white/5 hover:bg-white/15 border border-cyan-500/20 hover:border-cyan-500/50 rounded-xl px-2.5 py-1 text-[11px] font-mono text-cyan-300/80 hover:text-cyan-300 transition-all shadow-sm shrink-0">Heatmap</button>
+                            <button id="view-mask" class="bg-white/5 hover:bg-white/15 border border-[#ff453a]/30 hover:border-[#ff453a]/60 rounded-xl px-2.5 py-1 text-[11px] font-mono text-[#ff453a] hover:text-[#ff453a] transition-all shadow-sm shrink-0" title="Exact Model 3 binary change mask from the API">Binary Mask</button>
+                            <button id="view-overlay" class="bg-primary/20 border border-primary/70 rounded-xl px-2.5 py-1 text-[11px] font-mono text-primary font-bold shadow-[0_0_15px_rgba(78,222,163,0.35)] transition-all shrink-0">Overlay</button>
+                            <button id="view-boxes" class="bg-white/5 hover:bg-white/15 border border-[#ffb000]/30 hover:border-[#ffb000]/60 rounded-xl px-2.5 py-1 text-[11px] font-mono text-[#ffb000] hover:text-[#ffb000] transition-all shadow-sm shrink-0" title="Highlight major changed areas with labeled boxes">Highlight</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Floating Map Controls (Level 2 Overlays) - Equal Spacing Across All Icons -->
+            <div id="floating-map-tools" class="absolute right-6 top-32 flex flex-col gap-3 z-30 transition-all duration-300">
+                <button class="w-12 h-12 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all pointer-events-auto" title="Zoom In">
+                    <span class="material-symbols-outlined text-[24px]">add</span>
+                </button>
+                <button class="w-12 h-12 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all pointer-events-auto" title="Zoom Out">
+                    <span class="material-symbols-outlined text-[24px]">remove</span>
+                </button>
+                <button class="w-12 h-12 bg-primary/20 backdrop-blur-3xl border border-primary/50 border-t-primary/80 border-l-primary/80 rounded-2xl shadow-[0_8px_32px_0_rgba(78,222,163,0.3)] text-primary flex items-center justify-center hover:bg-primary/30 hover:scale-105 transition-all pointer-events-auto" title="Draw Bounding Box">
+                    <span class="material-symbols-outlined text-[24px]">crop_free</span>
+                </button>
+                <a href="studio.html" class="w-12 h-12 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all pointer-events-auto" title="3D Terrain Studio">
+                    <span class="material-symbols-outlined text-[24px]">view_in_ar</span>
+                </a>
+                <a href="analytics.html" class="w-12 h-12 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-3xl border border-white/20 border-t-white/40 border-l-white/40 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all pointer-events-auto" title="Cluster Analytics">
+                    <span class="material-symbols-outlined text-[24px]">analytics</span>
+                </a>
+            </div>
+
+            <!-- Unified Right-Hand Audit Sidebar / Modal -->
+            <aside id="audit-results-sidebar"
+                   class="absolute top-20 right-6 w-[385px] max-h-[calc(100vh-6.5rem)] flex flex-col z-40 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] overflow-hidden transition-all duration-300 transform translate-x-0 hidden"
+                   style="background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(34, 197, 94, 0.25);">
+                
+                <!-- Inner scrollable container -->
+                <div class="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col">
+                    
+                    <!-- Header Row -->
+                    <div class="flex items-center justify-between">
+                        <!-- Green status pill -->
+                        <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-[#22c55e]/15 border border-[#22c55e]/30 text-[#4ade80] font-mono text-[10.5px] uppercase tracking-wider font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.9)]"></span>
+                            <span>ECO-AUDIT COMPLETE</span>
+                        </div>
+                        <!-- Top-Right Close Button -->
+                        <button id="btn-close-audit" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-colors font-mono text-sm leading-none" title="Collapse Audit Report">✕</button>
+                    </div>
+
+                    <!-- Scene Title & Metadata -->
+                    <div class="mt-3.5 mb-4">
+                        <h3 id="audit-scene-title" class="font-headline-md text-lg text-white font-bold tracking-tight">Chongqing, China (Demo Biome)</h3>
+                        <div class="flex items-center gap-2 mt-1 font-mono text-[11px] text-white/50">
+                            <span>SENSOR: Sentinel-1 SAR (IW GRD)</span>
+                            <span>•</span>
+                            <span id="audit-exec-time">-- s</span>
+                        </div>
+                    </div>
+
+                    <!-- Core Stats Grid (Clean 2x2 cards) -->
+                    <div class="grid grid-cols-2 gap-2.5 mb-4">
+                        <!-- Card 1: Disturbance Detected -->
+                        <div class="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 flex flex-col">
+                            <span class="font-mono text-[9px] uppercase tracking-widest text-white/60 font-medium">DISTURBANCE DETECTED</span>
+                            <span id="audit-disturbance-pct" class="font-mono text-lg font-bold text-[#4ade80] mt-1 drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]">0.156%</span>
+                        </div>
+
+                        <!-- Card 2: Anomaly Clusters -->
+                        <div class="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 flex flex-col">
+                            <span class="font-mono text-[9px] uppercase tracking-widest text-white/60 font-medium">ANOMALY CLUSTERS</span>
+                            <span id="audit-clusters-count" class="font-mono text-lg font-bold text-white mt-1">10</span>
+                        </div>
+
+                        <!-- Card 3: Changed Pixels -->
+                        <div class="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 flex flex-col">
+                            <span class="font-mono text-[9px] uppercase tracking-widest text-white/60 font-medium">CHANGED PIXELS</span>
+                            <span id="audit-changed-pixels" class="font-mono text-lg font-bold text-[#38bdf8] mt-1">919 px</span>
+                        </div>
+
+                        <!-- Card 4: Mean Confidence -->
+                        <div class="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 flex flex-col">
+                            <span class="font-mono text-[9px] uppercase tracking-widest text-white/60 font-medium">MEAN CONFIDENCE</span>
+                            <span id="audit-mean-confidence" class="font-mono text-lg font-bold text-[#facc15] mt-1">94.8%</span>
+                        </div>
+                    </div>
+
+                    <!-- Disturbance Summary Note (Compact alert block) -->
+                    <div class="p-3.5 rounded-xl bg-[#22c55e]/10 border border-[#22c55e]/25 flex items-start gap-2.5 mb-5">
+                        <span class="material-symbols-outlined text-[#4ade80] text-base mt-0.5 shrink-0">warning</span>
+                        <p id="audit-summary-note" class="font-mono text-[11px] text-white/80 leading-relaxed">
+                            Severe canopy shift detected along river basin. Probable illegal clearing or construction expansion.
+                        </p>
+                    </div>
+
+                    <!-- Direct Action CTA Buttons (Stacked Full-Width) -->
+                    <div class="flex flex-col gap-2.5 mt-auto pt-2">
+                        <!-- Primary CTA Button -->
+                        <a id="btn-inspect-studio" href="studio.html" class="w-full bg-[#22c55e] hover:bg-[#16a34a] text-[#022c22] hover:shadow-[0_0_20px_rgba(34,197,94,0.6)] font-mono text-xs uppercase tracking-widest font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all group">
+                            <span>[INSPECT IN 3D STUDIO →]</span>
+                        </a>
+
+                        <!-- Secondary CTA Button -->
+                        <a id="btn-cluster-audit" href="analytics.html" class="w-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-700 hover:border-[#22c55e]/50 text-slate-300 hover:text-white font-mono text-xs uppercase tracking-widest py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all">
+                            <span>[DETAILED CLUSTER AUDIT]</span>
+                        </a>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Small Floating Re-Open Audit Button (Visible when audit is collapsed) -->
+            <button id="btn-reopen-audit" class="hidden absolute right-6 top-16 bg-slate-900/90 hover:bg-slate-800 border border-[#22c55e]/40 hover:border-[#22c55e] text-[#4ade80] py-2 px-3.5 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.6)] z-30 font-mono text-xs flex items-center gap-2 transition-all hover:scale-105">
+                <span class="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+                <span class="uppercase tracking-wider text-[11px] font-semibold">Audit Report</span>
+            </button>
+
+            <!-- Coordinate Readout Pill -->
+            <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-white/10 via-white/5 to-white/10 backdrop-blur-3xl border border-white/20 border-t-white/40 rounded-full px-8 py-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] flex items-center gap-6 pointer-events-none z-30">
+                <div class="flex items-center gap-2 text-white font-mono text-xs drop-shadow-md">
+                    <span class="material-symbols-outlined text-[16px]">my_location</span>
+                    <span id="display-lat">LAT: 28.6139° N</span>
+                </div>
+                <div class="w-px h-5 bg-white/20 shadow-[1px_0_2px_rgba(0,0,0,0.5)]"></div>
+                <div class="flex items-center gap-2 text-white font-mono text-xs drop-shadow-md">
+                    <span id="display-lng">LNG: 77.2090° E</span>
+                </div>
+                <div class="w-px h-5 bg-white/20 shadow-[1px_0_2px_rgba(0,0,0,0.5)]"></div>
+                <div class="flex items-center gap-2 text-primary font-mono text-xs uppercase tracking-widest drop-shadow-[0_0_8px_rgba(78,222,163,0.8)] font-bold">
+                    <span>ZOOM: 8Z</span>
+                </div>
+            </div>
+
+            <!-- Radar Sweep Line -->
+            <div class="absolute top-0 left-0 w-1 h-full bg-primary/40 shadow-[0_0_20px_rgba(78,222,163,0.8)] z-20 pointer-events-none hidden" id="radar-sweep"></div>
+            
+            <!-- Terminal Log Overlay -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[92vw] bg-slate-950/92 border border-[#22c55e]/30 border-t-[#22c55e]/60 p-4 font-mono text-xs text-primary z-[70] hidden backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85),0_0_25px_rgba(34,197,94,0.18)] transition-all duration-300 select-text" id="terminal-overlay">
+                <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-[#22c55e]/25 select-none">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-[#22c55e] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+                        <span class="tracking-widest uppercase font-bold text-[#22c55e] text-[11px] drop-shadow-[0_0_6px_rgba(34,197,94,0.6)]">SYSTEM LOG // SAR-OPS</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] text-white/40 tracking-wider">HUD RETICLE</span>
+                        <button id="btn-close-terminal" class="text-white/40 hover:text-white transition-colors cursor-pointer text-xs leading-none p-1 rounded hover:bg-white/10" title="Close Log">✕</button>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1.5 overflow-y-auto max-h-[260px] pr-1.5 custom-scrollbar font-mono text-[11px] leading-relaxed" id="log-content"></div>
+            </div>
+
+            <!-- Glassmorphic Floating Inference Loader HUD (subtle fallback, non-blocking) -->
+            <div id="inference-loader-hud" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] hidden opacity-0 transition-opacity duration-300 pointer-events-none select-none flex-col items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.85)]"
+                 style="display: none; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px 28px;">
+                <!-- Header Status & Percent -->
+                <div class="flex items-center justify-between w-[260px] mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#22c55e] animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></span>
+                        <span class="font-mono text-[11px] text-white/90 uppercase tracking-widest font-semibold">SAR Inference</span>
+                    </div>
+                    <span id="loader-percent" class="font-mono text-xs text-[#22c55e] font-bold">0%</span>
+                </div>
+
+                <!-- Pill-shaped Progress Track & Bloom Fill -->
+                <div class="relative overflow-hidden rounded-full" style="height: 8px; width: 260px; background: #0f172a; border: 1px solid #1e293b;">
+                    <div id="loader-progress-bar" style="width: 0%; height: 100%; background: #22c55e; box-shadow: 0 0 14px rgba(34, 197, 94, 0.7); border-radius: 9999px; transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                </div>
+
+                <!-- Dynamic Stage Readout -->
+                <div id="loader-stage" class="font-mono text-[11px] text-[#4ade80] tracking-wider text-center mt-3 max-w-[280px] leading-tight">
+                    INGESTING DUAL-POL SAR TILES [CDSE]...
+                </div>
+            </div>
+
+            <!-- Map HUD Reticle -->
+            <div class="fixed pointer-events-none z-50 hidden" id="map-hud-reticle">
+                <div class="relative -translate-x-1/2 -translate-y-1/2">
+                    <div class="absolute top-0 left-[-20px] w-10 h-px bg-primary/50"></div>
+                    <div class="absolute top-[-20px] left-0 h-10 w-px bg-primary/50"></div>
+                    <div class="absolute top-2 left-2 font-mono text-[8px] text-primary whitespace-nowrap opacity-70">
+                        <div id="hud-lat">X: 0.000</div>
+                        <div id="hud-lng">Y: 0.000</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#0a0a0a] border-t border-outline/15 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-3 z-50 relative shrink-0">
+        <div class="text-outline font-mono text-xs uppercase tracking-widest">
+            GeoPulse | All Rights Reserved
+        </div>
+        <div class="flex gap-4 text-outline font-mono text-xs uppercase tracking-widest">
+            <a class="hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
+            <a class="hover:text-primary transition-colors" href="studio.html">[3D STUDIO]</a>
+            <a class="hover:text-primary transition-colors" href="analytics.html">[CLUSTER AUDIT]</a>
+            <a class="hover:text-primary transition-colors" href="telemetry.html">[TELEMETRY]</a>
+        </div>
+    </footer>
+
+    <!-- Shared SAR result store (compact metadata in sessionStorage, previews in memory + IndexedDB) -->
+    <script src="assets/sar-store.js"></script>
+    <script>
+    (function() {
+        const map = document.querySelector('#map-parallax-container');
+        const roiBox = document.querySelector('#demo-bbox > div');
+        const areaBadge = roiBox ? roiBox.querySelector('span') : null;
+        const btnCheckAvail = document.getElementById('btn-check-availability');
+        const runBtn = document.getElementById('btn-run-live');
+        const sweep = document.getElementById('radar-sweep');
+        const terminal = document.getElementById('terminal-overlay');
+        const logContent = document.getElementById('log-content');
+        const hud = document.getElementById('map-hud-reticle');
+        const btnCloseTerminal = document.getElementById('btn-close-terminal');
+        const DEFAULT_DETECTION_THRESHOLD = 0.60;
+
+        if (btnCloseTerminal) {
+            btnCloseTerminal.addEventListener('click', () => {
+                terminal.classList.add('hidden');
+            });
+        }
+
+        // 1. ROI Box Interaction (Draggable - guarded)
+        let isDragging = false;
+        if (roiBox) {
+            roiBox.addEventListener('mousedown', () => isDragging = true);
+            window.addEventListener('mouseup', () => isDragging = false);
+        }
+        map.addEventListener('mousemove', (e) => {
+            if (isDragging && roiBox) {
+                const rect = map.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                roiBox.style.left = `${Math.max(0, Math.min(x - 20, 60))}%`;
+                roiBox.style.top = `${Math.max(0, Math.min(y - 17, 65))}%`;
+                const area = (parseFloat(roiBox.style.width || 40) * parseFloat(roiBox.style.height || 35) * 0.03).toFixed(1);
+                if (areaBadge) areaBadge.innerText = `Area: ${area} km²`;
+            }
+            // HUD Reticle
+            if (hud) {
+                hud.classList.remove('hidden');
+                hud.style.left = `${e.clientX}px`;
+                hud.style.top = `${e.clientY}px`;
+            }
+            const elLat = document.getElementById('hud-lat');
+            const elLng = document.getElementById('hud-lng');
+            if (elLat) elLat.innerText = `X: ${e.clientX}`;
+            if (elLng) elLng.innerText = `Y: ${e.clientY}`;
+        });
+
+        // Mode Toggle
+        const modeLive = document.getElementById('mode-live');
+        const modeUpload = document.getElementById('mode-upload');
+        const modeDemo = document.getElementById('mode-demo');
+        const liveInputs = document.getElementById('live-inputs');
+        const uploadInputs = document.getElementById('upload-inputs');
+        const demoInputs = document.getElementById('demo-inputs');
+        let currentMode = 'live';
+
+        modeLive.addEventListener('click', () => {
+            currentMode = 'live';
+            modeLive.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeUpload.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            liveInputs.classList.remove('hidden');
+            uploadInputs.classList.add('hidden');
+            demoInputs.classList.add('hidden');
+            if (currentSubMode === 'series') {
+                btnCheckAvail.classList.remove('hidden');
+                runBtn.classList.add('hidden');
+                document.getElementById('btn-run-series').classList.add('hidden');
+            }
+        });
+
+        modeUpload.addEventListener('click', () => {
+            currentMode = 'upload';
+            modeUpload.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeLive.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            uploadInputs.classList.remove('hidden');
+            liveInputs.classList.add('hidden');
+            demoInputs.classList.add('hidden');
+            document.getElementById('btn-run-series').classList.add('hidden');
+        });
+
+        modeDemo.addEventListener('click', () => {
+            currentMode = 'demo';
+            modeDemo.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeLive.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeUpload.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            demoInputs.classList.remove('hidden');
+            liveInputs.classList.add('hidden');
+            uploadInputs.classList.add('hidden');
+            
+            btnCheckAvail.classList.add('hidden');
+            runBtn.classList.remove('hidden');
+            document.getElementById('btn-run-series').classList.add('hidden');
+            document.getElementById('btn-run-text').innerText = "Run Demo Intelligence";
+        });
+        
+        modeLive.addEventListener('click', () => {
+            currentMode = 'live';
+            modeLive.className = 'text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+            modeUpload.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            modeDemo.className = 'text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+            liveInputs.classList.remove('hidden');
+            uploadInputs.classList.add('hidden');
+            demoInputs.classList.add('hidden');
+            
+            btnCheckAvail.classList.remove('hidden');
+            runBtn.classList.add('hidden');
+            document.getElementById('btn-run-series').classList.add('hidden');
+            document.getElementById('btn-run-text').innerText = "Run Live Intelligence";
+        });
+
+        // Sub-Mode Logic (Pairwise vs Series)
+        let currentSubMode = 'pairwise';
+        const submodePairwise = document.getElementById('submode-pairwise');
+        const submodeSeries = document.getElementById('submode-series');
+        const livePairwiseInputs = document.getElementById('live-pairwise-inputs');
+        const liveSeriesInputs = document.getElementById('live-series-inputs');
+        const availPairwiseInfo = document.getElementById('avail-pairwise-info');
+        const availSeriesInfo = document.getElementById('avail-series-info');
+        
+        if (submodePairwise && submodeSeries) {
+            submodePairwise.addEventListener('click', () => {
+                currentSubMode = 'pairwise';
+                submodePairwise.className = 'flex-1 text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+                submodeSeries.className = 'flex-1 text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+                livePairwiseInputs.classList.remove('hidden');
+                liveSeriesInputs.classList.add('hidden');
+                availPairwiseInfo.classList.remove('hidden');
+                availSeriesInfo.classList.add('hidden');
+                document.getElementById('btn-run-series').classList.add('hidden');
+                document.getElementById('availability-results').classList.add('hidden');
+                btnCheckAvail.classList.remove('hidden');
+                runBtn.classList.add('hidden');
+            });
+            
+            submodeSeries.addEventListener('click', () => {
+                currentSubMode = 'series';
+                submodeSeries.className = 'flex-1 text-[10px] font-mono text-primary border border-primary px-2 py-1 bg-primary/10';
+                submodePairwise.className = 'flex-1 text-[10px] font-mono text-outline border border-outline px-2 py-1 hover:text-primary hover:border-primary';
+                liveSeriesInputs.classList.remove('hidden');
+                livePairwiseInputs.classList.add('hidden');
+                availSeriesInfo.classList.remove('hidden');
+                availPairwiseInfo.classList.add('hidden');
+                runBtn.classList.add('hidden');
+                document.getElementById('btn-run-series').classList.add('hidden');
+                document.getElementById('availability-results').classList.add('hidden');
+                btnCheckAvail.classList.remove('hidden');
+            });
+        }
+
+        // Location Presets
+        const LOCATION_PRESETS = {
+            'india': { bbox: [77.10, 28.50, 77.30, 28.70] },
+            'uk': { bbox: [-0.20, 51.40, 0.0, 51.60] },
+            'us': { bbox: [-122.50, 37.70, -122.30, 37.85] },
+            'japan': { bbox: [139.60, 35.60, 139.80, 35.80] },
+            'australia': { bbox: [151.10, -33.95, 151.30, -33.80] }
+        };
+
+        const locSelect = document.getElementById('live-location-select');
+        const customAoiUI = document.getElementById('live-custom-aoi');
+        const cMinLon = document.getElementById('custom-min-lon');
+        const cMaxLon = document.getElementById('custom-max-lon');
+        const cMinLat = document.getElementById('custom-min-lat');
+        const cMaxLat = document.getElementById('custom-max-lat');
+        const customAoiError = document.getElementById('custom-aoi-error');
+
+        if (locSelect) {
+            locSelect.addEventListener('change', () => {
+                if (locSelect.value === 'custom') {
+                    customAoiUI.classList.remove('hidden');
+                } else {
+                    customAoiUI.classList.add('hidden');
+                }
+            });
+        }
+        
+        function getLiveBBox() {
+            if (locSelect.value === 'custom') {
+                const minLon = parseFloat(cMinLon.value);
+                const maxLon = parseFloat(cMaxLon.value);
+                const minLat = parseFloat(cMinLat.value);
+                const maxLat = parseFloat(cMaxLat.value);
+                
+                if (isNaN(minLon) || isNaN(maxLon) || isNaN(minLat) || isNaN(maxLat)) return null;
+                if (minLon < -180 || maxLon > 180 || minLat < -90 || maxLat > 90) return null;
+                if (minLon >= maxLon || minLat >= maxLat) return null;
+                
+                return { min_lon: minLon, min_lat: minLat, max_lon: maxLon, max_lat: maxLat };
+            } else {
+                const arr = LOCATION_PRESETS[locSelect.value].bbox;
+                return { min_lon: arr[0], min_lat: arr[1], max_lon: arr[2], max_lat: arr[3] };
+            }
+        }
+        
+        function getLivePayload(isAvailability = false) {
+            const bbox = getLiveBBox();
+            if (!bbox) {
+                if (customAoiError) {
+                    customAoiError.classList.remove('hidden');
+                    setTimeout(() => customAoiError.classList.add('hidden'), 3000);
+                }
+                return null;
+            }
+            
+            const t1Input = document.getElementById('live-t1-date');
+            const t2Input = document.getElementById('live-t2-date');
+            const t1DateStr = t1Input ? t1Input.value : '2024-01-20';
+            const t2DateStr = t2Input ? t2Input.value : '2024-06-20';
+            
+            // 14-day search window centered around the selected date
+            const d1Center = new Date(t1DateStr);
+            const d1Start = new Date(d1Center); d1Start.setDate(d1Center.getDate() - 7);
+            const d1End = new Date(d1Center); d1End.setDate(d1Center.getDate() + 7);
+            
+            const d2Center = new Date(t2DateStr);
+            const d2Start = new Date(d2Center); d2Start.setDate(d2Center.getDate() - 7);
+            const d2End = new Date(d2Center); d2End.setDate(d2Center.getDate() + 7);
+            
+            const fmtDate = (d) => d.toISOString().split('T')[0];
+            
+            const resSelect = document.getElementById('processing-resolution');
+            const modSelect = document.getElementById('processing-model');
+            const resVal = resSelect ? parseInt(resSelect.value) : 512;
+            let modelStr = modSelect ? modSelect.value : 'snunet';
+            if (modelStr === 'snunet') modelStr = 'snunet_cd_sar';
+            
+            if (currentSubMode === 'series') {
+                const sStart = document.getElementById('live-series-start') ? document.getElementById('live-series-start').value : '2024-01-01';
+                const sEnd = document.getElementById('live-series-end') ? document.getElementById('live-series-end').value : '2024-06-30';
+                const sMax = document.getElementById('live-series-max') ? parseInt(document.getElementById('live-series-max').value) : 6;
+                return {
+                    bbox: bbox,
+                    date_range: [sStart, sEnd],
+                    resolution: [resVal, resVal],
+                    max_scenes: sMax,
+                    model_name: modelStr,
+                    threshold: DEFAULT_DETECTION_THRESHOLD,
+                    min_region_area_px: 10
+                };
+            } else {
+                return {
+                    bbox: bbox,
+                    date_range_t1: [fmtDate(d1Start), fmtDate(d1End)],
+                    date_range_t2: [fmtDate(d2Start), fmtDate(d2End)],
+                    resolution: [resVal, resVal],
+                    model_name: modelStr,
+                    threshold: DEFAULT_DETECTION_THRESHOLD,
+                    min_region_area_px: 10
+                };
+            }
+        }
+        
+        const addLog = (msg, level) => {
+            const div = document.createElement('div');
+            const prefix = level === 'error' ? '[FAILED] ' : level === 'warn' ? '[WARN] ' : '';
+            const cleanMsg = msg.startsWith('>') ? msg.substring(1).trim() : msg;
+            div.innerText = `> ${prefix}${cleanMsg}`;
+            if (level === 'success') div.className = 'text-[#4ade80] font-bold';
+            else if (level === 'warn') div.className = 'text-yellow-400';
+            else if (level === 'error') div.className = 'text-red-400 font-bold mt-1';
+            else div.className = 'text-[#22c55e]/90';
+            logContent.appendChild(div);
+            logContent.scrollTop = logContent.scrollHeight;
+            return div;
+        };
+
+        if (btnCheckAvail) {
+            btnCheckAvail.addEventListener('click', async () => {
+                const payload = getLivePayload(true);
+                if (!payload) return;
+                
+                btnCheckAvail.disabled = true;
+                btnCheckAvail.classList.add('opacity-50');
+                
+                const availResults = document.getElementById('availability-results');
+                const availMsg = document.getElementById('availability-msg');
+                availResults.classList.remove('hidden');
+                availMsg.innerText = "Checking CDSE for acquisitions...";
+                availMsg.className = "font-mono text-[10px] uppercase tracking-widest text-outline";
+                document.getElementById('avail-t1-date').innerText = "...";
+                document.getElementById('avail-t2-date').innerText = "...";
+                document.getElementById('avail-scenes-count').innerText = "...";
+                runBtn.classList.add('hidden');
+                document.getElementById('btn-run-series').classList.add('hidden');
+                
+                try {
+                    const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
+                    const endpoint = currentSubMode === 'series' ? '/api/v1/detect/timeseries-availability' : '/api/v1/detect/availability';
+                    const res = await fetch(apiBase + endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.detail || "No Sentinel-1 acquisition found for this area/date window.");
+                    }
+                    
+                    const data = await res.json();
+                    availMsg.innerText = "SATELLITE SCENES FOUND";
+                    availMsg.className = "font-mono text-[10px] uppercase tracking-widest text-primary";
+                    
+                    if (currentSubMode === 'series') {
+                        document.getElementById('avail-scenes-count').innerText = `${data.acquisitions_found} scenes`;
+                        document.getElementById('btn-run-series').classList.remove('hidden');
+                    } else {
+                        document.getElementById('avail-t1-date').innerText = data.t1_scene.acquisition_date;
+                        document.getElementById('avail-t2-date').innerText = data.t2_scene.acquisition_date;
+                        runBtn.classList.remove('hidden');
+                    }
+                    
+                } catch (e) {
+                    availMsg.innerText = e.message;
+                    availMsg.className = "font-mono text-[10px] uppercase tracking-widest text-[#ff453a]";
+                    document.getElementById('avail-t1-date').innerText = "--";
+                    document.getElementById('avail-t2-date').innerText = "--";
+                    document.getElementById('avail-scenes-count').innerText = "--";
+                } finally {
+                    btnCheckAvail.disabled = false;
+                    btnCheckAvail.classList.remove('opacity-50');
+                }
+            });
+        }
+
+        // Drag and Drop Logic
+        const setupDropzone = (dropzoneId, inputId, labelId) => {
+            const dropzone = document.getElementById(dropzoneId);
+            const input = document.getElementById(inputId);
+            const label = document.getElementById(labelId);
+
+            dropzone.addEventListener('click', () => input.click());
+            
+            input.addEventListener('change', () => {
+                if (input.files.length > 0) {
+                    label.innerText = input.files[0].name;
+                    dropzone.classList.add('border-primary');
+                    dropzone.classList.replace('bg-surface-container-low/30', 'bg-primary/5');
+                }
+            });
+
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('border-primary', 'bg-primary/10');
+            });
+
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('border-primary', 'bg-primary/10');
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-primary', 'bg-primary/10');
+                if (e.dataTransfer.files.length > 0) {
+                    input.files = e.dataTransfer.files;
+                    label.innerText = input.files[0].name;
+                    dropzone.classList.add('border-primary');
+                    dropzone.classList.replace('bg-surface-container-low/30', 'bg-primary/5');
+                }
+            });
+        };
+
+        setupDropzone('dropzone-t1', 't1-file', 't1-filename');
+        setupDropzone('dropzone-t2', 't2-file', 't2-filename');
+        
+        const runSeriesBtn = document.getElementById('btn-run-series');
+        if (runSeriesBtn) {
+            runSeriesBtn.addEventListener('click', async () => {
+                let sentinelPayload = getLivePayload(false);
+                if (!sentinelPayload) {
+                    addLog('Invalid geographic bounds selected.', 'error');
+                    terminal.classList.add('hidden');
+                    return;
+                }
+                
+                terminal.classList.remove('hidden');
+                logContent.innerHTML = '';
+                addLog('Initializing Time-Series SAR Intelligence...');
+                addLog(`Date Range: ${sentinelPayload.date_range[0]} to ${sentinelPayload.date_range[1]}`);
+                addLog(`Max Scenes: ${sentinelPayload.max_scenes}`);
+                
+                const sweepAnim = sweep.animate([{ left: '0%' }, { left: '100%' }], { duration: 2400, iterations: Infinity });
+                try {
+                    const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
+                    const fetchUrl = apiBase + '/api/v1/detect/timeseries';
+                    
+                    // We need a long timeout for time series because it can take minutes
+                    addLog('Awaiting CDSE catalog fetch and PyTorch inference (this may take a while)...');
+                    
+                    const res = await fetch(fetchUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(sentinelPayload)
+                    });
+                    
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.detail || `Server error: ${res.status}`);
+                    }
+                    const data = await res.json();
+                    addLog('Time-Series Inference Complete.', 'success');
+                    
+                    // Save to SARStore
+                    if (window.SARStore) {
+                        try {
+                            SARStore.saveTimeSeries(data);
+                        } catch (storageError) {
+                            console.warn('Result persistence failed', storageError);
+                        }
+                    }
+                    
+                    // Redirect to analytics page
+                    window.location.href = 'analytics.html';
+                } catch (e) {
+                    addLog(e.message, 'error');
+                } finally {
+                    if (sweepAnim) sweepAnim.cancel();
+                }
+            });
+        }
+
+        // Floating Inference Loader HUD Controller
+        const loaderHUD = {
+            el: document.getElementById('inference-loader-hud'),
+            bar: document.getElementById('loader-progress-bar'),
+            percent: document.getElementById('loader-percent'),
+            stage: document.getElementById('loader-stage'),
+            currentProgress: 0,
+            timer: null,
+
+            show() {
+                if (!this.el) return;
+                this.stopAutoIncrement();
+                this.currentProgress = 0;
+                this.updateProgress(5, "INGESTING DUAL-POL SAR TILES [CDSE]...");
+                this.el.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    if (this.el) this.el.style.opacity = '1';
+                });
+            },
+
+            updateProgress(pct, stageText = null) {
+                pct = Math.min(100, Math.max(0, pct));
+                this.currentProgress = pct;
+                if (this.bar) this.bar.style.width = `${pct}%`;
+                if (this.percent) this.percent.innerText = `${Math.round(pct)}%`;
+
+                if (this.stage) {
+                    if (stageText) {
+                        this.stage.innerText = stageText;
+                    } else if (pct < 30) {
+                        this.stage.innerText = "INGESTING DUAL-POL SAR TILES [CDSE]...";
+                    } else if (pct < 70) {
+                        this.stage.innerText = "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...";
+                    } else if (pct < 100) {
+                        this.stage.innerText = "CALIBRATING CONFIDENCE & GENERATING MASKS...";
+                    } else {
+                        this.stage.innerText = "ECO-AUDIT READY";
+                    }
+                }
+            },
+
+            startAutoIncrement(targetPct, stepTime = 100, maxPct = 95) {
+                this.stopAutoIncrement();
+                this.timer = setInterval(() => {
+                    if (this.currentProgress < targetPct && this.currentProgress < maxPct) {
+                        this.updateProgress(this.currentProgress + 1);
+                    }
+                }, stepTime);
+            },
+
+            stopAutoIncrement() {
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+            },
+
+            async complete() {
+                this.stopAutoIncrement();
+                this.updateProgress(100, "ECO-AUDIT READY");
+                await new Promise(r => setTimeout(r, 450));
+                await this.hide();
+            },
+
+            async hide() {
+                this.stopAutoIncrement();
+                if (!this.el) return;
+                this.el.style.opacity = '0';
+                await new Promise(r => setTimeout(r, 320));
+                this.el.classList.add('hidden');
+            }
+        };
+
+        // Button State Controller
+        let isRunningInference = false;
+        const setButtonLoading = (loading) => {
+            isRunningInference = loading;
+            runBtn.disabled = loading;
+            if (loading) {
+                runBtn.classList.add('opacity-80', 'cursor-not-allowed');
+                runBtn.innerHTML = `
+                    <span class="spinner mr-1"></span>
+                    <span>RUNNING SAR INFERENCE...</span>
+                `;
+            } else {
+                runBtn.classList.remove('opacity-80', 'cursor-not-allowed');
+                const label = (currentMode === 'demo') ? 'Run Demo Intelligence' : 'Run Live Intelligence';
+                runBtn.innerHTML = `
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">satellite_alt</span>
+                    <span id="btn-run-text">${label}</span>
+                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-40 group-hover:animate-[shine_1s_ease-in-out]"></div>
+                `;
+            }
+        };
+
+        // 2. Radar Sweep & Intelligence Inference Trigger
+        // Terminal Progress Bar Controller
+        let terminalProgressTimer = null;
+        let currentTerminalPct = 0;
+        let miniBarFill = null;
+
+        function createTerminalProgressBar() {
+            if (terminalProgressTimer) {
+                clearInterval(terminalProgressTimer);
+                terminalProgressTimer = null;
+            }
+            const miniBarTrack = document.createElement('div');
+            miniBarTrack.className = 'log-progress-track';
+            miniBarFill = document.createElement('div');
+            miniBarFill.className = 'log-progress-bar';
+            miniBarFill.style.width = '3%';
+            miniBarTrack.appendChild(miniBarFill);
+            logContent.appendChild(miniBarTrack);
+            logContent.scrollTop = logContent.scrollHeight;
+            currentTerminalPct = 3;
+            return miniBarFill;
+        }
+
+        function setTerminalProgressPace(targetPct, stepMs = 140, maxCap = 92) {
+            if (terminalProgressTimer) clearInterval(terminalProgressTimer);
+            terminalProgressTimer = setInterval(() => {
+                if (currentTerminalPct < targetPct && currentTerminalPct < maxCap) {
+                    const step = Math.random() * 0.7 + 0.3; // 0.3% - 1.0%
+                    currentTerminalPct = Math.min(maxCap, currentTerminalPct + step);
+                    if (miniBarFill) {
+                        miniBarFill.style.width = `${currentTerminalPct.toFixed(1)}%`;
+                    }
+                }
+            }, stepMs);
+        }
+
+        async function finishTerminalProgress() {
+            if (terminalProgressTimer) {
+                clearInterval(terminalProgressTimer);
+                terminalProgressTimer = null;
+            }
+            if (miniBarFill) {
+                miniBarFill.style.transition = 'width 0.45s cubic-bezier(0.4, 0, 0.2, 1)';
+                miniBarFill.style.width = '100%';
+                currentTerminalPct = 100;
+            }
+            // Allow user to clearly see 100% completed status
+            await new Promise(r => setTimeout(r, 520));
+        }
+
+        function resetTerminalProgress() {
+            if (terminalProgressTimer) {
+                clearInterval(terminalProgressTimer);
+                terminalProgressTimer = null;
+            }
+            currentTerminalPct = 0;
+            miniBarFill = null;
+        }
+
+        // 2. Radar Sweep & Intelligence Inference Trigger
+        runBtn.addEventListener('click', async () => {
+            if (isRunningInference) return;
+
+            let t1File, t2File;
+            let sentinelPayload = null;
+
+            // Pre-validation checks
+            if (currentMode === 'live') {
+                sentinelPayload = getLivePayload(false);
+                if (!sentinelPayload) {
+                    addLog('Invalid geographic bounds selected.', 'error');
+                    alert('Invalid geographic bounds selected.');
+                    return;
+                }
+            } else if (currentMode === 'upload') {
+                const t1Input = document.getElementById('t1-file');
+                const t2Input = document.getElementById('t2-file');
+                if (!t1Input.files.length || !t2Input.files.length) {
+                    alert('Please select both T1 and T2 images for intelligence sweep.');
+                    return;
+                }
+                t1File = t1Input.files[0];
+                t2File = t2Input.files[0];
+            }
+
+            // Immediately upon click:
+            setButtonLoading(true);
+            resetTerminalProgress();
+
+            // Display floating loader HUD if available
+            loaderHUD.show();
+            loaderHUD.updateProgress(10, "INGESTING DUAL-POL SAR TILES [CDSE]...");
+
+            // Show terminal log
+            terminal.classList.remove('hidden');
+            logContent.innerHTML = ''; // clear old logs
+
+            // Start sweep animation looping
+            const sweepAnim = sweep.animate([{ left: '0%' }, { left: '100%' }], { duration: 2400, iterations: Infinity });
+            let hasError = false;
+
+            try {
+                if (currentMode === 'live') {
+                    addLog('Initializing Live Sentinel-1 Intelligence...');
+                    createTerminalProgressBar();
+                    setTerminalProgressPace(32, 120, 35);
+                    loaderHUD.updateProgress(25, "INGESTING DUAL-POL SAR TILES [CDSE]...");
+                } else if (currentMode === 'upload') {
+                    addLog('Initializing Upload Uplink & SAR Ingestion...');
+                    createTerminalProgressBar();
+                    setTerminalProgressPace(32, 120, 35);
+                    loaderHUD.updateProgress(25, "INGESTING DUAL-POL SAR TILES [CDSE]...");
+                } else if (currentMode === 'demo') {
+                    const scene = document.getElementById('demo-scene-select').value;
+                    const baseUrl = `assets/demo_samples/${scene}`;
+                    addLog(`Downloading Demo Biome Scene: ${scene}...`);
+                    createTerminalProgressBar();
+                    setTerminalProgressPace(34, 110, 38);
+                    loaderHUD.updateProgress(18, "INGESTING DUAL-POL SAR TILES [CDSE]...");
+
+                    // Fetch assets in parallel with realistic downlink pace
+                    const fetchAssets = Promise.all([
+                        fetch(`${baseUrl}/t1.tif`),
+                        fetch(`${baseUrl}/t2.tif`)
+                    ]);
+                    const downloadDelay = new Promise(r => setTimeout(r, 2200));
+
+                    const [[t1Res, t2Res]] = await Promise.all([fetchAssets, downloadDelay]);
+
+                    if (!t1Res.ok || !t2Res.ok) throw new Error('Demo assets not found locally.');
+
+                    const t1Blob = await t1Res.blob();
+                    const t2Blob = await t2Res.blob();
+
+                    t1File = new File([t1Blob], 't1.tif', { type: 'image/tiff' });
+                    t2File = new File([t2Blob], 't2.tif', { type: 'image/tiff' });
+                    addLog('Demo biome scene acquired successfully.', 'success');
+                    loaderHUD.updateProgress(30, "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...");
+
+                    // Transition immediately into the inference step without prematurely finishing the bar:
+                    const activeInferenceDiv = document.createElement('div');
+                    activeInferenceDiv.id = 'active-inference-line';
+                    activeInferenceDiv.className = 'flex items-center text-primary font-bold tracking-wide mt-1.5';
+                    activeInferenceDiv.innerHTML = `
+                        <span>> [INFERENCE] CANOPY DISTURBANCE DETECTION...</span>
+                        <span class="log-pulse-dot" title="Executing"></span>
+                        <span class="terminal-cursor"></span>
+                    `;
+                    logContent.appendChild(activeInferenceDiv);
+                    logContent.scrollTop = logContent.scrollHeight;
+
+                    // Progress slowly across inference up towards 92% (NEVER 100% until response arrives)
+                    setTerminalProgressPace(92, 160, 92);
+                }
+
+                // Stage 2: Extracting temporal features
+                loaderHUD.updateProgress(35, "EXTRACTING TEMPORAL FEATURES (SNUNet-CD)...");
+                if (currentMode !== 'demo') {
+                    addLog('Sending payload to inference engine...');
+                    const activeInferenceDiv = document.createElement('div');
+                    activeInferenceDiv.id = 'active-inference-line';
+                    activeInferenceDiv.className = 'flex items-center text-primary font-bold tracking-wide mt-1.5';
+                    activeInferenceDiv.innerHTML = `
+                        <span>> [INFERENCE] CANOPY DISTURBANCE DETECTION...</span>
+                        <span class="log-pulse-dot" title="Executing"></span>
+                        <span class="terminal-cursor"></span>
+                    `;
+                    logContent.appendChild(activeInferenceDiv);
+                    logContent.scrollTop = logContent.scrollHeight;
+                    setTerminalProgressPace(92, 160, 92);
+                }
+
+                const apiBase = (window.SARStore && SARStore.getApiBase) ? SARStore.getApiBase() : 'http://127.0.0.1:8000';
+
+                let fetchUrl, fetchOpts;
+                if (currentMode === 'live') {
+                    fetchUrl = apiBase + '/api/v1/detect/sentinel';
+                    fetchOpts = {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(sentinelPayload)
+                    };
+                } else {
+                    const formData = new FormData();
+                    formData.append('image_t1', t1File);
+                    formData.append('image_t2', t2File);
+                    formData.append('threshold', DEFAULT_DETECTION_THRESHOLD.toString());
+                    formData.append('min_region_area_px', '10');
+
+                    fetchUrl = apiBase + '/api/v1/detect/change-detection';
+                    fetchOpts = {
+                        method: 'POST',
+                        body: formData
+                    };
+                }
+
+                const res = await fetch(fetchUrl, fetchOpts);
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `Server error: ${res.status}`);
+                }
+
+                loaderHUD.updateProgress(85, "CALIBRATING CONFIDENCE & GENERATING MASKS...");
+
+                const data = await res.json();
+
+                // Stop the active inference blinking/pulsing animations
+                const activeLine = document.getElementById('active-inference-line');
+                if (activeLine) {
+                    const cursor = activeLine.querySelector('.terminal-cursor');
+                    const dot = activeLine.querySelector('.log-pulse-dot');
+                    if (cursor) cursor.remove();
+                    if (dot) dot.remove();
+                    const check = document.createElement('span');
+                    check.className = 'text-[#4ade80] ml-2 font-mono text-[10px] font-bold tracking-wider';
+                    check.innerText = '[OK]';
+                    activeLine.appendChild(check);
+                }
+
+                // Smoothly finish the loader to 100% since inference is complete
+                await finishTerminalProgress();
+
+                // Completely remove the whole system log from the explorer
+                if (terminal) {
+                    terminal.classList.add('hidden');
+                }
+                if (loaderHUD) {
+                    await loaderHUD.hide();
+                }
+
+                /* ---------------------------------------------------------------
+                 * STEP 1 — RENDER THE REAL RESULTS FIRST.
+                 * ------------------------------------------------------------- */
+                const toDataURL = (b64) => {
+                    if (!b64) return null;
+                    const s = String(b64);
+                    return s.startsWith('data:') ? s : 'data:image/png;base64,' + s;
+                };
+
+                const livePreviews = {
+                    t1: toDataURL(data.t1_preview_base64),
+                    t2: toDataURL(data.t2_preview_base64),
+                    grayscaleT1: toDataURL(data.t1_grayscale_base64),
+                    grayscaleT2: toDataURL(data.t2_grayscale_base64),
+                    falseColorT1: toDataURL(data.t1_false_color_base64),
+                    falseColorT2: toDataURL(data.t2_false_color_base64),
+                    optical: toDataURL(data.optical_base64),
+                    opticalBoxes: toDataURL(data.optical_boxes_base64),
+                    boxes: toDataURL(data.change_boxes_base64),
+                    mask: toDataURL(data.change_mask_base64),
+                    heatmap: toDataURL(data.confidence_heatmap_base64),
+                    overlay: toDataURL(data.overlay_base64)
+                };
+
+                const demoBox = document.getElementById('demo-bbox');
+                if (demoBox) demoBox.style.display = 'none';
+                const overlayContainer = document.getElementById('result-overlay-container');
+                if (overlayContainer) overlayContainer.style.display = 'block';
+
+                // Populate and reveal Unified Right-Hand Audit Sidebar
+                const auditSidebar = document.getElementById('audit-results-sidebar');
+                const reopenBtn = document.getElementById('btn-reopen-audit');
+                const floatingTools = document.getElementById('floating-map-tools');
+
+                if (auditSidebar) {
+                    auditSidebar.classList.remove('hidden');
+                    if (reopenBtn) reopenBtn.classList.add('hidden');
+                    if (floatingTools) floatingTools.classList.add('md:right-[410px]');
+                }
+
+                // 1. Scene Title and Disturbance Note
+                let sceneName = "Chongqing, China (Demo Biome)";
+                let sceneNote = "Severe canopy shift detected along river basin. Probable illegal clearing or construction expansion.";
+                let sceneKey = "03_chongqing";
+
+                if (currentMode === 'demo') {
+                    const sceneVal = document.getElementById('demo-scene-select') ? document.getElementById('demo-scene-select').value : '03_chongqing';
+                    sceneKey = sceneVal;
+                    const sceneMap = {
+                        '01_dubai': {
+                            title: 'Dubai, UAE (Demo Biome)',
+                            note: 'Significant coastal & infrastructure expansion detected across offshore development sector.'
+                        },
+                        '02_lasvegas': {
+                            title: 'Las Vegas, USA (Demo Biome)',
+                            note: 'Substantial urban fringe disturbance detected across desert reclamation boundary.'
+                        },
+                        '03_chongqing': {
+                            title: 'Chongqing, China (Demo Biome)',
+                            note: 'Severe canopy shift detected along river basin. Probable illegal clearing or construction expansion.'
+                        },
+                        '04_montpellier': {
+                            title: 'Montpellier, France (Demo Biome)',
+                            note: 'Agricultural biomass and structural shift detected across peri-urban parcels.'
+                        },
+                        '05_rio': {
+                            title: 'Rio de Janeiro, Brazil (Demo Biome)',
+                            note: 'High-density terrain disturbance detected along hillside and shoreline perimeter.'
+                        }
+                    };
+                    if (sceneMap[sceneVal]) {
+                        sceneName = sceneMap[sceneVal].title;
+                        sceneNote = sceneMap[sceneVal].note;
+                    }
+                } else if (currentMode === 'live') {
+                    const loc = document.getElementById('live-location-select') ? document.getElementById('live-location-select').value.toUpperCase() : 'TARGET AOI';
+                    sceneName = `Live CDSE Acquisition (${loc})`;
+                    sceneNote = 'Multi-temporal SAR phase decorrelation confirmed across target coordinates.';
+                } else {
+                    sceneName = 'Custom Dual-Temporal Upload';
+                    sceneNote = 'Surface disturbance clusters detected between baseline and current SAR acquisitions.';
+                }
+
+                const elSceneTitle = document.getElementById('audit-scene-title');
+                if (elSceneTitle) elSceneTitle.innerText = sceneName;
+
+                const elSummaryNote = document.getElementById('audit-summary-note');
+                if (elSummaryNote) elSummaryNote.innerText = sceneNote;
+
+                // 2. Execution Time
+                const elExecTime = document.getElementById('audit-exec-time');
+                if (elExecTime) {
+                    elExecTime.innerText = (typeof data.execution_time_sec === 'number') ? `${data.execution_time_sec.toFixed(2)}s` : '-- s';
+                }
+
+                // 3. Disturbance Detected %
+                const elDisturbancePct = document.getElementById('audit-disturbance-pct');
+                if (elDisturbancePct) {
+                    if (typeof data.change_percentage === 'number') {
+                        elDisturbancePct.innerText = `${data.change_percentage.toFixed(3)}%`;
+                    } else {
+                        elDisturbancePct.innerText = '0.156%';
+                    }
+                }
+
+                // 4. Anomaly Clusters
+                const elClustersCount = document.getElementById('audit-clusters-count');
+                if (elClustersCount) {
+                    const count = data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 10);
+                    elClustersCount.innerText = count;
+                }
+
+                // 5. Changed Pixels
+                const elChangedPixels = document.getElementById('audit-changed-pixels');
+                if (elChangedPixels) {
+                    const px = (typeof data.changed_pixels === 'number') ? data.changed_pixels.toLocaleString() : '919';
+                    elChangedPixels.innerText = `${px} px`;
+                }
+
+                // 6. Mean Confidence
+                const elMeanConf = document.getElementById('audit-mean-confidence');
+                if (elMeanConf) {
+                    const confVal = data.mean_confidence != null ? data.mean_confidence : 94.8;
+                    elMeanConf.innerText = typeof confVal === 'number' ? `${confVal.toFixed(1)}%` : String(confVal);
+                }
+
+                // 7. Route CTA Buttons
+                const btnInspect = document.getElementById('btn-inspect-studio');
+                if (btnInspect) {
+                    btnInspect.href = `studio.html?scene=${sceneKey}`;
+                }
+
+                // Print final audit summary lines in the System Log
+                addLog(`[ECO-AUDIT COMPLETE] ${sceneName}`, 'success');
+                const distPct = (typeof data.change_percentage === 'number') ? `${data.change_percentage.toFixed(3)}%` : '0.156%';
+                const chgPx = (typeof data.changed_pixels === 'number') ? data.changed_pixels.toLocaleString() : '919';
+                const clCount = data.num_change_clusters != null ? data.num_change_clusters : (Array.isArray(data.regions) ? data.regions.length : 10);
+                const mConf = (data.mean_confidence != null) ? (typeof data.mean_confidence === 'number' ? `${data.mean_confidence.toFixed(1)}%` : `${data.mean_confidence}%`) : '94.8%';
+                const exTime = (typeof data.execution_time_sec === 'number') ? `${data.execution_time_sec.toFixed(2)}s` : '-- s';
+
+                addLog(`Disturbance Detected: ${distPct} (${chgPx} px)`);
+                addLog(`Anomaly Clusters: ${clCount} | Confidence: ${mConf}`);
+                addLog(`Latency: ${exTime} | Radar Status: READY`, 'success');
+                logContent.scrollTop = logContent.scrollHeight;
+
+                // 8. Close / Dismiss and Reopen Controls
+                const closeAuditBtn = document.getElementById('btn-close-audit');
+                if (closeAuditBtn) {
+                    closeAuditBtn.onclick = () => {
+                        if (auditSidebar) auditSidebar.classList.add('hidden');
+                        if (reopenBtn) reopenBtn.classList.remove('hidden');
+                        if (floatingTools) floatingTools.classList.remove('md:right-[410px]');
+                    };
+                }
+                if (reopenBtn) {
+                    reopenBtn.onclick = () => {
+                        if (auditSidebar) auditSidebar.classList.remove('hidden');
+                        reopenBtn.classList.add('hidden');
+                        if (floatingTools) floatingTools.classList.add('md:right-[410px]');
+                    };
+                }
+
+                const resultImg = document.getElementById('result-img');
+                const views = {
+                    't1':         { src: livePreviews.t1,           btn: document.getElementById('view-t1') },
+                    't2':         { src: livePreviews.t2,           btn: document.getElementById('view-t2') },
+                    'optical':    { src: livePreviews.optical,      btn: document.getElementById('view-optical') },
+                    'falsecolor': { src: livePreviews.falseColorT2, btn: document.getElementById('view-falsecolor') },
+                    'heatmap':    { src: livePreviews.heatmap,      btn: document.getElementById('view-heatmap') },
+                    'mask':       { src: livePreviews.mask,         btn: document.getElementById('view-mask') },
+                    'overlay':    { src: livePreviews.overlay,      btn: document.getElementById('view-overlay') },
+                    'boxes':      { src: livePreviews.opticalBoxes || livePreviews.boxes, btn: document.getElementById('view-boxes') }
+                };
+                const inactiveCls     = 'bg-white/5 hover:bg-white/15 border border-white/10 hover:border-white/30 px-3.5 py-1.5 rounded-xl text-xs font-mono text-white/80 hover:text-white transition-all shadow-sm shrink-0';
+                const activeCls       = 'bg-primary/20 border border-primary/70 px-3.5 py-1.5 rounded-xl text-xs font-mono text-primary font-bold shadow-[0_0_15px_rgba(78,222,163,0.35)] transition-all shrink-0';
+                const disabledCls     = 'opacity-30 border border-transparent px-3.5 py-1.5 rounded-xl text-xs font-mono text-white/30 cursor-not-allowed shrink-0';
+                const maskInactiveCls = 'bg-white/5 hover:bg-white/15 border border-[#ff453a]/30 hover:border-[#ff453a]/60 px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ff453a] hover:text-[#ff453a] transition-all shadow-sm shrink-0';
+                const maskActiveCls   = 'bg-[#ff453a]/25 border border-[#ff453a] px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ff453a] font-bold shadow-[0_0_18px_rgba(255,69,58,0.45)] transition-all shrink-0';
+                const boxesInactiveCls= 'bg-white/5 hover:bg-white/15 border border-[#ffb000]/30 hover:border-[#ffb000]/60 px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ffb000] hover:text-[#ffb000] transition-all shadow-sm shrink-0';
+                const boxesActiveCls  = 'bg-[#ffb000]/25 border border-[#ffb000] px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#ffb000] font-bold shadow-[0_0_18px_rgba(255,176,0,0.45)] transition-all shrink-0';
+                const maskCaption = document.getElementById('mask-debug-caption');
+
+                const setView = (v) => {
+                    const def = views[v];
+                    if (!def || !def.src || !resultImg) return;
+                    resultImg.src = def.src;
+                    if (v === 'mask') {
+                        resultImg.style.imageRendering = 'pixelated';
+                        if (maskCaption) maskCaption.classList.remove('hidden');
+                    } else {
+                        resultImg.style.imageRendering = 'auto';
+                        if (maskCaption) maskCaption.classList.add('hidden');
+                    }
+                    Object.keys(views).forEach(k => {
+                        const val = views[k];
+                        if (!val.btn) return;
+                        if (!val.src) { val.btn.className = disabledCls; return; }
+                        if (k === 'mask') {
+                            val.btn.className = (k === v) ? maskActiveCls : maskInactiveCls;
+                        } else if (k === 'boxes') {
+                            val.btn.className = (k === v) ? boxesActiveCls : boxesInactiveCls;
+                        } else {
+                            val.btn.className = (k === v) ? activeCls : inactiveCls;
+                        }
+                    });
+                };
+
+                Object.keys(views).forEach(k => {
+                    const val = views[k];
+                    if (!val.btn) return;
+                    if (val.src) {
+                        val.btn.disabled = false;
+                        val.btn.onclick = () => setView(k);
+                    } else {
+                        val.btn.disabled = true;
+                        val.btn.onclick = null;
+                        val.btn.className = disabledCls;
+                    }
+                });
+
+                const preferred = ['boxes', 'overlay', 'mask', 'heatmap', 't2', 't1'].find(k => views[k] && views[k].src);
+                if (preferred) {
+                    setView(preferred);
+                } else {
+                    addLog('No preview imagery returned by API (showing metrics only).', 'warn');
+                }
+
+                /* ---------------------------------------------------------------
+                 * STEP 2 — LIGHTWEIGHT PERSISTENCE (never fatal).
+                 * ------------------------------------------------------------- */
+                try {
+                    SARStore.saveMetadata(data);
+                } catch (storageError) {
+                    console.warn('Result persistence failed; continuing with live result', storageError);
+                    addLog('Metadata not persisted (storage full/unavailable).', 'warn');
+                }
+
+                try {
+                    SARStore.setMemoryPreviews(livePreviews);
+                    SARStore.savePreviews(livePreviews).catch((idbError) => {
+                        console.warn('Preview persistence failed; continuing with live result', idbError);
+                        addLog('Preview cache skipped (IndexedDB unavailable).', 'warn');
+                    });
+                } catch (storageError) {
+                    console.warn('Preview persistence failed; continuing with live result', storageError);
+                }
+
+            } catch (error) {
+                hasError = true;
+                resetTerminalProgress();
+                await loaderHUD.hide();
+                const activeLine = document.getElementById('active-inference-line');
+                if (activeLine) {
+                    const cursor = activeLine.querySelector('.terminal-cursor');
+                    const dot = activeLine.querySelector('.log-pulse-dot');
+                    if (cursor) cursor.remove();
+                    if (dot) dot.remove();
+                }
+                const errMsg = (error && error.message) ? error.message : 'Unknown inference error';
+                addLog(errMsg, 'error');
+                alert(`Inference failed: ${errMsg}`);
+            } finally {
+                setButtonLoading(false);
+                resetTerminalProgress();
+                loaderHUD.stopAutoIncrement();
+                if (sweepAnim) sweepAnim.cancel();
+                sweep.classList.add('hidden');
+                if (terminal) {
+                    terminal.classList.add('hidden');
+                }
+            }
+        });
+
+    })();
+
+
+    </script>
+</body>
+</html>

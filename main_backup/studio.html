@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>GeoPulse Studio - Mission-Critical SAR Geospatial Triage</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                orbit: "#0B0F17",
+                slate: {
+                  850: "#131C2E",
+                  900: "#0F172A",
+                  950: "#070B11"
+                },
+                emerald: {
+                  400: "#34D399",
+                  500: "#10B981",
+                  600: "#059669"
+                },
+                amber: {
+                  400: "#FBBF24",
+                  500: "#F59E0B"
+                }
+              },
+              fontFamily: {
+                sans: ["Inter", "sans-serif"],
+                mono: ["JetBrains Mono", "monospace"]
+              }
+            }
+          }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background-color: #0B0F17;
+            color: #F9FAFB;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+            vertical-align: middle;
+        }
+
+        /* Subtle scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2D3748; border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #10B981; }
+
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; 
+        }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* Split Slider Divider Line */
+        .split-slider-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #34D399;
+            cursor: ew-resize;
+            z-index: 25;
+            touch-action: none;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            background-clip: padding-box;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+        }
+
+        .split-handle-grip {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 44px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid #334155;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+            transition: border-color 0.15s ease;
+        }
+        .split-slider-line:hover .split-handle-grip {
+            border-color: #34D399;
+        }
+
+        .colormap-overlay {
+            transition: opacity 0.2s ease, filter 0.2s ease;
+            will-change: opacity, filter;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col bg-[#0B0F17] text-slate-100 selection:bg-emerald-500/30 selection:text-emerald-300">
+
+    <!-- 1. Global Mission Bar (Exact Match with Design) -->
+    <header class="h-12 px-6 bg-[#0B0F17] border-b border-[#2D3748] relative flex items-center justify-between text-xs select-none z-50 shrink-0">
+        <!-- Brand Logo (Left) -->
+        <a href="overview.html" class="flex items-center gap-2 font-mono font-bold tracking-wider text-[#00DC82] hover:text-[#00c574] transition-colors shrink-0">
+            <span class="w-2 h-2 rounded-full bg-[#00DC82]"></span>
+            <span class="text-sm font-bold tracking-wider">GEOPULSE</span>
+        </a>
+
+        <!-- High-Contrast Navigation Links (Centered) -->
+        <nav class="hidden md:flex items-center gap-8 text-xs font-mono tracking-wider absolute left-1/2 -translate-x-1/2">
+            <a href="overview.html" class="text-slate-400 hover:text-slate-100 transition-colors py-1">OVERVIEW</a>
+            <a href="studio.html" class="text-[#00DC82] font-semibold border-b-2 border-[#00DC82] pb-0.5">STUDIO</a>
+            <a href="analytics.html" class="text-slate-400 hover:text-slate-100 transition-colors py-1">ANALYTICS</a>
+            <a href="explorer.html" class="text-slate-400 hover:text-slate-100 transition-colors py-1">EXPLORER</a>
+            <a href="intelligence.html" class="text-slate-400 hover:text-slate-100 transition-colors py-1">INTELLIGENCE</a>
+            <a href="telemetry.html" class="text-slate-400 hover:text-slate-100 transition-colors py-1">TELEMETRY</a>
+        </nav>
+
+        <!-- Right Side: CDSE Satellite Link Badge + Bell + Profile Icons -->
+        <div class="flex items-center gap-4 shrink-0">
+            <a href="telemetry.html" class="flex items-center gap-2 px-3 py-1 bg-[#00DC82]/5 border border-[#00DC82]/40 rounded text-[#00DC82] font-mono text-xs tracking-tight hover:bg-[#00DC82]/10 transition-colors" title="Copernicus Data Space Ecosystem Link Active">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#00DC82] animate-pulse"></span>
+                <span>CDSE SATELLITE LINK: ACTIVE</span>
+            </a>
+
+            <button class="text-slate-400 hover:text-slate-100 p-1 transition-colors" title="System Notifications">
+                <span class="material-symbols-outlined text-[19px]">notifications</span>
+            </button>
+
+            <button class="text-slate-400 hover:text-slate-100 p-1 transition-colors" title="Operator Profile">
+                <span class="material-symbols-outlined text-[21px]">account_circle</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 2. Primary Full-Bleed SAR Workspace (Side-by-Side Flex Layout, Statically Framed) -->
+    <main class="relative flex-1 w-full h-[calc(100vh-48px)] flex overflow-hidden">
+        
+        <!-- Viewport Canvas (Static Framing, Drag & Wheel Disabled) -->
+        <div class="relative flex-1 h-full overflow-hidden bg-[#0B0F17] cursor-default select-none outline-none" id="split-view-container">
+            
+            <!-- No Active Inference Modal Banner -->
+            <div id="no-inference-overlay" class="absolute inset-0 z-50 flex items-center justify-center bg-[#0B0F17]/90 backdrop-blur-md hidden">
+                <div class="flex flex-col items-center gap-3 text-center p-6 bg-[#1A2234] border border-[#2D3748] rounded-xl max-w-md shadow-2xl">
+                    <span class="material-symbols-outlined text-[44px] text-amber-400">warning</span>
+                    <h2 class="font-mono font-bold text-sm tracking-wider uppercase text-slate-100">No Active Acquisition Pair</h2>
+                    <p class="font-sans text-slate-400 text-xs leading-relaxed">
+                        No Sentinel-1 SAR acquisition pair is currently active in memory. Please initiate a live acquisition or demo run from the Explorer.
+                    </p>
+                    <a href="explorer.html" class="mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs uppercase tracking-wider rounded-lg transition-colors">
+                        Launch Explorer
+                    </a>
+                </div>
+            </div>
+
+            <!-- Statically Framed Coordinate Plane (Zero Drift, Full Container Width/Height) -->
+            <div id="canvas-transform-wrapper" class="absolute inset-0 will-change-transform origin-center">
+                <!-- T1 Image (Baseline Pass - Left Pane) -->
+                <div class="absolute inset-0 bg-cover bg-center will-change-[filter]" id="t1-image-bg"></div>
+
+                <!-- T2 Image (Survey Target - Right Pane clipped to Split Position) -->
+                <div class="absolute inset-0 bg-cover bg-center will-change-[filter,clip-path]" id="t2-image-clip" style="clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);">
+                    <!-- Colormap Overlay Filter -->
+                    <div class="absolute inset-0 mix-blend-screen opacity-60 colormap-overlay hidden pointer-events-none" id="heatmap-overlay"></div>
+                </div>
+            </div>
+
+            <!-- Split Divider Curtain (Fixed in Viewport Space) -->
+            <div class="split-slider-line" id="split-slider" style="left: 50%;" data-no-pan>
+                <div class="split-handle-grip">
+                    <span class="w-0.5 h-3.5 bg-slate-400 rounded-full"></span>
+                    <span class="w-0.5 h-3.5 bg-slate-400 rounded-full"></span>
+                </div>
+
+                <!-- Date Tags Anchored to Curtain Top -->
+                <div class="absolute top-3.5 -translate-x-1/2 flex items-center gap-2 pointer-events-none select-none whitespace-nowrap">
+                    <span class="bg-[#1A2234]/90 backdrop-blur-md border border-[#2D3748] px-2.5 py-1 rounded text-[11px] font-mono tracking-tight text-slate-300 shadow-xl">
+                        <strong class="text-slate-100 font-semibold">T1:</strong> <span id="tag-t1-date">2026-08-12</span>
+                    </span>
+                    <span class="bg-[#1A2234]/90 backdrop-blur-md border border-emerald-500/40 px-2.5 py-1 rounded text-[11px] font-mono tracking-tight text-emerald-300 shadow-xl">
+                        <strong class="text-emerald-400 font-semibold">T2:</strong> <span id="tag-t2-date">2026-09-02</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Interactive Draggable Tactical Compass HUD (Rotatable Matrix) -->
+            <div id="tactical-compass-hud" data-no-pan class="absolute z-40 select-none group flex items-center gap-3 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 hover:border-emerald-400/60 rounded-full px-3.5 py-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.8)] transition-shadow duration-200 cursor-grab active:cursor-grabbing" style="left: 20px; top: 20px;" title="Click needle to reset North (000°); drag ring to rotate viewport matrix; drag HUD to reposition">
+                <!-- Rotatable Azimuth Compass Dial -->
+                <div id="compass-dial-ring" class="relative w-8 h-8 rounded-full cursor-ew-resize flex items-center justify-center transition-transform hover:scale-110 active:scale-95" title="Drag azimuth ring to rotate terrain view">
+                    <svg id="compass-dial-svg" viewBox="0 0 40 40" class="w-full h-full transform-gpu transition-transform duration-100" style="transform: rotate(0deg);">
+                        <circle cx="20" cy="20" r="18" fill="#0B0F17" stroke="#334155" stroke-width="1.5" />
+                        <!-- Degree Tick Marks -->
+                        <line x1="20" y1="3" x2="20" y2="7" stroke="#EF4444" stroke-width="1.5" />
+                        <line x1="20" y1="3" x2="20" y2="5" stroke="#64748B" stroke-width="1" transform="rotate(30 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="5" stroke="#64748B" stroke-width="1" transform="rotate(60 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="7" stroke="#64748B" stroke-width="1.5" transform="rotate(90 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="5" stroke="#64748B" stroke-width="1" transform="rotate(120 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="5" stroke="#64748B" stroke-width="1" transform="rotate(150 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="7" stroke="#64748B" stroke-width="1.5" transform="rotate(180 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="5" stroke="#64748B" stroke-width="1" transform="rotate(210 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="5" stroke="#64748B" stroke-width="1" transform="rotate(240 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="7" stroke="#64748B" stroke-width="1.5" transform="rotate(270 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="5" stroke="#64748B" stroke-width="1" transform="rotate(300 20 20)" />
+                        <line x1="20" y1="3" x2="20" y2="5" stroke="#64748B" stroke-width="1" transform="rotate(330 20 20)" />
+                        <text x="20" y="11" fill="#EF4444" font-size="5" font-weight="bold" text-anchor="middle" font-family="monospace">N</text>
+                        <!-- Twin-Needle: Red (North) & Slate (South) -->
+                        <polygon points="20,8 22.5,20 17.5,20" fill="#EF4444" />
+                        <polygon points="20,32 22.5,20 17.5,20" fill="#64748B" />
+                        <circle cx="20" cy="20" r="2.5" fill="#1E293B" stroke="#94A3B8" stroke-width="1" />
+                    </svg>
+                </div>
+                <!-- High-Contrast Monospace Bearing Telemetry -->
+                <div class="flex flex-col cursor-pointer" id="compass-bearing-label" title="Click to reset orientation to 0° True North">
+                    <span class="font-mono text-xs font-bold tracking-wider text-slate-100 group-hover:text-emerald-300 transition-colors tabular-nums" id="compass-heading-text">000° N</span>
+                    <div class="flex items-center gap-1.5 text-[9px] font-mono text-slate-400">
+                        <span class="text-emerald-400">TRUE NORTH</span>
+                        <span>•</span>
+                        <span class="hover:underline text-slate-300">RESET 0°</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top-Center Unified Contextual Floating Tool Strip -->
+            <nav data-no-pan aria-label="Contextual Tool Strip" class="absolute top-3.5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 bg-[#1A2234]/95 backdrop-blur-md border border-[#2D3748] p-1.5 rounded-xl shadow-2xl select-none">
+                <!-- Layer Segmented Buttons -->
+                <div class="flex items-center gap-1 pr-1.5 border-r border-[#2D3748]">
+                    <button id="view-t1" class="px-2.5 py-1 text-xs font-mono rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors" title="Baseline Pass SAR (T1)">
+                        T1
+                    </button>
+                    <button id="view-t2" class="px-2.5 py-1 text-xs font-mono rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold" title="Survey Target SAR (T2)">
+                        T2
+                    </button>
+                    <button id="view-optical" class="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors" title="Optical True Color Basemap">
+                        <span class="material-symbols-outlined text-[18px]">satellite_alt</span>
+                    </button>
+                    <button id="view-falsecolor" class="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors" title="False Color Dual-Pol (VV/VH)">
+                        <span class="material-symbols-outlined text-[18px]">palette</span>
+                    </button>
+                    <button id="view-heatmap" class="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors" title="Confidence Heatmap">
+                        <span class="material-symbols-outlined text-[18px]">local_fire_department</span>
+                    </button>
+                    <button id="view-mask" class="p-1 text-[#ff453a] hover:bg-[#ff453a]/10 rounded-lg transition-colors" title="Binary Change Mask">
+                        <span class="material-symbols-outlined text-[18px]">category</span>
+                    </button>
+                    <button id="view-overlay" class="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors" title="T2 + Highlight Overlay">
+                        <span class="material-symbols-outlined text-[18px]">layers</span>
+                    </button>
+                    <button id="view-boxes" class="px-2 py-0.5 text-xs font-mono text-amber-400 hover:bg-amber-500/10 border border-amber-500/30 rounded flex items-center gap-1 transition-colors" title="Toggle AI Highlight Bounding Boxes">
+                        <span class="material-symbols-outlined text-[14px]">crop_free</span>
+                        <span>HIGHLIGHT</span>
+                    </button>
+                </div>
+
+                <!-- Split Controls -->
+                <button id="btn-split-lock" class="px-2.5 py-1 rounded-lg text-xs font-mono text-slate-400 hover:text-slate-100 hover:bg-slate-800 flex items-center gap-1.5 transition-colors" title="Lock Split Position">
+                    <span class="material-symbols-outlined text-[14px]">lock_open</span>
+                    <span>SLIDER</span>
+                </button>
+                <button id="btn-split-reset" class="px-2.5 py-1 rounded-lg text-xs font-mono text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors" title="Reset Split to 50%">
+                    1:1
+                </button>
+
+                <!-- Inspector Toggle -->
+                <button id="btn-toggle-inspector" class="ml-1 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-xs font-mono text-emerald-400 flex items-center gap-1.5 transition-colors" title="Toggle Triage Inspector">
+                    <span class="material-symbols-outlined text-[15px]">tune</span>
+                    <span class="hidden sm:inline">INSPECTOR</span>
+                </button>
+            </nav>
+
+            <!-- SW Cartographic: Dynamic Ground Scale Bar & Lat/Long Graticule -->
+            <div data-no-pan class="absolute bottom-3.5 left-3.5 z-30 flex flex-col gap-1.5 bg-[#1A2234]/90 backdrop-blur-md border border-[#2D3748] p-3 rounded-xl shadow-2xl font-mono select-none">
+                <div class="flex items-center gap-2.5 text-xs text-slate-200">
+                    <span class="font-semibold text-emerald-400" id="readout-lat">18°56'43" N</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="font-semibold text-emerald-400" id="readout-lng">72°57'58" E</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-slate-400" id="readout-db">-14.2 dB</span>
+                </div>
+                
+                <!-- Dynamic Ground Scale Ruler -->
+                <div class="flex items-center gap-2.5 pt-1.5 border-t border-[#2D3748]">
+                    <div id="scale-bar-line" style="width: 120px;" class="h-1.5 border-b-2 border-l-2 border-r-2 border-slate-300 relative transition-all duration-150">
+                        <span id="scale-bar-text" class="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] text-slate-300 font-medium tracking-tight">
+                            1 km
+                        </span>
+                    </div>
+                    <span class="text-[10px] text-slate-500">WGS84 UTM 43N</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Docked Right-Hand Triage & Layer Inspector Sidebar (Not Floating, Fixed to Right Screen Edge) -->
+        <aside id="inspector-dock" class="w-[360px] h-full bg-[#0D121D] border-l border-[#2D3748] flex flex-col shrink-0 z-30 select-none overflow-hidden transition-all duration-200">
+            <!-- Inspector Header -->
+            <div class="px-4 py-3 border-b border-[#2D3748] flex items-center justify-between bg-[#0B0F17]/80 shrink-0 select-none">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-emerald-400 text-[18px]">tune</span>
+                    <h2 class="font-bold text-xs uppercase tracking-wider text-slate-100">
+                        Triage & Analysis Inspector
+                    </h2>
+                </div>
+                <button id="btn-close-inspector" class="p-1 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors" title="Collapse Inspector">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+
+            <!-- Scrollable Content Body -->
+            <div class="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 custom-scrollbar">
+                
+                <!-- Section 1: Tactical Inference Telemetry Cards -->
+                <section class="flex flex-col gap-2 select-none">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                            Inference Intelligence
+                        </span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
+                            NOMINAL
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="p-3 bg-[#0B0F17]/80 border border-[#2D3748] rounded-lg flex flex-col">
+                            <span class="text-[10px] font-mono text-slate-400 uppercase">Threshold</span>
+                            <span id="studio-threshold" class="text-base font-mono font-bold tracking-tight text-slate-100 mt-0.5 tabular-nums">
+                                0.60
+                            </span>
+                        </div>
+
+                        <div class="p-3 bg-[#0B0F17]/80 border border-[#2D3748] rounded-lg flex flex-col">
+                            <span class="text-[10px] font-mono text-slate-400 uppercase">Change Clusters</span>
+                            <span id="studio-clusters" class="text-base font-mono font-bold tracking-tight text-amber-400 mt-0.5 tabular-nums">
+                                38
+                            </span>
+                        </div>
+
+                        <div class="p-3 bg-[#0B0F17]/80 border border-[#2D3748] rounded-lg flex flex-col">
+                            <span class="text-[10px] font-mono text-slate-400 uppercase">Total Delta Area</span>
+                            <span id="studio-change" class="text-base font-mono font-bold tracking-tight text-emerald-400 mt-0.5 tabular-nums">
+                                3.202%
+                            </span>
+                        </div>
+
+                        <div class="p-3 bg-[#0B0F17]/80 border border-[#2D3748] rounded-lg flex flex-col">
+                            <span class="text-[10px] font-mono text-slate-400 uppercase">Changed Pixels</span>
+                            <span id="studio-changed-px" class="text-base font-mono font-bold tracking-tight text-slate-100 mt-0.5 tabular-nums">
+                                6,152
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2: Active Layer Stack (Segmented Grid) -->
+                <section class="flex flex-col gap-2.5">
+                    <div class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-emerald-400 text-[16px]">layers</span>
+                        <span class="text-[11px] font-mono uppercase tracking-wider text-slate-300 font-semibold">
+                            Active Layer Stack
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2" id="layer-card-grid">
+                        <button data-layer="t2" class="layer-card p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-slate-900/95 border-emerald-400/80 ring-1 ring-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <div class="w-3.5 h-3.5 rounded bg-gradient-to-br from-slate-700 via-slate-500 to-slate-200 border border-white/20"></div>
+                                <span class="text-[9px] font-mono px-1 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 font-semibold">S1A 10m</span>
+                            </div>
+                            <span class="text-xs font-semibold text-emerald-200 line-clamp-1">Survey Target (T2)</span>
+                            <span class="text-[9px] font-mono text-slate-400">Calibrated VV/VH</span>
+                        </button>
+
+                        <button data-layer="t1" class="layer-card p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-[#0B0F17]/60 border-[#2D3748] hover:bg-slate-800/50 hover:border-slate-600">
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <div class="w-3.5 h-3.5 rounded bg-gradient-to-br from-slate-900 via-slate-600 to-slate-400 border border-white/20"></div>
+                                <span class="text-[9px] font-mono px-1 rounded border border-[#2D3748] bg-[#0B0F17] text-slate-400">S1A 10m</span>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-200 line-clamp-1">Baseline Pass (T1)</span>
+                            <span class="text-[9px] font-mono text-slate-400">Prior Reference</span>
+                        </button>
+
+                        <button data-layer="mask" class="layer-card p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-[#0B0F17]/60 border-[#2D3748] hover:bg-slate-800/50 hover:border-slate-600">
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <div class="w-3.5 h-3.5 rounded bg-gradient-to-br from-slate-950 via-red-600 to-red-400 border border-white/20"></div>
+                                <span class="text-[9px] font-mono px-1 rounded border border-[#2D3748] bg-[#0B0F17] text-slate-400">SNUNet</span>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-200 line-clamp-1">Binary Change Mask</span>
+                            <span class="text-[9px] font-mono text-slate-400">p &gt; 0.60 Delta</span>
+                        </button>
+
+                        <button data-layer="heatmap" class="layer-card p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-[#0B0F17]/60 border-[#2D3748] hover:bg-slate-800/50 hover:border-slate-600">
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <div class="w-3.5 h-3.5 rounded bg-gradient-to-br from-blue-600 via-emerald-400 to-amber-400 border border-white/20"></div>
+                                <span class="text-[9px] font-mono px-1 rounded border border-[#2D3748] bg-[#0B0F17] text-slate-400">TENSOR</span>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-200 line-clamp-1">Confidence Heatmap</span>
+                            <span class="text-[9px] font-mono text-slate-400">Prob p ∈ [0, 1]</span>
+                        </button>
+
+                        <button data-layer="falsecolor" class="layer-card p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-[#0B0F17]/60 border-[#2D3748] hover:bg-slate-800/50 hover:border-slate-600">
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <div class="w-3.5 h-3.5 rounded bg-gradient-to-br from-rose-500 via-emerald-500 to-blue-500 border border-white/20"></div>
+                                <span class="text-[9px] font-mono px-1 rounded border border-[#2D3748] bg-[#0B0F17] text-slate-400">DUAL-POL</span>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-200 line-clamp-1">Pauli Dual-Pol</span>
+                            <span class="text-[9px] font-mono text-slate-400">VV / VH / Ratio</span>
+                        </button>
+
+                        <button data-layer="overlay" class="layer-card p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-[#0B0F17]/60 border-[#2D3748] hover:bg-slate-800/50 hover:border-slate-600">
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <div class="w-3.5 h-3.5 rounded bg-gradient-to-br from-slate-800 via-amber-500 to-emerald-400 border border-white/20"></div>
+                                <span class="text-[9px] font-mono px-1 rounded border border-[#2D3748] bg-[#0B0F17] text-slate-400">FUSION</span>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-200 line-clamp-1">Composite Overlay</span>
+                            <span class="text-[9px] font-mono text-slate-400">T2 + Changes</span>
+                        </button>
+
+                        <button data-layer="boxes" class="layer-card p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-[#0B0F17]/60 border-[#2D3748] hover:bg-slate-800/50 hover:border-slate-600">
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <div class="w-3.5 h-3.5 rounded bg-gradient-to-br from-amber-500 via-red-500 to-rose-600 border border-white/20"></div>
+                                <span class="text-[9px] font-mono px-1 rounded border border-amber-500/40 bg-amber-500/10 text-amber-300 font-semibold">HIGHLIGHT</span>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-200 line-clamp-1">Highlight Changes</span>
+                            <span class="text-[9px] font-mono text-slate-400">Labeled Boxes</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Section 3: Dual-Input Visual Radiometric Sliders -->
+                <section class="flex flex-col gap-3.5 pt-2 border-t border-[#2D3748]">
+                    <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                        Radiometric Adjustments
+                    </span>
+
+                    <!-- Opacity -->
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-300">Layer Opacity</span>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="opacity-num" min="0" max="100" value="100" class="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus:border-emerald-400 focus:outline-none">
+                                <span class="text-[10px] text-slate-400 font-mono">%</span>
+                                <button id="opacity-reset" class="p-1 text-slate-500 hover:text-slate-300 transition-colors" title="Reset to 100%">
+                                    <span class="material-symbols-outlined text-[14px]">restart_alt</span>
+                                </button>
+                            </div>
+                        </div>
+                        <input type="range" id="opacity-slider-ui" min="0" max="100" value="100" class="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Brightness -->
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-300">Brightness Offset</span>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="brightness-num" min="50" max="150" value="100" class="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus:border-emerald-400 focus:outline-none">
+                                <span class="text-[10px] text-slate-400 font-mono">%</span>
+                                <button id="brightness-reset" class="p-1 text-slate-500 hover:text-slate-300 transition-colors" title="Reset to 100%">
+                                    <span class="material-symbols-outlined text-[14px]">restart_alt</span>
+                                </button>
+                            </div>
+                        </div>
+                        <input type="range" id="brightness-slider-ui" min="50" max="150" value="100" class="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Contrast -->
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-300">Contrast Multiplier</span>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="contrast-num" min="50" max="200" value="100" class="w-12 px-1.5 py-0.5 bg-[#0B0F17] border border-[#2D3748] rounded font-mono text-right text-xs text-slate-100 focus:border-emerald-400 focus:outline-none">
+                                <span class="text-[10px] text-slate-400 font-mono">%</span>
+                                <button id="contrast-reset" class="p-1 text-slate-500 hover:text-slate-300 transition-colors" title="Reset to 100%">
+                                    <span class="material-symbols-outlined text-[14px]">restart_alt</span>
+                                </button>
+                            </div>
+                        </div>
+                        <input type="range" id="contrast-slider-ui" min="50" max="200" value="100" class="accent-emerald-400 h-1.5 bg-[#0B0F17] rounded-lg cursor-pointer">
+                    </div>
+                </section>
+
+                <!-- Section 4: Scientific Radiometric Colormaps -->
+                <section class="flex flex-col gap-2 pt-2 border-t border-[#2D3748]">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                            Radiometric Colormap
+                        </label>
+                        <span class="text-[10px] font-mono text-slate-400">dB Scale</span>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <label class="flex items-center justify-between p-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 cursor-pointer transition-colors colormap-opt">
+                            <div class="flex items-center gap-2">
+                                <input type="radio" name="colormap" checked value="turbo" class="text-emerald-500 bg-transparent border-slate-600 focus:ring-0" data-bg="linear-gradient(to top right, transparent, rgba(255,0,0,0.2), rgba(0,255,0,0.2))" data-filter="hue-rotate(0deg)">
+                                <span class="font-mono text-xs text-slate-100">Turbo (Scientific)</span>
+                            </div>
+                            <div class="w-16 h-2 rounded bg-gradient-to-r from-blue-600 via-green-500 to-red-600"></div>
+                        </label>
+
+                        <label class="flex items-center justify-between p-2 rounded-lg border border-[#2D3748] bg-[#0B0F17]/40 hover:bg-[#1A2234]/60 cursor-pointer transition-colors colormap-opt">
+                            <div class="flex items-center gap-2">
+                                <input type="radio" name="colormap" value="viridis" class="text-emerald-500 bg-transparent border-slate-600 focus:ring-0" data-bg="linear-gradient(to top right, transparent, rgba(68,1,84,0.2), rgba(253,231,37,0.2))" data-filter="hue-rotate(90deg)">
+                                <span class="font-mono text-xs text-slate-300">Viridis (Perceptual)</span>
+                            </div>
+                            <div class="w-16 h-2 rounded bg-gradient-to-r from-[#440154] via-[#21918c] to-[#fde725]"></div>
+                        </label>
+
+                        <label class="flex items-center justify-between p-2 rounded-lg border border-[#2D3748] bg-[#0B0F17]/40 hover:bg-[#1A2234]/60 cursor-pointer transition-colors colormap-opt">
+                            <div class="flex items-center gap-2">
+                                <input type="radio" name="colormap" value="binary" class="text-emerald-500 bg-transparent border-slate-600 focus:ring-0" data-bg="linear-gradient(to top right, transparent, rgba(255,0,0,0.5), transparent)" data-filter="grayscale(100%) sepia(100%) hue-rotate(300deg) saturate(500%)">
+                                <span class="font-mono text-xs text-slate-300">Binary (High-Alert)</span>
+                            </div>
+                            <div class="w-16 h-2 rounded bg-red-600"></div>
+                        </label>
+                    </div>
+
+                    <!-- Calibrated dB Scale Bar -->
+                    <div class="mt-1 p-2 bg-[#0B0F17]/60 border border-[#2D3748] rounded-lg flex flex-col gap-1">
+                        <div class="w-full h-1.5 rounded bg-gradient-to-r from-blue-600 via-emerald-400 to-red-500"></div>
+                        <div class="flex justify-between font-mono text-[9px] text-slate-400">
+                            <span>-25 dB (Water)</span>
+                            <span>-12 dB</span>
+                            <span>0 dB (Urban)</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Inspector Footer Action (Send to Analytics Button) -->
+            <div class="p-4 border-t border-[#2D3748] bg-[#0B0F17]/90 shrink-0">
+                <a href="analytics.html" class="w-full py-2.5 px-4 bg-[#00DC82] hover:bg-[#00c574] text-[#0B0F17] font-bold text-sm rounded-lg flex items-center justify-center gap-2 tracking-wide transition-colors shadow-lg shadow-[#00DC82]/10">
+                    <span>Send to Analytics</span>
+                    <span class="material-symbols-outlined text-[18px]">arrow_outward</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- 4. Change Intelligence Overlay Panel (Triggered on Cluster Focus) -->
+        <div id="intel-panel" class="absolute left-4 top-16 w-84 max-h-[calc(100vh-6rem)] bg-[#1A2234]/95 backdrop-blur-2xl border border-[#2D3748] rounded-xl shadow-2xl z-40 hidden flex-col font-mono text-slate-200">
+            <div class="flex justify-between items-center p-3 border-b border-[#2D3748] bg-[#0B0F17]/60 rounded-t-xl shrink-0">
+                <h3 class="text-emerald-400 tracking-wider uppercase font-semibold text-xs flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">verified</span>
+                    <span>Cluster Analysis</span>
+                </h3>
+                <button id="close-intel-panel" class="text-slate-400 hover:text-slate-100"><span class="material-symbols-outlined text-[18px]">close</span></button>
+            </div>
+            <div class="p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar text-xs">
+                <!-- Cluster Core Metrics -->
+                <div class="flex flex-col gap-2">
+                    <h4 class="text-[10px] uppercase text-slate-400 tracking-widest border-b border-[#2D3748] pb-1 font-semibold">Model Evaluation</h4>
+                    <div class="flex flex-col gap-1 text-xs">
+                        <div class="flex justify-between"><span class="text-slate-400">Region ID</span><span id="intel-region-id" class="text-emerald-400 font-bold">--</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Severity</span><span id="intel-severity" class="font-bold">--</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Coordinates</span><span id="intel-coords">--</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Changed Area</span><span id="intel-area">--</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Changed Px</span><span id="intel-changed-px">--</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Change Prob</span><span id="intel-prob" class="text-emerald-400 font-bold">--</span></div>
+                    </div>
+                </div>
+
+                <!-- Nemotron AI Interpretation -->
+                <div id="intel-nemotron-section" class="flex flex-col gap-2 hidden">
+                    <h4 class="text-[10px] uppercase text-amber-400 tracking-widest border-b border-amber-500/20 pb-1 font-semibold">AI Semantic Categorization</h4>
+                    <div id="intel-nemo-data" class="flex flex-col gap-2 text-xs">
+                        <div class="flex flex-col gap-0.5">
+                            <span id="intel-nemo-type" class="text-amber-300 font-bold text-sm leading-tight">--</span>
+                            <div class="flex justify-between items-center text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">
+                                <span id="intel-nemo-source">Source: --</span>
+                                <span id="intel-nemo-conf" class="text-amber-400 font-mono font-bold text-xs">--</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-1 mt-1">
+                            <span class="text-[10px] uppercase text-slate-400 font-semibold">Summary</span>
+                            <span id="intel-nemo-summary" class="text-slate-300 leading-relaxed font-sans text-xs">--</span>
+                        </div>
+                        <div class="flex flex-col gap-1 mt-1">
+                            <span class="text-[10px] uppercase text-slate-400 font-semibold">Visual Cues</span>
+                            <ul id="intel-nemo-cues" class="list-disc pl-4 text-[11px] text-slate-300 flex flex-col gap-0.5"></ul>
+                        </div>
+                        <div class="flex justify-between mt-1 items-start">
+                            <span class="text-slate-400">Uncertainty</span>
+                            <span id="intel-nemo-uncertainty" class="text-amber-400 text-right pl-2 text-[11px]">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contextual Evidence Signals -->
+                <div id="intel-context-section" class="flex flex-col gap-2 hidden">
+                    <h4 class="text-[10px] uppercase text-emerald-400 tracking-widest border-b border-emerald-500/20 pb-1 font-semibold">Contextual Verification</h4>
+                    <div id="intel-context-content" class="flex flex-col gap-1.5 text-xs"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 5. Mission Scripts & Shared Store Integration -->
+    <script src="assets/sar-store.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            let metadata = (window.SARStore && SARStore.loadMetadata) ? SARStore.loadMetadata() : null;
+            let previews = (window.SARStore && SARStore.loadPreviews) ? await SARStore.loadPreviews() : null;
+            
+            // Time-Series Override: if navigated from a specific pair in the series
+            const targetPairId = sessionStorage.getItem('target_pair');
+            if (targetPairId && window.SARStore && SARStore.loadTimeSeries) {
+                const seriesData = SARStore.loadTimeSeries();
+                if (seriesData && seriesData.result) {
+                    const pair = seriesData.result.job_id != null && seriesData.result.job_id.toString() === targetPairId ? seriesData.result : null;
+                    if (pair) {
+                        metadata = {
+                            total_pixels: 512 * 512,
+                            changed_pixels: 0,
+                            change_percentage: pair.change_percentage,
+                            num_change_clusters: pair.num_change_clusters,
+                            regions: pair.regions,
+                            nemotron_interpretations: pair.nemotron_interpretations || null
+                        };
+                        
+                        previews = {
+                            t1: pair.t1_preview_base64 ? `data:image/jpeg;base64,${pair.t1_preview_base64}` : null,
+                            t2: pair.t2_preview_base64 ? `data:image/jpeg;base64,${pair.t2_preview_base64}` : null,
+                            mask: pair.change_mask_base64 ? `data:image/png;base64,${pair.change_mask_base64}` : null,
+                            heatmap: pair.confidence_heatmap_base64 ? `data:image/png;base64,${pair.confidence_heatmap_base64}` : null,
+                            overlay: pair.overlay_base64 ? `data:image/jpeg;base64,${pair.overlay_base64}` : null
+                        };
+                    }
+                }
+                sessionStorage.removeItem('target_pair');
+            }
+
+            const t1Bg = document.getElementById('t1-image-bg');
+            const t2Clip = document.getElementById('t2-image-clip');
+            const heatmapOverlay = document.getElementById('heatmap-overlay');
+
+            // Fallback imagery if store has no data
+            if (!previews || !previews.t1 || !previews.t2) {
+                previews = {
+                    t1: "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1600&q=80",
+                    t2: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80",
+                    heatmap: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80"
+                };
+                if (!metadata) {
+                    metadata = {
+                        threshold: 0.60,
+                        num_change_clusters: 2,
+                        change_percentage: 0.196,
+                        changed_pixels: 294,
+                        total_pixels: 262144
+                    };
+                }
+            }
+
+            t1Bg.style.backgroundImage = `url('${previews.t1}')`;
+            t2Clip.style.backgroundImage = `url('${previews.t2}')`;
+
+            // Populate Telemetry Metrics
+            const fmtInt = (n) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString() : '--';
+            document.getElementById('studio-threshold').innerText = (metadata.threshold != null) ? Number(metadata.threshold).toFixed(2) : '0.60';
+            document.getElementById('studio-clusters').innerText = (metadata.num_change_clusters != null) ? metadata.num_change_clusters : (Array.isArray(metadata.regions) ? metadata.regions.length : '2');
+            document.getElementById('studio-change').innerText = (typeof metadata.change_percentage === 'number') ? `${metadata.change_percentage.toFixed(3)}%` : '0.196%';
+            document.getElementById('studio-changed-px').innerText = fmtInt(metadata.changed_pixels || 294);
+
+            // Layer Management Logic
+            const layerCards = document.querySelectorAll('.layer-card');
+            const btnT1 = document.getElementById('view-t1');
+            const btnT2 = document.getElementById('view-t2');
+            const btnOptical = document.getElementById('view-optical');
+            const btnFalsecolor = document.getElementById('view-falsecolor');
+            const btnHeatmap = document.getElementById('view-heatmap');
+            const btnMask = document.getElementById('view-mask');
+            const btnOverlay = document.getElementById('view-overlay');
+            const btnBoxes = document.getElementById('view-boxes');
+
+            const navButtons = {
+                't1': btnT1,
+                't2': btnT2,
+                'optical': btnOptical,
+                'falsecolor': btnFalsecolor,
+                'heatmap': btnHeatmap,
+                'mask': btnMask,
+                'overlay': btnOverlay,
+                'boxes': btnBoxes
+            };
+
+            const setActiveLayer = (layer) => {
+                // Update Card Grid in Inspector
+                layerCards.forEach(card => {
+                    if (card.dataset.layer === layer) {
+                        card.className = 'layer-card active p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-slate-900/95 border-emerald-400/80 ring-1 ring-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]';
+                        card.querySelector('span.text-xs').className = 'text-xs font-semibold text-emerald-200 line-clamp-1';
+                    } else {
+                        card.className = 'layer-card p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all bg-[#0B0F17]/60 border-[#2D3748] hover:bg-slate-800/50 hover:border-slate-600';
+                        card.querySelector('span.text-xs').className = 'text-xs font-semibold text-slate-200 line-clamp-1';
+                    }
+                });
+
+                // Update Tool Strip Buttons
+                Object.entries(navButtons).forEach(([key, btn]) => {
+                    if (!btn) return;
+                    if (key === 'mask') {
+                        btn.className = 'p-1 text-[#ff453a] hover:bg-[#ff453a]/10 rounded-lg transition-colors';
+                    } else if (key === 'boxes') {
+                        btn.className = 'px-2 py-0.5 text-xs font-mono text-amber-400 hover:bg-amber-500/10 border border-amber-500/30 rounded flex items-center gap-1 transition-colors';
+                    } else {
+                        btn.className = 'px-2.5 py-1 text-xs font-mono rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors';
+                    }
+                });
+
+                const activeNavBtn = navButtons[layer];
+                if (activeNavBtn) {
+                    if (layer === 'mask') {
+                        activeNavBtn.className = 'p-1 text-[#ff453a] border border-[#ff453a] bg-[#ff453a]/20 rounded-lg font-bold';
+                    } else if (layer === 'boxes') {
+                        activeNavBtn.className = 'px-2 py-0.5 text-xs font-mono text-amber-300 bg-amber-500/20 border border-amber-400 rounded flex items-center gap-1 font-bold';
+                    } else {
+                        activeNavBtn.className = 'px-2.5 py-1 text-xs font-mono rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold';
+                    }
+                }
+
+                // Update imagery on right pane
+                if (layer === 't1') {
+                    t2Clip.style.backgroundImage = `url('${previews.t1}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 't2') {
+                    t2Clip.style.backgroundImage = `url('${previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'optical') {
+                    t2Clip.style.backgroundImage = `url('${previews.optical || previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'falsecolor') {
+                    t2Clip.style.backgroundImage = `url('${previews.falseColorT2 || previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'heatmap') {
+                    t2Clip.style.backgroundImage = `url('${previews.heatmap || previews.t2}')`;
+                    heatmapOverlay.classList.remove('hidden');
+                } else if (layer === 'mask') {
+                    t2Clip.style.backgroundImage = `url('${previews.mask || previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'overlay') {
+                    t2Clip.style.backgroundImage = `url('${previews.overlay || previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                } else if (layer === 'boxes') {
+                    // Original Highlight Changes raster: labeled severity boxes baked over optical or SAR
+                    t2Clip.style.backgroundImage = `url('${previews.opticalBoxes || previews.boxes || previews.overlay || previews.t2}')`;
+                    heatmapOverlay.classList.add('hidden');
+                }
+
+                t2Clip.style.imageRendering = (layer === 'mask') ? 'pixelated' : 'auto';
+            };
+
+            layerCards.forEach(card => {
+                card.addEventListener('click', () => setActiveLayer(card.dataset.layer));
+            });
+
+            Object.entries(navButtons).forEach(([key, btn]) => {
+                if (btn) btn.addEventListener('click', () => setActiveLayer(key));
+            });
+
+            setActiveLayer('t2');
+
+            // Analytics Cluster Auto-Focus
+            const targetRegionId = sessionStorage.getItem('target_cluster');
+            if (targetRegionId) {
+                sessionStorage.removeItem('target_cluster');
+                const region = (metadata.regions || []).find(r => r.region_id != null && String(r.region_id) === String(targetRegionId));
+                if (region && Array.isArray(region.centroid_xy)) {
+                    setActiveLayer('overlay');
+                    const cx = Number(region.centroid_xy[0]);
+                    const cy = Number(region.centroid_xy[1]);
+                    panX = -cx + 400;
+                    panY = -cy + 300;
+                    zoomScale = 1.8;
+                    updateTransform();
+
+                    const intelPanel = document.getElementById('intel-panel');
+                    if (intelPanel) {
+                        intelPanel.classList.remove('hidden');
+                        intelPanel.classList.add('flex');
+                        document.getElementById('intel-region-id').innerText = region.region_id || targetRegionId;
+                        document.getElementById('intel-severity').innerText = region.severity || 'Moderate';
+                        document.getElementById('intel-severity').className = region.severity === 'High' ? 'font-bold text-red-400' : 'font-bold text-amber-400';
+                        
+                        const lon = region.geo_centroid ? region.geo_centroid[0] : null;
+                        const lat = region.geo_centroid ? region.geo_centroid[1] : null;
+                        document.getElementById('intel-coords').innerText = lat != null && lon != null ? `${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E` : '--';
+                        document.getElementById('intel-area').innerText = region.area_px != null ? `${region.area_px.toLocaleString()} px` : '--';
+                        document.getElementById('intel-changed-px').innerText = region.area_px != null ? region.area_px.toLocaleString() : '--';
+                        const prob = region.mean_change_prob !== undefined ? region.mean_change_prob : region.change_probability;
+                        document.getElementById('intel-prob').innerText = prob != null ? `${(prob * 100).toFixed(0)}%` : '--';
+
+                        // Nemotron AI
+                        const nemotronSection = document.getElementById('intel-nemotron-section');
+                        nemotronSection.classList.remove('hidden');
+                        const nemotronData = metadata.nemotron_interpretations || {};
+                        const nemotronKey = Object.keys(nemotronData).find(k => String(k) === String(targetRegionId));
+                        const nemotron = nemotronKey ? nemotronData[nemotronKey] : null;
+
+                        if (nemotron && nemotron.category) {
+                            document.getElementById('intel-nemo-type').innerText = nemotron.category.replace(/_/g, ' ').toUpperCase();
+                            document.getElementById('intel-nemo-conf').innerText = nemotron.visual_confidence != null ? `${(nemotron.visual_confidence * 100).toFixed(0)}%` : '--';
+                            document.getElementById('intel-nemo-source').innerText = 'Source: Nemotron-Vision';
+                            document.getElementById('intel-nemo-summary').innerText = nemotron.short_summary || '--';
+                            document.getElementById('intel-nemo-uncertainty').innerText = nemotron.uncertainty || 'None';
+                        }
+                    }
+                }
+            }
+        });
+
+        // Split Curtain Drag Mechanics
+        const container = document.getElementById('split-view-container');
+        const slider = document.getElementById('split-slider');
+        const t2Clip = document.getElementById('t2-image-clip');
+        const btnLock = document.getElementById('btn-split-lock');
+        const btnReset = document.getElementById('btn-split-reset');
+
+        let isLocked = false;
+        let isDraggingSplit = false;
+
+        btnLock.addEventListener('click', () => {
+            isLocked = !isLocked;
+            if (isLocked) {
+                btnLock.className = 'px-2.5 py-1 rounded-lg text-xs font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 font-bold';
+                btnLock.innerHTML = '<span class="material-symbols-outlined text-[14px]">lock</span><span>LOCKED</span>';
+            } else {
+                btnLock.className = 'px-2.5 py-1 rounded-lg text-xs font-mono text-slate-400 hover:text-slate-100 hover:bg-slate-800 flex items-center gap-1.5 transition-colors';
+                btnLock.innerHTML = '<span class="material-symbols-outlined text-[14px]">lock_open</span><span>SLIDER</span>';
+            }
+        });
+
+        const setCurtainPos = (pct) => {
+            pct = Math.max(0, Math.min(100, pct));
+            slider.style.left = `${pct}%`;
+            t2Clip.style.clipPath = `polygon(${pct}% 0, 100% 0, 100% 100%, ${pct}% 100%)`;
+        };
+
+        btnReset.addEventListener('click', () => setCurtainPos(50));
+
+        slider.addEventListener('pointerdown', (e) => {
+            if (isLocked) return;
+            isDraggingSplit = true;
+            slider.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isDraggingSplit || isLocked) return;
+            const rect = container.getBoundingClientRect();
+            const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+            const pct = (x / rect.width) * 100;
+            setCurtainPos(pct);
+        });
+
+        window.addEventListener('pointerup', (e) => {
+            if (isDraggingSplit) {
+                isDraggingSplit = false;
+                try { slider.releasePointerCapture(e.pointerId); } catch {}
+            }
+        });
+
+        // Statically Framed Coordinate Plane & Compass Orientation
+        const transformWrapper = document.getElementById('canvas-transform-wrapper');
+        let rotation = 0; // 0 to 360 degrees
+
+        const updateTransform = () => {
+            transformWrapper.style.transform = rotation ? `rotate(${rotation}deg)` : 'none';
+        };
+
+        // Cardinal 16-point conversion
+        const getCardinal = (deg) => {
+            const norm = (deg % 360 + 360) % 360;
+            const points = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+            return points[Math.round(norm / 22.5) % 16];
+        };
+
+        const updateCompassUI = () => {
+            const dial = document.getElementById('compass-dial-svg');
+            const text = document.getElementById('compass-heading-text');
+            if (dial) dial.style.transform = `rotate(${-rotation}deg)`;
+            const norm = Math.round((rotation % 360 + 360) % 360);
+            if (text) text.innerText = `${norm.toString().padStart(3, '0')}° ${getCardinal(norm)}`;
+        };
+
+        // --- Interactive Draggable & Rotatable Compass HUD ---
+        const compassHud = document.getElementById('tactical-compass-hud');
+        const compassDialRing = document.getElementById('compass-dial-ring');
+        const compassBearingLabel = document.getElementById('compass-bearing-label');
+
+        let isDraggingCompassWidget = false;
+        let isRotatingDial = false;
+        let compassStartPos = { clientX: 0, clientY: 0, posX: 20, posY: 20 };
+
+        if (compassHud) {
+            compassHud.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('#compass-dial-ring')) return;
+                isDraggingCompassWidget = true;
+                const rect = compassHud.getBoundingClientRect();
+                const parentRect = container.getBoundingClientRect();
+                compassStartPos = {
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    posX: rect.left - parentRect.left,
+                    posY: rect.top - parentRect.top
+                };
+                compassHud.setPointerCapture(e.pointerId);
+                e.stopPropagation();
+            });
+
+            compassHud.addEventListener('pointermove', (e) => {
+                if (!isDraggingCompassWidget) return;
+                const dx = e.clientX - compassStartPos.clientX;
+                const dy = e.clientY - compassStartPos.clientY;
+                compassHud.style.left = `${Math.max(10, compassStartPos.posX + dx)}px`;
+                compassHud.style.top = `${Math.max(10, compassStartPos.posY + dy)}px`;
+            });
+
+            compassHud.addEventListener('pointerup', (e) => {
+                if (isDraggingCompassWidget) {
+                    isDraggingCompassWidget = false;
+                    try { compassHud.releasePointerCapture(e.pointerId); } catch {}
+                }
+            });
+        }
+
+        if (compassDialRing) {
+            compassDialRing.addEventListener('pointerdown', (e) => {
+                isRotatingDial = true;
+                compassDialRing.setPointerCapture(e.pointerId);
+                e.stopPropagation();
+            });
+
+            compassDialRing.addEventListener('pointermove', (e) => {
+                if (!isRotatingDial) return;
+                const rect = compassDialRing.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const rad = Math.atan2(e.clientY - cy, e.clientX - cx);
+                let deg = rad * (180 / Math.PI) + 90;
+                if (deg < 0) deg += 360;
+                rotation = Math.round(deg);
+                updateCompassUI();
+                updateTransform();
+            });
+
+            compassDialRing.addEventListener('pointerup', (e) => {
+                if (isRotatingDial) {
+                    isRotatingDial = false;
+                    try { compassDialRing.releasePointerCapture(e.pointerId); } catch {}
+                }
+            });
+        }
+
+        if (compassBearingLabel) {
+            compassBearingLabel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                rotation = 0;
+                updateCompassUI();
+                updateTransform();
+            });
+        }
+
+        // Real-time graticule coordinates tracking (Hover without pan/zoom drag)
+        container.addEventListener('mousemove', (e) => {
+            const rect = container.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                const nx = (e.clientX - rect.left) / rect.width;
+                const ny = (e.clientY - rect.top) / rect.height;
+                const latBase = 18.9440 + (1 - ny) * 0.04;
+                const lngBase = 72.8359 + nx * 0.04;
+                const simulatedDB = (-10 - Math.sin(nx * 6) * 6).toFixed(1);
+
+                document.getElementById('readout-lat').innerText = `${latBase.toFixed(4)}° N`;
+                document.getElementById('readout-lng').innerText = `${lngBase.toFixed(4)}° E`;
+                document.getElementById('readout-db').innerText = `${simulatedDB} dB`;
+            }
+        });
+
+        // Inspector Collapse / Expand
+        const inspector = document.getElementById('inspector-dock');
+        const btnToggleInspector = document.getElementById('btn-toggle-inspector');
+        const btnCloseInspector = document.getElementById('btn-close-inspector');
+
+        const toggleInspector = () => {
+            const isHidden = inspector.classList.toggle('hidden');
+            if (btnToggleInspector) {
+                if (!isHidden) {
+                    btnToggleInspector.className = 'ml-1 px-3 py-1 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold';
+                } else {
+                    btnToggleInspector.className = 'ml-1 px-3 py-1 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-all bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                }
+            }
+        };
+        btnToggleInspector.addEventListener('click', toggleInspector);
+        btnCloseInspector.addEventListener('click', toggleInspector);
+
+        const closeIntelBtn = document.getElementById('close-intel-panel');
+        if (closeIntelBtn) {
+            closeIntelBtn.addEventListener('click', () => {
+                const p = document.getElementById('intel-panel');
+                if (p) {
+                    p.classList.add('hidden');
+                    p.classList.remove('flex');
+                }
+            });
+        }
+
+        // Dual-Input Radiometric Adjustments
+        let opacityVal = 100;
+        let brightnessVal = 100;
+        let contrastVal = 100;
+
+        const applyFilters = () => {
+            t2Clip.style.opacity = opacityVal / 100;
+            const filterStr = `brightness(${brightnessVal}%) contrast(${contrastVal}%)`;
+            t2Clip.style.filter = filterStr;
+            document.getElementById('t1-image-bg').style.filter = filterStr;
+        };
+
+        // Opacity
+        const opSlider = document.getElementById('opacity-slider-ui');
+        const opNum = document.getElementById('opacity-num');
+        const syncOpacity = (v) => {
+            opacityVal = Math.max(0, Math.min(100, Number(v)));
+            opSlider.value = opacityVal;
+            opNum.value = opacityVal;
+            applyFilters();
+        };
+        opSlider.addEventListener('input', (e) => syncOpacity(e.target.value));
+        opNum.addEventListener('change', (e) => syncOpacity(e.target.value));
+        document.getElementById('opacity-reset').addEventListener('click', () => syncOpacity(100));
+
+        // Brightness
+        const brSlider = document.getElementById('brightness-slider-ui');
+        const brNum = document.getElementById('brightness-num');
+        const syncBrightness = (v) => {
+            brightnessVal = Math.max(50, Math.min(150, Number(v)));
+            brSlider.value = brightnessVal;
+            brNum.value = brightnessVal;
+            applyFilters();
+        };
+        brSlider.addEventListener('input', (e) => syncBrightness(e.target.value));
+        brNum.addEventListener('change', (e) => syncBrightness(e.target.value));
+        document.getElementById('brightness-reset').addEventListener('click', () => syncBrightness(100));
+
+        // Contrast
+        const ctSlider = document.getElementById('contrast-slider-ui');
+        const ctNum = document.getElementById('contrast-num');
+        const syncContrast = (v) => {
+            contrastVal = Math.max(50, Math.min(200, Number(v)));
+            ctSlider.value = contrastVal;
+            ctNum.value = contrastVal;
+            applyFilters();
+        };
+        ctSlider.addEventListener('input', (e) => syncContrast(e.target.value));
+        ctNum.addEventListener('change', (e) => syncContrast(e.target.value));
+        document.getElementById('contrast-reset').addEventListener('click', () => syncContrast(100));
+
+        // Colormap Radios
+        const colormapRadios = document.querySelectorAll('input[name="colormap"]');
+        colormapRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                colormapRadios.forEach(r => {
+                    const label = r.closest('label');
+                    if (r.checked) {
+                        label.className = 'flex items-center justify-between p-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 cursor-pointer transition-colors colormap-opt';
+                        label.querySelector('span').className = 'font-mono text-xs text-slate-100';
+                    } else {
+                        label.className = 'flex items-center justify-between p-2 rounded-lg border border-[#2D3748] bg-[#0B0F17]/40 hover:bg-[#1A2234]/60 cursor-pointer transition-colors colormap-opt';
+                        label.querySelector('span').className = 'font-mono text-xs text-slate-300';
+                    }
+                });
+                heatmapOverlay.style.background = e.target.dataset.bg;
+                heatmapOverlay.style.filter = e.target.dataset.filter;
+            });
+        });
+    </script>
+</body>
+</html>

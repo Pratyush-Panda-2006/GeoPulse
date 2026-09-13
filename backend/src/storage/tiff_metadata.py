@@ -26,6 +26,16 @@ def read_tiff_metadata(path: str | Path) -> dict:
             "band_count": src.count,
             "bands": ",".join(src.dtypes),
             "crs": str(src.crs) if src.crs else None,
+            "bounds": {
+                "left": src.bounds.left,
+                "bottom": src.bounds.bottom,
+                "right": src.bounds.right,
+                "top": src.bounds.top,
+            },
+            "resolution": {
+                "x": src.res[0],
+                "y": src.res[1],
+            },
             "file_size_bytes": path.stat().st_size,
             "checksum_sha256": calculate_sha256(path),
         }

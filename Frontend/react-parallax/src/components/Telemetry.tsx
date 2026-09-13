@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import Globe from "./ui/globe";
 import Speedometer from "./ui/speedometer";
+import type { ViewState } from "../App";
 
-export default function Telemetry() {
+interface TelemetryProps {
+  onViewChange: (view: ViewState) => void;
+}
+
+export default function Telemetry({ onViewChange }: TelemetryProps) {
   const [istTime, setIstTime] = useState("--:--:--");
   const [latency, setLatency] = useState(122);
   const [gpuUsage, setGpuUsage] = useState({ percent: 21.7, vram: 1.3 });
@@ -67,12 +72,12 @@ export default function Telemetry() {
           <span>GeoPulse</span>
         </a>
         <div className="hidden md:flex gap-6 lg:gap-8 items-center">
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="overview.html">OVERVIEW</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="studio.html">STUDIO</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="analytics.html">ANALYTICS</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="explorer.html">EXPLORER</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors" href="intelligence.html">Intelligence</a>
-          <a className="font-semibold text-sm uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="telemetry.html">TELEMETRY</a>
+          <a href="overview.html" className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors">OVERVIEW</a>
+          <button onClick={() => onViewChange('STUDIO')} className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors">STUDIO</button>
+          <a href="analytics.html" className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors">ANALYTICS</a>
+          <a href="explorer.html" className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors">EXPLORER</a>
+          <button onClick={() => onViewChange('INTELLIGENCE')} className="font-semibold text-sm uppercase tracking-widest text-gray-400 hover:text-white transition-colors">Intelligence</button>
+          <button onClick={() => onViewChange('TELEMETRY')} className="font-semibold text-sm uppercase tracking-widest text-primary border-b-2 border-primary pb-1">TELEMETRY</button>
         </div>
         <div className="flex gap-4 items-center">
           <a href="#" className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-1 font-mono text-xs text-primary">

@@ -2,8 +2,14 @@ import { useState } from 'react';
 import { InteractiveMapCanvas } from './InteractiveMapCanvas';
 import { LayerInferenceControlPanel } from './LayerInferenceControlPanel';
 import { Bell, User } from 'lucide-react';
+import type { ViewState, AnalysisContextData } from '../../App';
 
-export default function GeoPulseStudio() {
+interface GeoPulseStudioProps {
+  onViewChange: (view: ViewState) => void;
+  analysisContext?: AnalysisContextData | null;
+}
+
+export default function GeoPulseStudio({ onViewChange, analysisContext }: GeoPulseStudioProps) {
   const [activeLayer, setActiveLayer] = useState<string>('t2');
   const [opacity, setOpacity] = useState<number>(100);
   const [brightness, setBrightness] = useState<number>(100);
@@ -11,9 +17,9 @@ export default function GeoPulseStudio() {
   const [colormap, setColormap] = useState<string>('turbo');
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(true);
 
-  // Satellite Sentinel-1 SAR high-resolution textures
-  const t1Url = "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1600&q=80";
-  const t2Url = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80";
+  // Use the analysis context if provided, otherwise fallback to defaults
+  const t1Url = analysisContext?.t1Url || "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1600&q=80";
+  const t2Url = analysisContext?.t2Url || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80";
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0B0F17] text-slate-100 overflow-hidden font-sans select-none">
@@ -28,11 +34,11 @@ export default function GeoPulseStudio() {
         {/* High-Contrast Navigation Links (Centered) */}
         <nav className="hidden md:flex items-center gap-8 text-xs font-mono tracking-wider absolute left-1/2 -translate-x-1/2">
           <a href="overview.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">OVERVIEW</a>
-          <a href="studio.html" className="text-[#00DC82] font-semibold border-b-2 border-[#00DC82] pb-0.5">STUDIO</a>
+          <button onClick={() => onViewChange('STUDIO')} className="text-[#00DC82] font-semibold border-b-2 border-[#00DC82] pb-0.5">STUDIO</button>
           <a href="analytics.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">ANALYTICS</a>
           <a href="explorer.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">EXPLORER</a>
-          <a href="intelligence.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">INTELLIGENCE</a>
-          <a href="telemetry.html" className="text-slate-400 hover:text-slate-100 transition-colors py-1">TELEMETRY</a>
+          <button onClick={() => onViewChange('INTELLIGENCE')} className="text-slate-400 hover:text-slate-100 transition-colors py-1">INTELLIGENCE</button>
+          <button onClick={() => onViewChange('TELEMETRY')} className="text-slate-400 hover:text-slate-100 transition-colors py-1">TELEMETRY</button>
         </nav>
 
         {/* Right Side: CDSE Satellite Link Badge + Bell + Profile Icons */}

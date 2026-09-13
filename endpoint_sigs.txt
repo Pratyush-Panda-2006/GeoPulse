@@ -1,0 +1,16 @@
+@router.post(     "/availability",     response_model=AvailabilityResponse,     summary="Check Satellite Imagery Availability", ) async def check_availability(req: DetectSentinelRequest) -> AvailabilityResponse:
+---
+@router.post(     "/sentinel",     response_model=ChangeDetectionResponse,     summary="End-to-End Sentinel-1 Change Intelligence", ) async def detect_sentinel_changes(req: DetectSentinelRequest) -> ChangeDetectionResponse:
+---
+@router.post(     "/upload",     response_model=ChangeDetectionResponse,     summary="Change Detection on Uploaded Image Pair", ) async def detect_uploaded_images(     image_t1: UploadFile = File(..., description="Reference (T1) image file (PNG/JPEG)"),     image_t2:
+---
+@router.post(     "/change-detection",     response_model=ChangeDetectionResponse,     summary="Change Detection on Uploaded SAR TIFF Pair", ) async def detect_sar_changes_from_upload(     image_t1: UploadFile = File(..., description="Reference (T1) SAR image file (.tif)"),     image_t2:
+---
+@router.post(     "/interpret",     response_model=dict,     summary="Semantic interpretation of detected change regions", ) async def interpret_regions(req: InterpretRequest) -> dict:
+---
+@router.get(     "/{job_id}/detections.geojson",     summary="Get job detections as canonical GeoJSON FeatureCollection", ) def get_job_detections_geojson(job_id: int):
+---
+@router.post(     "/timeseries-availability",     response_model=dict,     summary="Check Availability for Time-Series", ) async def check_timeseries_availability(req: TimeSeriesRequest) -> dict:
+---
+@router.post(     "/timeseries",     response_model=TimeSeriesResponse,     summary="Run Time-Series Change Detection", ) async def detect_timeseries_changes(req: TimeSeriesRequest) -> TimeSeriesResponse:
+---
