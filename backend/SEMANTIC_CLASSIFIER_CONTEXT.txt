@@ -1,0 +1,3853 @@
+===== PROJECT CONTEXT =====
+
+Feature:
+Semantic Change Classification
+
+Current change model:
+Model 3 — SNUNet-CD
+
+Input:
+Sentinel-1 SAR VV/VH before + after
+
+Current semantic-classification strategy:
+Training-free RemoteCLIP zero-shot classification
+
+Target classes:
+construction / built-up expansion
+clearance / demolition
+water change
+road / infrastructure change
+vegetation / land-cover change
+other / unknown
+
+Constraint:
+Do not modify Model 3.
+Do not train a new model yet.
+Reuse the existing RemoteCLIP installation/checkpoint if possible.
+
+\n===== src/api/services/archive_retrieval_encoder.py =====\n\nfrom __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import open_clip
+import torch
+
+from src.api.services.archive_tiler import ArchiveTile
+
+
+class ArchiveRetrievalEncoder:
+    """
+    RemoteCLIP encoder for production archive tiles.
+
+    Input:
+        ArchiveTile objects containing 224x224 RGB images.
+
+    Output:
+        L2-normalized float32 embeddings with dimension 1024.
+    """
+
+    MODEL_NAME = "RemoteCLIP-RN50"
+    MODEL_VERSION = "RemoteCLIP-RN50"
+    EMBEDDING_DIMENSION = 1024
+
+    def __init__(
+        self,
+        checkpoint_path: str | Path,
+    ) -> None:
+
+        self.checkpoint_path = Path(
+            checkpoint_path
+        )
+
+        if not self.checkpoint_path.exists():
+            raise FileNotFoundError(
+                f"RemoteCLIP checkpoint not found: "
+                f"{self.checkpoint_path}"
+            )
+
+        self.device = (
+            "cuda"
+            if torch.cuda.is_available()
+            else "cpu"
+        )
+
+        print(
+            "Archive retrieval encoder device:",
+            self.device,
+        )
+
+        self.model, _, self.preprocess = (
+            open_clip.create_model_and_transforms(
+                "RN50",
+                pretrained=None,
+            )
+        )
+
+        checkpoint = torch.load(
+            self.checkpoint_path,
+            map_location="cpu",
+        )
+
+        state_dict = {
+            key: value
+            for key, value in checkpoint.items()
+            if not key.startswith("logit_scale")
+        }
+
+        result = self.model.load_state_dict(
+            state_dict,
+            strict=False,
+        )
+
+        if result.missing_keys != [
+            "logit_scale"
+        ]:
+            raise RuntimeError(
+                "Unexpected RemoteCLIP missing keys: "
+                f"{result.missing_keys}"
+            )
+
+        if result.unexpected_keys:
+            raise RuntimeError(
+                "Unexpected RemoteCLIP checkpoint keys: "
+                f"{result.unexpected_keys}"
+            )
+
+        self.model.to(self.device)
+        self.model.eval()
+
+        print(
+            "RemoteCLIP checkpoint loaded:",
+            self.checkpoint_path,
+        )
+
+    def encode_tiles(
+        self,
+        tiles: list[ArchiveTile],
+        batch_size: int = 8,
+    ) -> np.ndarray:
+        """
+        Encode archive tiles into normalized embeddings.
+
+        Returns:
+            numpy array with shape:
+                (number_of_tiles, 1024)
+        """
+
+        if not tiles:
+            raise ValueError(
+                "tiles cannot be empty."
+            )
+
+        if batch_size < 1:
+            raise ValueError(
+                "batch_size must be >= 1."
+            )
+
+        tensors = []
+
+        for tile in tiles:
+
+            if tile.image.size != (
+                224,
+                224,
+            ):
+                raise ValueError(
+                    f"Tile {tile.tile_id} has "
+                    f"invalid size {tile.image.size}; "
+                    "expected (224, 224)."
+                )
+
+            image_tensor = self.preprocess(
+                tile.image
+            )
+
+            tensors.append(
+                image_tensor
+            )
+
+        embeddings = []
+
+        with torch.no_grad():
+
+            for start in range(
+                0,
+                len(tensors),
+                batch_size,
+            ):
+
+                batch_tensors = torch.stack(
+                    tensors[start:start + batch_size]
+                ).to(self.device)
+
+                batch_embeddings = (
+                    self.model.encode_image(
+                        batch_tensors
+                    )
+                )
+
+                batch_embeddings = (
+                    batch_embeddings
+                    / batch_embeddings.norm(
+                        dim=-1,
+                        keepdim=True,
+                    )
+                )
+
+                embeddings.append(
+                    batch_embeddings
+                    .cpu()
+                    .numpy()
+                    .astype(
+                        np.float32
+                    )
+                )
+
+        result = np.concatenate(
+            embeddings,
+            axis=0,
+        )
+
+        if result.shape != (
+            len(tiles),
+            self.EMBEDDING_DIMENSION,
+        ):
+            raise RuntimeError(
+                "Unexpected embedding shape: "
+                f"{result.shape}; expected "
+                f"({len(tiles)}, "
+                f"{self.EMBEDDING_DIMENSION})"
+            )
+
+        # Final normalization check.
+        norms = np.linalg.norm(
+            result,
+            axis=1,
+        )
+
+        if not np.allclose(
+            norms,
+            1.0,
+            atol=1e-5,
+        ):
+            raise RuntimeError(
+                "One or more embeddings are "
+                "not L2 normalized."
+            )
+
+        return result
+
+
+__all__ = [
+    "ArchiveRetrievalEncoder",
+]\n\n===== src/api/services/production_archive_retrieval_service.py =====\n\nfrom __future__ import annotations
+
+import os
+from pathlib import Path
+
+import numpy as np
+import open_clip
+from PIL import Image
+
+from src.api.services.archive_index_manager import (
+    ArchiveIndexManager,
+)
+from src.api.services.archive_retrieval_encoder import (
+    ArchiveRetrievalEncoder,
+)
+
+
+class ProductionArchiveRetrievalService:
+    """
+    Retrieval service backed by the production Sentinel-1
+    archive FAISS index.
+
+    Unlike the experimental RetrievalService, this service
+    reads the production archive index created by the
+    incremental archive ingestion pipeline.
+    """
+
+    def __init__(
+        self,
+        encoder: ArchiveRetrievalEncoder,
+        index_path: str | Path,
+        metadata_path: str | Path,
+    ) -> None:
+
+        self.encoder = encoder
+
+        self.index_manager = (
+            ArchiveIndexManager(
+                index_path=index_path,
+                metadata_path=metadata_path,
+            )
+        )
+
+    @property
+    def count(self) -> int:
+        return self.index_manager.count
+
+    def search_image(
+        self,
+        image: Image.Image,
+        top_k: int = 10,
+    ) -> list[dict]:
+        """
+        Search the production archive using an image.
+        """
+
+        if top_k < 1:
+            raise ValueError(
+                "top_k must be >= 1."
+            )
+
+        if self.count == 0:
+            return []
+
+        top_k = min(
+            top_k,
+            self.count,
+        )
+
+        # The production archive stores 224x224
+        # RGB tile representations. The RemoteCLIP
+        # preprocessing handles the final model input size.
+        image = image.convert("RGB")
+
+        image_tensor = (
+            self.encoder.preprocess(
+                image
+            )
+        )
+
+        import torch
+
+        with torch.no_grad():
+
+            tensor = (
+                image_tensor
+                .unsqueeze(0)
+                .to(
+                    self.encoder.device
+                )
+            )
+
+            embedding = (
+                self.encoder.model.encode_image(
+                    tensor
+                )
+            )
+
+            embedding = (
+                embedding
+                / embedding.norm(
+                    dim=-1,
+                    keepdim=True,
+                )
+            )
+
+        query = (
+            embedding
+            .cpu()
+            .numpy()
+            .astype(np.float32)
+        )
+
+        return self.index_manager.search(
+            query,
+            top_k=top_k,
+        )
+
+    def search_text(
+        self,
+        text: str,
+        top_k: int = 10,
+    ) -> list[dict]:
+        """
+        Search the production archive using a natural-language
+        text query through RemoteCLIP.
+        """
+
+        if not text or not text.strip():
+            raise ValueError(
+                "text query must not be empty."
+            )
+
+        if top_k < 1:
+            raise ValueError(
+                "top_k must be >= 1."
+            )
+
+        if self.count == 0:
+            return []
+
+        top_k = min(
+            top_k,
+            self.count,
+        )
+
+        import torch
+
+        tokens = open_clip.tokenize(
+            [text.strip()]
+        ).to(
+            self.encoder.device
+        )
+
+        with torch.no_grad():
+
+            embedding = (
+                self.encoder.model.encode_text(
+                    tokens
+                )
+            )
+
+            embedding = (
+                embedding
+                / embedding.norm(
+                    dim=-1,
+                    keepdim=True,
+                )
+            )
+
+        query = (
+            embedding
+            .cpu()
+            .numpy()
+            .astype(np.float32)
+        )
+
+        return self.index_manager.search(
+            query,
+            top_k=top_k,
+        )
+
+    def search_file(
+        self,
+        image_path: str | Path,
+        top_k: int = 10,
+    ) -> list[dict]:
+        """
+        Search the production archive using an image file.
+        """
+
+        image_path = Path(
+            image_path
+        )
+
+        if not image_path.exists():
+            raise FileNotFoundError(
+                f"Image not found: "
+                f"{image_path}"
+            )
+
+        with Image.open(
+            image_path
+        ) as image:
+
+            return self.search_image(
+                image,
+                top_k=top_k,
+            )
+
+    def get_record_by_tile_id(
+        self,
+        tile_id: str,
+    ) -> dict | None:
+        """
+        Retrieve production metadata by tile ID.
+        """
+
+        for record in (
+            self.index_manager.metadata
+        ):
+
+            if record.get(
+                "tile_id"
+            ) == tile_id:
+
+                return dict(record)
+
+        return None
+
+    @classmethod
+    def from_environment(
+        cls,
+        encoder: ArchiveRetrievalEncoder,
+    ) -> "ProductionArchiveRetrievalService":
+        """
+        Construct the production archive retrieval
+        service from environment variables.
+        """
+
+        index_path = os.environ.get(
+            "ARCHIVE_RETRIEVAL_INDEX_PATH"
+        )
+
+        metadata_path = os.environ.get(
+            "ARCHIVE_RETRIEVAL_METADATA_PATH"
+        )
+
+        if not index_path:
+            raise RuntimeError(
+                "ARCHIVE_RETRIEVAL_INDEX_PATH "
+                "is not configured."
+            )
+
+        if not metadata_path:
+            raise RuntimeError(
+                "ARCHIVE_RETRIEVAL_METADATA_PATH "
+                "is not configured."
+            )
+
+        return cls(
+            encoder=encoder,
+            index_path=index_path,
+            metadata_path=metadata_path,
+        )
+
+
+__all__ = [
+    "ProductionArchiveRetrievalService",
+]\n\n===== src/api/routers/timeline.py =====\n\nfrom __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
+from sqlalchemy import and_
+from pyproj import Transformer
+
+from src.api import db
+from src.api.models import SARScene, SARAsset, SARSceneAsset
+import time
+import hashlib
+from src.api.schemas import ChangeDetectionResponse
+from src.api.services.inference_service import run_change_detection
+from src.preprocessing.sar_loader import load_sar_pair_for_inference, extract_geotiff_metadata
+from src.storage.object_storage import download_bytes
+from src.data_ingestion.sentinel_client import SentinelHubClient, CDSEAuthManager
+from src.api.services.archive_asset_service import fetch_scene_asset
+
+
+router = APIRouter(
+    prefix="/timeline",
+    tags=["timeline"],
+)
+
+
+class TimelineAsset(BaseModel):
+    id: int
+    scene_asset_id: Optional[int] = None
+    asset_key: Optional[str] = None
+    time_label: str
+    storage_key: str
+    mime_type: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    band_count: Optional[int] = None
+    bands: Optional[str] = None
+    crs: Optional[str] = None
+    has_georeference: Optional[bool] = None
+
+
+class TimelineObservation(BaseModel):
+    scene_id: int
+    sentinel_scene_id: str
+    acquisition_date: datetime
+    provider: str
+    bbox: list[float]
+    crs: Optional[str] = None
+    has_georeference: Optional[bool] = None
+    status: str
+    assets: list[TimelineAsset]
+
+
+
+class ArchiveChangeDetectionRequest(BaseModel):
+    before_asset_id: int
+    after_asset_id: int
+    threshold: float = Field(
+        0.85,
+        ge=0.0,
+        le=1.0,
+    )
+    min_region_area_px: int = Field(
+        100,
+        ge=1,
+    )
+
+class TimelineResponse(BaseModel):
+    observations: list[TimelineObservation]
+    count: int
+
+class ArchiveAssetRequest(BaseModel):
+    scene_id: int
+    bbox: list[float] = Field(
+        ...,
+        min_length=4,
+        max_length=4,
+        description="AOI as [west, south, east, north] in EPSG:4326.",
+    )
+    output_width: int = Field(512, ge=64, le=2048)
+    output_height: int = Field(512, ge=64, le=2048)
+
+
+@router.get("", response_model=TimelineResponse)
+def get_timeline(
+    min_lon: float = Query(...),
+    min_lat: float = Query(...),
+    max_lon: float = Query(...),
+    max_lat: float = Query(...),
+    crs: str = Query("EPSG:4326"),
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+):
+    """
+    Return chronological SAR observations whose scene footprint
+    intersects the requested AOI.
+    """
+
+    if min_lon >= max_lon or min_lat >= max_lat:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid AOI: minimum coordinates must be less than maximum coordinates.",
+        )
+
+    try:
+        transformer = Transformer.from_crs(
+            crs,
+            "EPSG:4326",
+            always_xy=True,
+        )
+
+        x1, y1 = transformer.transform(min_lon, min_lat)
+        x2, y2 = transformer.transform(max_lon, max_lat)
+
+        min_lon_4326 = min(x1, x2)
+        max_lon_4326 = max(x1, x2)
+        min_lat_4326 = min(y1, y2)
+        max_lat_4326 = max(y1, y2)
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid CRS '{crs}': {exc}",
+        ) from exc
+
+    db.init_db()
+
+    if db.SessionLocal is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Database is not configured.",
+        )
+
+    session = db.SessionLocal()
+
+    try:
+        filters = [
+            SARScene.bbox_max_lon >= min_lon_4326,
+            SARScene.bbox_min_lon <= max_lon_4326,
+            SARScene.bbox_max_lat >= min_lat_4326,
+            SARScene.bbox_min_lat <= max_lat_4326,
+        ]
+
+        if start_date is not None:
+            filters.append(SARScene.acquisition_date >= start_date)
+
+        if end_date is not None:
+            filters.append(SARScene.acquisition_date <= end_date)
+
+        scenes = (
+            session.query(SARScene)
+            .filter(and_(*filters))
+            .order_by(SARScene.acquisition_date.asc())
+            .all()
+        )
+
+        observations = []
+
+        for scene in scenes:
+            assets = (
+                session.query(SARAsset)
+                .filter(SARAsset.scene_id == scene.id)
+                .order_by(SARAsset.id.asc())
+                .all()
+            )
+            
+            scene_assets = (
+                session.query(SARSceneAsset)
+                .filter(SARSceneAsset.scene_id == scene.id)
+                .order_by(SARSceneAsset.id.asc())
+                .all()
+            )
+
+            observation_assets = [
+                TimelineAsset(
+                    id=asset.id,
+                    scene_asset_id=None,
+                    asset_key=asset.asset_key,
+                    time_label=asset.time_label,
+                    storage_key=asset.storage_key,
+                    mime_type=asset.mime_type,
+                    width=asset.width,
+                    height=asset.height,
+                    band_count=asset.band_count,
+                    bands=asset.bands,
+                    crs=asset.crs,
+                    has_georeference=None,
+                )
+                for asset in assets
+            ]
+            
+            observation_assets.extend([
+                TimelineAsset(
+                    id=asset.id,
+                    scene_asset_id=asset.id,
+                    asset_key=None,
+                    time_label="ARCHIVE",
+                    storage_key=asset.storage_key,
+                    mime_type=asset.mime_type,
+                    width=asset.width,
+                    height=asset.height,
+                    band_count=asset.band_count,
+                    bands=asset.bands,
+                    crs=asset.crs,
+                    has_georeference=asset.has_georeference,
+                )
+                for asset in scene_assets
+            ])
+
+            observations.append(
+                TimelineObservation(
+                    scene_id=scene.id,
+                    sentinel_scene_id=scene.scene_id,
+                    acquisition_date=scene.acquisition_date,
+                    provider=scene.provider,
+                    bbox=[
+                        scene.bbox_min_lon,
+                        scene.bbox_min_lat,
+                        scene.bbox_max_lon,
+                        scene.bbox_max_lat,
+                    ],
+                    crs=scene.crs,
+                    has_georeference=scene.has_georeference,
+                    status=scene.status,
+                    assets=observation_assets,
+                )
+            )
+
+        return TimelineResponse(
+            observations=observations,
+            count=len(observations),
+        )
+
+    finally:
+        session.close()
+
+@router.post(
+    "/archive-asset",
+    summary="Archive a Sentinel-1 scene tile for a requested AOI",
+)
+async def archive_timeline_asset(request: ArchiveAssetRequest):
+    db.init_db()
+
+    if db.SessionLocal is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Database is not configured.",
+        )
+
+    west, south, east, north = request.bbox
+
+    if west >= east or south >= north:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: expected [west, south, east, north].",
+        )
+
+    session = db.SessionLocal()
+
+    try:
+        scene = (
+            session.query(SARScene)
+            .filter(SARScene.id == request.scene_id)
+            .first()
+        )
+
+        if scene is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"SAR scene {request.scene_id} does not exist.",
+            )
+
+        if scene.provider != "CDSE":
+            raise HTTPException(
+                status_code=400,
+                detail="Only CDSE scenes can be archived through this endpoint.",
+            )
+
+        if not scene.scene_id.startswith("S1"):
+            raise HTTPException(
+                status_code=400,
+                detail="Only Sentinel-1 scenes can be archived through this endpoint.",
+            )
+
+        sentinel_client = SentinelHubClient(CDSEAuthManager())
+
+        asset = fetch_scene_asset(
+            db=session,
+            sentinel_client=sentinel_client,
+            scene=scene,
+            bbox=request.bbox,
+            output_resolution=(
+                request.output_width,
+                request.output_height,
+            ),
+        )
+
+        return {
+            "status": "success",
+            "scene_id": scene.id,
+            "sentinel_scene_id": scene.scene_id,
+            "acquisition_date": scene.acquisition_date,
+            "provider": scene.provider,
+            "asset": {
+                "id": asset.id,
+                "scene_asset_id": asset.id,
+                "storage_key": asset.storage_key,
+                "mime_type": asset.mime_type,
+                "width": asset.width,
+                "height": asset.height,
+                "band_count": asset.band_count,
+                "bands": asset.bands,
+                "crs": asset.crs,
+                "has_georeference": asset.has_georeference,
+                "file_size_bytes": asset.file_size_bytes,
+                "checksum_sha256": asset.checksum_sha256,
+                "bbox": [
+                    asset.bbox_min_lon,
+                    asset.bbox_min_lat,
+                    asset.bbox_max_lon,
+                    asset.bbox_max_lat,
+                ],
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to archive Sentinel-1 scene: {exc}",
+        ) from exc
+    finally:
+        session.close()
+
+@router.post(
+    "/change-detection",
+    response_model=ChangeDetectionResponse,
+    summary="Change Detection Between Archived Sentinel-1 Assets",
+)
+async def detect_archive_change(request: ArchiveChangeDetectionRequest):
+    t0 = time.perf_counter()
+    
+    db.init_db()
+    if db.SessionLocal is None:
+        raise HTTPException(status_code=503, detail="Database is not configured.")
+        
+    session = db.SessionLocal()
+    try:
+        before_asset = session.query(SARSceneAsset).get(request.before_asset_id)
+        after_asset = session.query(SARSceneAsset).get(request.after_asset_id)
+        
+        if not before_asset or not after_asset:
+            raise HTTPException(status_code=404, detail="One or both SARSceneAsset records do not exist.")
+            
+        before_scene = session.query(SARScene).get(before_asset.scene_id)
+        after_scene = session.query(SARScene).get(after_asset.scene_id)
+        
+        if not before_scene or not after_scene:
+            raise HTTPException(status_code=404, detail="One or both SARScene records do not exist.")
+            
+        if not before_asset.storage_key or not after_asset.storage_key:
+            raise HTTPException(status_code=400, detail="Both assets must have a storage_key.")
+        if not before_asset.has_georeference or not after_asset.has_georeference:
+            raise HTTPException(status_code=400, detail="Both assets must have georeferencing.")
+        if before_scene.provider != "CDSE" or after_scene.provider != "CDSE":
+            raise HTTPException(status_code=400, detail="Both scenes must come from CDSE.")
+        if not before_scene.scene_id.startswith("S1") or not after_scene.scene_id.startswith("S1"):
+            raise HTTPException(status_code=400, detail="Both scenes must be Sentinel-1 scenes.")
+        if before_asset.band_count != 2 or after_asset.band_count != 2:
+            raise HTTPException(status_code=400, detail="Both assets must have exactly 2 bands.")
+            
+        before_bytes = download_bytes(before_asset.storage_key)
+        after_bytes = download_bytes(after_asset.storage_key)
+        
+        if before_asset.checksum_sha256:
+            if hashlib.sha256(before_bytes).hexdigest() != before_asset.checksum_sha256:
+                raise HTTPException(status_code=422, detail="Before asset checksum mismatch.")
+        if after_asset.checksum_sha256:
+            if hashlib.sha256(after_bytes).hexdigest() != after_asset.checksum_sha256:
+                raise HTTPException(status_code=422, detail="After asset checksum mismatch.")
+                
+        after_geo_meta = extract_geotiff_metadata(after_bytes)
+        transform = after_geo_meta.get("transform")
+        crs = after_geo_meta.get("crs")
+        
+        if transform is None or crs is None:
+            raise HTTPException(status_code=422, detail="After asset is missing transform or CRS.")
+            
+        t1_np, t2_np = load_sar_pair_for_inference(
+            before_bytes,
+            after_bytes,
+            is_linear=True,
+            return_tensors=False,
+        )
+        
+        result = run_change_detection(
+            t1_np=t1_np,
+            t2_np=t2_np,
+            model_name="snunet_cd_sar",
+            threshold=request.threshold,
+            min_region_area_px=request.min_region_area_px,
+            bbox=[
+                after_asset.bbox_min_lon,
+                after_asset.bbox_min_lat,
+                after_asset.bbox_max_lon,
+                after_asset.bbox_max_lat,
+            ],
+            transform=transform,
+            crs=crs,
+        )
+        
+        elapsed = round(time.perf_counter() - t0, 3)
+        
+        return ChangeDetectionResponse(
+            status="success",
+            model_used="snunet_cd_sar",
+            threshold=request.threshold,
+            total_pixels=result.total_pixels,
+            changed_pixels=result.changed_pixels,
+            change_percentage=result.change_percentage,
+            total_changed_area_sq_km=result.total_changed_area_sq_km,
+            num_change_clusters=result.num_change_clusters,
+            regions=result.regions,
+            t1_preview_base64=result.t1_preview_base64,
+            t2_preview_base64=result.t2_preview_base64,
+            t1_grayscale_base64=result.t1_grayscale_base64,
+            t2_grayscale_base64=result.t2_grayscale_base64,
+            t1_false_color_base64=result.t1_false_color_base64,
+            t2_false_color_base64=result.t2_false_color_base64,
+            change_mask_base64=result.change_mask_base64,
+            confidence_heatmap_base64=result.confidence_heatmap_base64,
+            overlay_base64=result.overlay_base64,
+            change_boxes_base64=result.change_boxes_base64,
+            execution_time_sec=elapsed,
+            
+            before_asset_id=before_asset.id,
+            after_asset_id=after_asset.id,
+            before_scene_id=before_scene.id,
+            after_scene_id=after_scene.id,
+            before_sentinel_scene_id=before_scene.scene_id,
+            after_sentinel_scene_id=after_scene.scene_id,
+            before_acquisition_date=before_scene.acquisition_date,
+            after_acquisition_date=after_scene.acquisition_date,
+            before_storage_key=before_asset.storage_key,
+            after_storage_key=after_asset.storage_key,
+            before_checksum_sha256=before_asset.checksum_sha256,
+            after_checksum_sha256=after_asset.checksum_sha256,
+        )
+        
+    finally:
+        session.close()
+\n\n===== src/api/services/change_analyzer.py =====\n\n"""
+src/api/services/change_analyzer.py
+===================================
+Intelligence & post-processing service for SAR Change Detection:
+- Connected component clustering & region extraction
+- Geographic footprint & area estimation
+- Calibrated priority scoring & uncertainty flagging
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Any, List, Optional, Tuple
+import numpy as np
+import scipy.ndimage as ndimage
+import pyproj
+from shapely.geometry import shape, MultiPolygon
+from shapely.ops import transform as shapely_transform
+from functools import partial
+
+from src.api.schemas import ChangedRegion
+
+
+def _get_utm_proj(lon: float, lat: float) -> pyproj.Proj:
+    """Get the UTM projection for a given lon/lat."""
+    zone = int(math.floor((lon + 180) / 6.0) + 1)
+    # EPSG:326xx for North, EPSG:327xx for South
+    epsg_code = 32600 + zone if lat >= 0 else 32700 + zone
+    return pyproj.Proj(f"EPSG:{epsg_code}")
+
+
+
+def compute_approx_pixel_area_km2(bbox: List[float], image_shape: Tuple[int, int]) -> float:
+    """
+    Approximate square kilometers represented by 1 pixel given WGS84 BBox [min_lon, min_lat, max_lon, max_lat]
+    and image dimensions (H, W).
+    """
+    min_lon, min_lat, max_lon, max_lat = bbox
+    h, w = image_shape
+
+    # Approximate 1 degree latitude = 111.0 km
+    lat_center = (min_lat + max_lat) / 2.0
+    lat_span_km = abs(max_lat - min_lat) * 111.0
+    lon_span_km = abs(max_lon - min_lon) * 111.0 * math.cos(math.radians(lat_center))
+
+    total_area_km2 = lat_span_km * lon_span_km
+    total_pixels = h * w
+    return total_area_km2 / max(total_pixels, 1)
+
+
+def pixel_to_geo_coords(
+    row: float,
+    col: float,
+    bbox: Optional[List[float]],
+    image_shape: Tuple[int, int],
+    transform: Any = None,
+    crs: Any = None,
+) -> Tuple[float, float]:
+    """
+    Convert (row, col) pixel coordinate to (lon, lat) geographic coordinate.
+    If a real rasterio Affine transform is provided, it uses exact reprojection.
+    If the source CRS is not EPSG:4326, it reprojects to WGS84 lon/lat.
+    Otherwise, it linearly interpolates within the bbox (legacy fallback).
+    """
+    if transform is not None and crs is not None:
+        try:
+            import rasterio
+            from rasterio.warp import transform as warp_transform
+            from rasterio.crs import CRS
+            
+            x, y = rasterio.transform.xy(transform, row, col, offset="center")
+            
+            wgs84 = CRS.from_epsg(4326)
+            if crs != wgs84:
+                # rasterio.warp.transform returns (xs, ys)
+                lons, lats = warp_transform(crs, wgs84, [x], [y])
+                lon, lat = lons[0], lats[0]
+            else:
+                lon, lat = x, y
+                
+            return round(lon, 6), round(lat, 6)
+        except Exception:
+            pass
+
+    # Legacy bbox linear interpolation fallback
+    if bbox is not None and len(bbox) == 4:
+        min_lon, min_lat, max_lon, max_lat = bbox
+        h, w = image_shape
+        lon = min_lon + (col / max(w, 1)) * (max_lon - min_lon)
+        lat = max_lat - (row / max(h, 1)) * (max_lat - min_lat)  # Row 0 is at top (max_lat)
+        return round(lon, 6), round(lat, 6)
+        
+    return 0.0, 0.0
+
+
+def extract_changed_regions(
+    binary_mask: np.ndarray,
+    prob_map: np.ndarray,
+    min_region_area_px: int = 10,
+    bbox: Optional[List[float]] = None,
+    transform: Any = None,
+    crs: Any = None,
+) -> Tuple[List[ChangedRegion], float]:
+    """
+    Extract discrete change regions using connected components analysis.
+
+    Returns:
+        tuple (regions_list, total_changed_area_sq_km)
+    """
+    # 1. Morphological Noise Removal
+    # Opening removes small false positives (salt noise)
+    cleaned_mask = ndimage.binary_opening(binary_mask > 0, structure=np.ones((3, 3)))
+    # Closing bridges small gaps and completes structures (pepper noise/broken edges)
+    cleaned_mask = ndimage.binary_closing(cleaned_mask, structure=np.ones((5, 5)))
+    
+    labeled_array, num_features = ndimage.label(cleaned_mask)
+    h, w = binary_mask.shape
+
+    pixel_area_km2 = None
+    if bbox is not None and len(bbox) == 4:
+        pixel_area_km2 = compute_approx_pixel_area_km2(bbox, (h, w))
+
+    regions: List[ChangedRegion] = []
+    region_slices = ndimage.find_objects(labeled_array)
+
+    total_changed_px = int(np.sum(cleaned_mask))
+    total_changed_km2 = (
+        round(total_changed_px * pixel_area_km2, 4)
+        if pixel_area_km2 is not None
+        else None
+    )
+
+    wgs84 = pyproj.Proj("EPSG:4326")
+
+    # For accurate geometry, we'll need rasterio.features
+    try:
+        from rasterio import features
+        has_features = True
+    except ImportError:
+        has_features = False
+
+    region_counter = 1
+    for idx, slc in enumerate(region_slices, start=1):
+        if slc is None:
+            continue
+
+        region_mask = (labeled_array[slc] == idx)
+        area_px = int(np.sum(region_mask))
+
+        if area_px < min_region_area_px:
+            continue
+
+        # Bounding box in pixel coordinates (min_row, min_col, max_row, max_col)
+        min_row = int(slc[0].start)
+        max_row = int(slc[0].stop)
+        min_col = int(slc[1].start)
+        max_col = int(slc[1].stop)
+
+        # Centroid
+        centroid_row, centroid_col = ndimage.center_of_mass(region_mask)
+        global_centroid_r = min_row + centroid_row
+        global_centroid_c = min_col + centroid_col
+
+        # Mean change probability within this region
+        region_probs = prob_map[slc][region_mask]
+        mean_prob = float(np.mean(region_probs)) if len(region_probs) > 0 else 0.5
+
+        # Geo-referencing if bbox or transform is available
+        geo_bbox = None
+        geo_centroid = None
+        area_km2 = None
+        
+        if bbox is not None or (transform is not None and crs is not None):
+            c1_lon, c1_lat = pixel_to_geo_coords(max_row, min_col, bbox, (h, w), transform, crs) # SW
+            c2_lon, c2_lat = pixel_to_geo_coords(min_row, max_col, bbox, (h, w), transform, crs) # NE
+            geo_bbox = (c1_lon, c1_lat, c2_lon, c2_lat)
+            c_lon, c_lat = pixel_to_geo_coords(global_centroid_r, global_centroid_c, bbox, (h, w), transform, crs)
+            geo_centroid = (c_lon, c_lat)
+            
+            # Extract precise polygon geometry and equal-area km2
+            if has_features and transform is not None:
+                # We extract the mask for this specific merged group
+                group_mask = np.zeros_like(cleaned_mask, dtype=np.uint8)
+                group_mask[min_row:max_row, min_col:max_col] = region_mask.astype(np.uint8)
+                
+                # Full array approach (safer for transform)
+                shapes = list(features.shapes(group_mask, transform=transform))
+                polygons = []
+                for geom, val in shapes:
+                    if val == 1:
+                        polygons.append(shape(geom))
+                
+                if polygons:
+                    geom = MultiPolygon(polygons) if len(polygons) > 1 else polygons[0]
+                    # Transform to WGS84 to ensure lat/lon for UTM calculation
+                    try:
+                        import rasterio.warp
+                    except ImportError:
+                        pass
+
+                    # Transform to UTM for equal-area
+                    utm_proj = _get_utm_proj(c_lon, c_lat)
+                    project = partial(pyproj.transform, wgs84, utm_proj)
+                    geom_utm = shapely_transform(project, geom)
+                    area_km2 = geom_utm.area / 1e6
+            
+            # Fallback if area_km2 wasn't computed exactly
+            if area_km2 is None and pixel_area_km2 is not None:
+                area_km2 = round(area_px * pixel_area_km2, 6)
+
+        approx_area_km2 = (
+            round(area_px * pixel_area_km2, 6)
+            if pixel_area_km2 is not None
+            else None
+        )
+
+        # Classify Severity & Uncertainty
+        # Check if borderline uncertain
+        if 0.45 <= mean_prob <= 0.55:
+            severity = "Uncertain"
+            label = "Borderline / Low SNR Surface Change"
+        elif area_px >= 200:
+            severity = "High"
+            label = "Significant Structural / Ground Disturbance"
+        elif area_px >= 130:
+            severity = "Medium"
+            label = "Moderate Change Cluster"
+        else:
+            severity = "Low"
+            label = "Localized Minor Surface Change"
+
+        regions.append(
+            ChangedRegion(
+                region_id=region_counter,
+                area_px=area_px,
+                approx_area_sq_km=approx_area_km2,
+                area_km2=round(area_km2, 4) if area_km2 is not None else approx_area_km2,
+                centroid_xy=(round(global_centroid_c, 2), round(global_centroid_r, 2)),
+                bbox_xy=(min_row, min_col, max_row, max_col),
+                geo_bbox=geo_bbox,
+                geo_centroid=geo_centroid,
+                mean_change_prob=round(mean_prob, 4),
+                severity=severity,
+                label=label,
+                evidence=None, # Will be populated by evidence engine
+            )
+        )
+        region_counter += 1
+
+    # Sort regions by area descending
+    regions.sort(key=lambda r: r.area_px, reverse=True)
+    
+    total_area_km2 = sum(r.area_km2 for r in regions) if any(r.area_km2 for r in regions) else total_changed_km2
+
+    return regions, total_area_km2
+
+\n\n===== src/api/services/inference_service.py =====\n\nfrom dataclasses import dataclass
+from typing import Any, List, Optional, Tuple
+import time
+import torch
+import torch.nn.functional as F
+import numpy as np
+
+from src.api.schemas import ChangedRegion
+from src.api.services.model_service import ModelService
+from src.api.services.change_analyzer import extract_changed_regions
+from src.api.services.visualization import (
+    sar_to_colorized,
+    sar_to_grayscale,
+    sar_dualpol_to_rgb,
+    generate_change_mask_image,
+    generate_heatmap_image,
+    generate_overlay_image,
+    draw_change_boxes,
+    array_to_base64_jpeg,
+    array_to_base64_png,
+)
+
+
+@dataclass
+class InferenceResult:
+    total_pixels: int
+    changed_pixels: int
+    change_percentage: float
+    total_changed_area_sq_km: Optional[float]
+    num_change_clusters: int
+    regions: List[ChangedRegion]
+    mean_change_probability: float
+    
+    t1_preview_base64: str
+    t2_preview_base64: str
+    t1_grayscale_base64: str
+    t2_grayscale_base64: str
+    t1_false_color_base64: str
+    t2_false_color_base64: str
+    change_mask_base64: str
+    confidence_heatmap_base64: str
+    overlay_base64: str
+    change_boxes_base64: str
+    
+    model_inference_ms: float
+    postprocessing_ms: float
+
+
+def run_change_detection(
+    t1_np: np.ndarray,
+    t2_np: np.ndarray,
+    model_name: str,
+    threshold: float,
+    min_region_area_px: int,
+    bbox: Optional[List[float]] = None,
+    transform: Any = None,
+    crs: Any = None,
+) -> InferenceResult:
+    """
+    Shared inference and visualization logic.
+    t1_np and t2_np should be normalized float32 arrays (C, H, W).
+    """
+    # Ensure T1 and T2 have the same dimensions by cropping to the minimum
+    h1, w1 = t1_np.shape[1:]
+    h2, w2 = t2_np.shape[1:]
+    min_h, min_w = min(h1, h2), min(w1, w2)
+    
+    t1_np = t1_np[:, :min_h, :min_w]
+    t2_np = t2_np[:, :min_h, :min_w]
+
+    t1_tensor = torch.from_numpy(t1_np)
+    t2_tensor = torch.from_numpy(t2_np)
+
+    # Pad to multiple of 16 for UNet architectures
+    pad_h = (16 - (min_h % 16)) % 16
+    pad_w = (16 - (min_w % 16)) % 16
+    if pad_h > 0 or pad_w > 0:
+        t1_tensor = F.pad(t1_tensor, (0, pad_w, 0, pad_h))
+        t2_tensor = F.pad(t2_tensor, (0, pad_w, 0, pad_h))
+
+    model_service = ModelService.get_instance()
+    t_start_inference = time.perf_counter()
+    prob_map, binary_mask = model_service.predict_change_sar(
+        t1_tensor=t1_tensor,
+        t2_tensor=t2_tensor,
+        model_name=model_name,
+        threshold=threshold,
+    )
+    model_inference_ms = (time.perf_counter() - t_start_inference) * 1000.0
+    
+    t_start_postprocessing = time.perf_counter()
+    # Crop back to original minimum dimensions
+    if pad_h > 0 or pad_w > 0:
+        prob_map = prob_map[:min_h, :min_w]
+        binary_mask = binary_mask[:min_h, :min_w]
+
+    regions, total_changed_km2 = extract_changed_regions(
+        binary_mask=binary_mask,
+        prob_map=prob_map,
+        min_region_area_px=min_region_area_px,
+        bbox=bbox,
+        transform=transform,
+        crs=crs,
+    )
+
+    # Calculate metrics
+    total_px = binary_mask.size
+    changed_px = int(np.sum(binary_mask > 0))
+    change_pct = round((changed_px / total_px) * 100.0, 3) if total_px > 0 else 0.0
+    mean_prob = float(np.mean(prob_map[binary_mask > 0])) if changed_px > 0 else 0.0
+    postprocessing_ms = (time.perf_counter() - t_start_postprocessing) * 1000.0
+
+    # Visualization (display-only; never affects the inference outputs above)
+    t1_color = sar_to_colorized(t1_np)
+    t2_color = sar_to_colorized(t2_np)
+    t1_gray = sar_to_grayscale(t1_np)
+    t2_gray = sar_to_grayscale(t2_np)
+    t1_fc = sar_dualpol_to_rgb(t1_np)
+    t2_fc = sar_dualpol_to_rgb(t2_np)
+
+    mask_rgb = generate_change_mask_image(binary_mask)
+    heatmap_rgb = generate_heatmap_image(prob_map, colormap_name="turbo")
+    overlay_rgb = generate_overlay_image(t2_color, binary_mask)
+    boxes_rgb = draw_change_boxes(t2_color, regions)
+
+    t1_b64 = array_to_base64_jpeg(t1_color)
+    t2_b64 = array_to_base64_jpeg(t2_color)
+    t1_gray_b64 = array_to_base64_jpeg(t1_gray)
+    t2_gray_b64 = array_to_base64_jpeg(t2_gray)
+    t1_fc_b64 = array_to_base64_jpeg(t1_fc)
+    t2_fc_b64 = array_to_base64_jpeg(t2_fc)
+    mask_b64 = array_to_base64_png(mask_rgb)
+    heatmap_b64 = array_to_base64_jpeg(heatmap_rgb)
+    overlay_b64 = array_to_base64_jpeg(overlay_rgb)
+    boxes_b64 = array_to_base64_jpeg(boxes_rgb)
+
+    return InferenceResult(
+        total_pixels=total_px,
+        changed_pixels=changed_px,
+        change_percentage=change_pct,
+        total_changed_area_sq_km=total_changed_km2,
+        num_change_clusters=len(regions),
+        regions=regions,
+        mean_change_probability=mean_prob,
+        t1_preview_base64=t1_b64,
+        t2_preview_base64=t2_b64,
+        t1_grayscale_base64=t1_gray_b64,
+        t2_grayscale_base64=t2_gray_b64,
+        t1_false_color_base64=t1_fc_b64,
+        t2_false_color_base64=t2_fc_b64,
+        change_mask_base64=mask_b64,
+        confidence_heatmap_base64=heatmap_b64,
+        overlay_base64=overlay_b64,
+        change_boxes_base64=boxes_b64,
+        model_inference_ms=model_inference_ms,
+        postprocessing_ms=postprocessing_ms,
+    )
+\n\n===== src/api/services/model_service.py =====\n\n"""
+src/api/services/model_service.py
+=================================
+PyTorch model management, device allocation, and inference service for
+Change Detection models.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import torch
+import tempfile
+import subprocess
+import uuid
+import atexit
+import threading
+import time
+from multiprocessing.connection import Client
+from PIL import Image
+
+from src.detection.siamese_unet import SiameseUNet
+from src.detection.snunet_cd import SNUNetCD
+from src.api.schemas import ModelInfo
+
+logger = logging.getLogger(__name__)
+
+
+class ModelService:
+    """Singleton service for loading, caching, and running Change Detection models."""
+
+    _instance: Optional["ModelService"] = None
+
+    def __init__(self) -> None:
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        logger.info(f"ModelService initialized using device: {self.device}")
+
+        self._models: Dict[str, torch.nn.Module] = {}
+        self._load_default_models()
+
+        # ChangeFormer Worker Setup
+        self._cf_lock = threading.Lock()
+        self._cf_pipe_name = r'\\.\pipe\ChangeFormerWorker_' + str(uuid.uuid4()).replace('-', '')
+        self._cf_worker_process = self._start_cf_worker()
+        atexit.register(self._stop_cf_worker)
+
+    def _start_cf_worker(self):
+        logger.info(f"Starting ChangeFormer persistent worker on pipe: {self._cf_pipe_name}")
+        changeformer_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "models" / "ChangeFormer"
+        python_exe = changeformer_dir / ".venv" / "Scripts" / "python.exe"
+        worker_script = changeformer_dir / "infer_worker.py"
+        
+        cmd = [
+            str(python_exe),
+            str(worker_script),
+            "--pipe_name", self._cf_pipe_name,
+            "--gpu_ids", "-1"
+        ]
+        proc = subprocess.Popen(cmd)
+        
+        # Wait for the worker to bind the pipe
+        start_wait = time.time()
+        while time.time() - start_wait < 15:
+            if proc.poll() is not None:
+                logger.error(f"Worker process exited early with code {proc.poll()}")
+                break
+            try:
+                # Try to connect just to see if the pipe is ready, then close
+                with Client(self._cf_pipe_name) as conn:
+                    conn.send("PING")
+                break
+            except Exception:
+                time.sleep(0.5)
+        return proc
+
+    def _stop_cf_worker(self):
+        if hasattr(self, '_cf_worker_process') and self._cf_worker_process and self._cf_worker_process.poll() is None:
+            logger.info("Stopping ChangeFormer worker...")
+            try:
+                with Client(self._cf_pipe_name) as conn:
+                    conn.send("STOP")
+            except Exception as e:
+                logger.error(f"Error stopping worker: {e}")
+            try:
+                self._cf_worker_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self._cf_worker_process.kill()
+
+    @classmethod
+    def get_instance(cls) -> "ModelService":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def _load_default_models(self) -> None:
+        """Pre-instantiate standard model architectures for fast inference."""
+        try:
+            # SNUNet-CD SAR Model 3
+            try:
+                snunet_sar = SNUNetCD(in_channels=2, num_classes=1)
+                ckpt_path = Path(__file__).resolve().parent.parent.parent.parent / "runs" / "2026-08-23_01-14-15_tum_oscd_sar_snunet_bce_tversky_scratch" / "checkpoints" / "best.pt"
+                if ckpt_path.exists():
+                    checkpoint = torch.load(str(ckpt_path), map_location=self.device, weights_only=False)
+                    if isinstance(checkpoint, dict):
+                        if "model_state_dict" in checkpoint:
+                            state_dict = checkpoint["model_state_dict"]
+                        elif "state_dict" in checkpoint:
+                            state_dict = checkpoint["state_dict"]
+                        else:
+                            state_dict = checkpoint
+                    else:
+                        state_dict = checkpoint
+                    snunet_sar.load_state_dict(state_dict)
+                    logger.info(f"Loaded Model 3 SAR checkpoint from {ckpt_path}")
+                else:
+                    logger.error(f"CRITICAL: Model 3 SAR checkpoint not found at {ckpt_path}. Refusing to load random weights.")
+                    raise FileNotFoundError(f"Missing required Model 3 checkpoint: {ckpt_path}")
+                
+                snunet_sar.eval().to(self.device)
+                self._models["snunet_cd_sar"] = snunet_sar
+            except Exception as e:
+                logger.error(f"Failed to load snunet_cd_sar: {e}")
+
+            logger.info(f"Successfully pre-loaded models: {list(self._models.keys())}")
+        except Exception as e:
+            logger.error(f"Error pre-loading models: {e}", exc_info=True)
+
+    def get_available_models(self) -> List[ModelInfo]:
+        """Return catalog of available model architectures."""
+        catalog = []
+        for name, model in self._models.items():
+            num_params = sum(p.numel() for p in model.parameters())
+            in_ch = 2 if "sar" in name else 3
+            display_name = name.replace("_", " ").title()
+            catalog.append(
+                ModelInfo(
+                    name=name,
+                    display_name=display_name,
+                    input_channels=in_ch,
+                    parameters=num_params,
+                    description=f"{display_name} with {in_ch} input channels and {num_params:,} parameters.",
+                )
+            )
+        return catalog
+
+    @torch.no_grad()
+    def predict_change_sar(
+        self,
+        t1_tensor: torch.Tensor,
+        t2_tensor: torch.Tensor,
+        model_name: str = "siamese_unet",
+        threshold: float = 0.5,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Run inference on a pair of 2-channel SAR tensors (C=2, H, W).
+
+        Returns:
+            prob_map: np.ndarray (H, W) in [0.0, 1.0]
+            binary_mask: np.ndarray (H, W) uint8 in {0, 1}
+        """
+        # Ensure batch dimension [1, 2, H, W]
+        if t1_tensor.ndim == 3:
+            t1_tensor = t1_tensor.unsqueeze(0)
+        if t2_tensor.ndim == 3:
+            t2_tensor = t2_tensor.unsqueeze(0)
+
+        t1_tensor = t1_tensor.to(self.device, dtype=torch.float32)
+        t2_tensor = t2_tensor.to(self.device, dtype=torch.float32)
+
+        # Select model
+        model = self._models.get(model_name)
+        if model is None:
+            raise ValueError(f"Model '{model_name}' is not loaded or has no valid trained checkpoint.")
+
+        logits = model(t1_tensor, t2_tensor)
+        probs = torch.sigmoid(logits)
+
+        # Squeeze batch & channel dimensions -> (H, W)
+        prob_map = probs.squeeze().detach().cpu().numpy().astype(np.float32)
+        binary_mask = (prob_map >= threshold).astype(np.uint8)
+
+        return prob_map, binary_mask
+
+    @torch.no_grad()
+    def predict_change_rgb(
+        self,
+        t1_tensor: torch.Tensor,
+        t2_tensor: torch.Tensor,
+        model_name: str = "siamese_unet",
+        threshold: float = 0.5,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Run inference on a pair of 3-channel RGB tensors (C=3, H, W).
+        """
+        if t1_tensor.ndim == 3:
+            t1_tensor = t1_tensor.unsqueeze(0)
+        if t2_tensor.ndim == 3:
+            t2_tensor = t2_tensor.unsqueeze(0)
+
+        t1_tensor = t1_tensor.to(self.device, dtype=torch.float32)
+        t2_tensor = t2_tensor.to(self.device, dtype=torch.float32)
+
+        model = self._models.get(model_name)
+        if model is None:
+            raise ValueError(f"Model '{model_name}' is not loaded or has no valid trained checkpoint.")
+
+        logits = model(t1_tensor, t2_tensor)
+        probs = torch.sigmoid(logits)
+
+        prob_map = probs.squeeze().detach().cpu().numpy().astype(np.float32)
+        binary_mask = (prob_map >= threshold).astype(np.uint8)
+
+        return prob_map, binary_mask
+
+    def predict_changeformer(
+        self,
+        pil_t1: Image.Image,
+        pil_t2: Image.Image,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Run inference using ChangeFormerV6 via persistent worker over IPC.
+        """
+        start_time = time.time()
+        
+        # Ensure RGB
+        if pil_t1.mode != "RGB":
+            pil_t1 = pil_t1.convert("RGB")
+        if pil_t2.mode != "RGB":
+            pil_t2 = pil_t2.convert("RGB")
+            
+        t1_np = np.array(pil_t1).astype(np.float32)
+        t2_np = np.array(pil_t2).astype(np.float32)
+        
+        prep_time = time.time()
+
+        with self._cf_lock:
+            try:
+                with Client(self._cf_pipe_name) as conn:
+                    conn.send((t1_np, t2_np))
+                    prob_map, binary_mask = conn.recv()
+            except Exception as e:
+                logger.error(f"ChangeFormerV6 IPC failed: {e}")
+                raise ValueError("ChangeFormerV6 inference failed due to IPC error.")
+
+        end_time = time.time()
+        
+        logger.info(f"ChangeFormerV6 Inference complete. Preprocessing: {prep_time - start_time:.3f}s | IPC+Model: {end_time - prep_time:.3f}s | Total: {end_time - start_time:.3f}s")
+        return prob_map, binary_mask
+\n\n===== src/preprocessing/sar_loader.py =====\n\n"""
+src/preprocessing/sar_loader.py
+================================
+
+SAR preprocessing utilities for the Sentinel-1 change-detection pipeline.
+
+Locked SAR representation
+-------------------------
+Training data:
+    Sigma0 ellipsoid
+    Orthorectified
+    Already in dB
+
+Live CDSE data:
+    SIGMA0_ELLIPSOID
+    Orthorectified
+    VV/VH returned in linear power
+    Converted locally to dB
+
+Locked normalization
+--------------------
+VV:
+    [-22.98, 5.63] dB -> [0, 1]
+
+VH:
+    [-32.33, -2.53] dB -> [0, 1]
+
+Invalid-data handling
+---------------------
+A separate validity mask is preserved.
+
+The mask is NOT a third model input channel.
+
+For TUM data:
+    finite dB values are valid.
+
+For CDSE data:
+    NaN / Inf / non-positive linear-power pixels are treated as invalid.
+    Invalid pixels are represented by 0.0 after normalization, while their
+    validity is preserved separately.
+
+Public API
+----------
+decode_geotiff_response(response_bytes, return_validity=False)
+
+normalize_sar_tensor(
+    arr,
+    is_linear=False,
+    return_validity=False,
+)
+
+to_torch_tensor(arr)
+
+load_sar_pair_for_inference(
+    t1_bytes,
+    t2_bytes,
+    is_linear=True,
+    return_tensors=True,
+    return_validity_mask=False,
+)
+"""
+
+from __future__ import annotations
+
+import logging
+
+import numpy as np
+
+logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Locked SAR normalization constants
+# ============================================================================
+
+VV_MIN_DB: float = -22.98
+VV_MAX_DB: float = 5.63
+
+VH_MIN_DB: float = -32.33
+VH_MAX_DB: float = -2.53
+
+
+# Minimum linear-power threshold used only to avoid log(0).
+_LINEAR_EPS: float = 1e-10
+
+
+# ============================================================================
+# Validation helpers
+# ============================================================================
+
+def _validate_sar_array(arr: np.ndarray) -> None:
+    """
+    Validate SAR input shape.
+
+    Expected:
+        (2, H, W)
+
+    Band order:
+        0 = VV
+        1 = VH
+    """
+
+    if not isinstance(arr, np.ndarray):
+        raise TypeError(
+            f"Expected numpy.ndarray, got {type(arr).__name__}."
+        )
+
+    if arr.ndim != 3:
+        raise ValueError(
+            f"Expected 3-D SAR array (C, H, W), got shape {arr.shape}."
+        )
+
+    if arr.shape[0] != 2:
+        raise ValueError(
+            "Expected exactly 2 SAR channels in order "
+            "(VV, VH), got shape "
+            f"{arr.shape}."
+        )
+
+
+# ============================================================================
+# GeoTIFF decoder
+# ============================================================================
+
+def decode_geotiff_response(
+    response_bytes: bytes,
+    return_validity: bool = False,
+):
+    """
+    Decode a 2-band GeoTIFF response.
+
+    Parameters
+    ----------
+    response_bytes:
+        Raw GeoTIFF bytes.
+
+    return_validity:
+        If True, also return a boolean validity mask with shape (H, W).
+
+    Returns
+    -------
+    arr:
+        Float32 array with shape (2, H, W).
+
+    validity:
+        Boolean array with shape (H, W), returned only when requested.
+
+    Notes
+    -----
+    The CDSE evalscript returns:
+        Band 1 = VV
+        Band 2 = VH
+
+    Validity is initially inferred from finite values.
+
+    Non-positive linear-power pixels are handled later by the normalization
+    function when is_linear=True.
+    """
+
+    try:
+        import rasterio
+        from rasterio.io import MemoryFile
+    except ImportError as exc:
+        raise ImportError(
+            "rasterio is required for GeoTIFF decoding. "
+            "Install it with: python -m pip install rasterio"
+        ) from exc
+
+    with MemoryFile(response_bytes) as mem_file:
+        with mem_file.open() as dataset:
+
+            if dataset.count != 2:
+                raise ValueError(
+                    "Expected exactly 2 bands (VV, VH), "
+                    f"got {dataset.count}."
+                )
+
+            arr = dataset.read().astype(
+                np.float32,
+                copy=False,
+            )
+
+            # Any non-finite value is invalid.
+            validity = np.all(
+                np.isfinite(arr),
+                axis=0,
+            )
+
+            # Optional raster mask support.
+            try:
+                masks = dataset.read_masks()
+
+                raster_validity = np.all(
+                    masks > 0,
+                    axis=0,
+                )
+
+                validity &= raster_validity
+
+            except Exception:
+                # Some in-memory GeoTIFFs may not expose useful masks.
+                pass
+
+    _validate_sar_array(arr)
+
+    invalid_count = int((~validity).sum())
+
+    logger.debug(
+        "Decoded SAR GeoTIFF: shape=%s invalid_pixels=%d",
+        arr.shape,
+        invalid_count,
+    )
+
+    if return_validity:
+        return arr, validity
+
+    return arr
+
+
+def extract_geotiff_metadata(response_bytes: bytes) -> dict:
+    """
+    Extract spatial metadata (CRS, transform, bounds) from a GeoTIFF response.
+    Returns an empty dict if rasterio is unavailable or extraction fails.
+    """
+    try:
+        import rasterio
+        from rasterio.io import MemoryFile
+    except ImportError:
+        return {}
+
+    try:
+        with MemoryFile(response_bytes) as mem_file:
+            with mem_file.open() as dataset:
+                return {
+                    "transform": dataset.transform,
+                    "crs": dataset.crs,
+                    "bounds": dataset.bounds,
+                    "width": dataset.width,
+                    "height": dataset.height,
+                }
+    except Exception as exc:
+        logger.warning("Failed to extract GeoTIFF metadata: %s", exc)
+        return {}
+
+
+
+# ============================================================================
+# SAR normalization
+# ============================================================================
+
+def normalize_sar_tensor(
+    arr: np.ndarray,
+    is_linear: bool = False,
+    return_validity: bool = False,
+):
+    """
+    Convert SAR to dB when needed and apply locked per-band normalization.
+
+    Parameters
+    ----------
+    arr:
+        SAR array of shape (2, H, W).
+
+    is_linear:
+        True:
+            Input is linear power (CDSE).
+
+        False:
+            Input is already sigma0 dB (TUM).
+
+    return_validity:
+        If True, return a boolean validity mask alongside the normalized array.
+
+    Returns
+    -------
+    normalized:
+        Float32 array in [0, 1], shape (2, H, W).
+
+    validity:
+        Boolean array (H, W) when return_validity=True.
+
+    Processing
+    ----------
+    TUM:
+        dB
+        ↓
+        validate finite pixels
+        ↓
+        per-band clipping
+        ↓
+        per-band [0,1]
+
+    CDSE:
+        linear power
+        ↓
+        finite + positive validity check
+        ↓
+        10*log10
+        ↓
+        per-band clipping
+        ↓
+        per-band [0,1]
+
+    Invalid pixels:
+        normalized to 0.0
+        validity mask = False
+    """
+
+    _validate_sar_array(arr)
+
+    arr = np.asarray(
+        arr,
+        dtype=np.float32,
+    )
+
+    # ------------------------------------------------------------------
+    # Determine validity
+    # ------------------------------------------------------------------
+
+    if is_linear:
+
+        # Linear SAR power should be finite and strictly positive.
+        validity = np.all(
+            np.isfinite(arr),
+            axis=0,
+        ) & np.all(
+            arr > 0.0,
+            axis=0,
+        )
+
+    else:
+
+        # TUM data is already in dB.
+        validity = np.all(
+            np.isfinite(arr),
+            axis=0,
+        )
+
+    # ------------------------------------------------------------------
+    # Convert linear -> dB only for valid positive values
+    # ------------------------------------------------------------------
+
+    if is_linear:
+
+        safe = np.where(
+            np.isfinite(arr) & (arr > 0.0),
+            np.maximum(arr, _LINEAR_EPS),
+            _LINEAR_EPS,
+        )
+
+        arr_db = (
+            10.0
+            * np.log10(safe)
+        ).astype(
+            np.float32,
+            copy=False,
+        )
+
+    else:
+
+        arr_db = arr.astype(
+            np.float32,
+            copy=False,
+        )
+
+    # ------------------------------------------------------------------
+    # Per-band normalization
+    # ------------------------------------------------------------------
+
+    normalized = np.zeros_like(
+        arr_db,
+        dtype=np.float32,
+    )
+
+    # VV
+    vv = np.clip(
+        arr_db[0],
+        VV_MIN_DB,
+        VV_MAX_DB,
+    )
+
+    normalized[0] = (
+        (vv - VV_MIN_DB)
+        / (VV_MAX_DB - VV_MIN_DB)
+    )
+
+    # VH
+    vh = np.clip(
+        arr_db[1],
+        VH_MIN_DB,
+        VH_MAX_DB,
+    )
+
+    normalized[1] = (
+        (vh - VH_MIN_DB)
+        / (VH_MAX_DB - VH_MIN_DB)
+    )
+
+    # ------------------------------------------------------------------
+    # Explicitly zero invalid pixels.
+    # ------------------------------------------------------------------
+
+    normalized[:, ~validity] = 0.0
+
+    normalized = normalized.astype(
+        np.float32,
+        copy=False,
+    )
+
+    logger.debug(
+        "SAR normalization complete: "
+        "shape=%s VV_range=[%.4f, %.4f] "
+        "VH_range=[%.4f, %.4f] "
+        "valid_pixels=%d invalid_pixels=%d",
+        normalized.shape,
+        float(normalized[0].min()),
+        float(normalized[0].max()),
+        float(normalized[1].min()),
+        float(normalized[1].max()),
+        int(validity.sum()),
+        int((~validity).sum()),
+    )
+
+    if return_validity:
+        return normalized, validity
+
+    return normalized
+
+
+# ============================================================================
+# PyTorch conversion
+# ============================================================================
+
+def to_torch_tensor(arr: np.ndarray):
+    """
+    Convert a (C, H, W) NumPy array to torch.float32.
+    """
+
+    try:
+        import torch
+    except ImportError as exc:
+        raise ImportError(
+            "PyTorch is required for tensor conversion."
+        ) from exc
+
+    _validate_sar_array(arr)
+
+    contiguous = np.ascontiguousarray(
+        arr,
+        dtype=np.float32,
+    )
+
+    return torch.from_numpy(
+        contiguous
+    )
+
+
+# ============================================================================
+# Full inference pipeline
+# ============================================================================
+
+def load_sar_pair_for_inference(
+    t1_bytes: bytes,
+    t2_bytes: bytes,
+    is_linear: bool = True,
+    return_tensors: bool = True,
+    return_validity_mask: bool = False,
+):
+    """
+    Decode, normalize and convert a Sentinel-1 T1/T2 pair.
+
+    Parameters
+    ----------
+    t1_bytes:
+        Raw T1 GeoTIFF bytes.
+
+    t2_bytes:
+        Raw T2 GeoTIFF bytes.
+
+    is_linear:
+        True for CDSE linear-power responses.
+        False for already-dB TUM-like inputs.
+
+    return_tensors:
+        Return torch tensors if True.
+
+    return_validity_mask:
+        If True, return T1/T2 validity masks as well.
+
+    Returns
+    -------
+    If return_validity_mask=False:
+        (t1, t2)
+
+    If return_validity_mask=True:
+        (t1, t2, valid_t1, valid_t2)
+
+    Tensor/NumPy type depends on return_tensors.
+    """
+
+    # ---------------------------------------------------------------
+    # Decode
+    # ---------------------------------------------------------------
+
+    t1_raw, t1_valid_decode = decode_geotiff_response(
+        t1_bytes,
+        return_validity=True,
+    )
+
+    t2_raw, t2_valid_decode = decode_geotiff_response(
+        t2_bytes,
+        return_validity=True,
+    )
+
+    # ---------------------------------------------------------------
+    # Normalize
+    # ---------------------------------------------------------------
+
+    t1_norm, t1_valid = normalize_sar_tensor(
+        t1_raw,
+        is_linear=is_linear,
+        return_validity=True,
+    )
+
+    t2_norm, t2_valid = normalize_sar_tensor(
+        t2_raw,
+        is_linear=is_linear,
+        return_validity=True,
+    )
+
+    # Combine decoder-level and preprocessing-level validity.
+    t1_valid &= t1_valid_decode
+    t2_valid &= t2_valid_decode
+
+    # ---------------------------------------------------------------
+    # Return NumPy if requested
+    # ---------------------------------------------------------------
+
+    if not return_tensors:
+
+        if return_validity_mask:
+            return (
+                t1_norm,
+                t2_norm,
+                t1_valid,
+                t2_valid,
+            )
+
+        return t1_norm, t2_norm
+
+    # ---------------------------------------------------------------
+    # Convert to torch
+    # ---------------------------------------------------------------
+
+    t1_tensor = to_torch_tensor(
+        t1_norm
+    )
+
+    t2_tensor = to_torch_tensor(
+        t2_norm
+    )
+
+    if not return_validity_mask:
+        return (
+            t1_tensor,
+            t2_tensor,
+        )
+
+    import torch
+
+    t1_valid_tensor = torch.from_numpy(
+        np.ascontiguousarray(
+            t1_valid,
+            dtype=np.bool_,
+        )
+    )
+
+    t2_valid_tensor = torch.from_numpy(
+        np.ascontiguousarray(
+            t2_valid,
+            dtype=np.bool_,
+        )
+    )
+
+    return (
+        t1_tensor,
+        t2_tensor,
+        t1_valid_tensor,
+        t2_valid_tensor,
+    )\n\n===== src/api/schemas.py =====\n\nfrom __future__ import annotations
+
+from typing import List, Optional, Tuple, Any, Dict
+from pydantic import BaseModel, Field, model_serializer
+from datetime import datetime
+
+
+class BBox(BaseModel):
+    """Geographic Bounding Box in WGS84 [min_lon, min_lat, max_lon, max_lat]."""
+    min_lon: float = Field(..., description="Westernmost longitude", ge=-180.0, le=180.0)
+    min_lat: float = Field(..., description="Southernmost latitude", ge=-90.0, le=90.0)
+    max_lon: float = Field(..., description="Easternmost longitude", ge=-180.0, le=180.0)
+    max_lat: float = Field(..., description="Northernmost latitude", ge=-90.0, le=90.0)
+
+    def to_list(self) -> List[float]:
+        return [self.min_lon, self.min_lat, self.max_lon, self.max_lat]
+
+
+class BandStats(BaseModel):
+    min: float
+    max: float
+    mean: float
+    std: float
+
+
+class TileStats(BaseModel):
+    vv: BandStats
+    vh: BandStats
+
+
+class SentinelFetchRequest(BaseModel):
+    """Request to fetch and preview a Sentinel-1 SAR pair from CDSE."""
+    bbox: BBox = Field(..., description="Geographic bounding box [min_lon, min_lat, max_lon, max_lat]")
+    date_range_t1: Tuple[str, str] = Field(
+        ("2024-01-01", "2024-01-20"),
+        description="Reference (T1) date acquisition window (YYYY-MM-DD, YYYY-MM-DD)"
+    )
+    date_range_t2: Tuple[str, str] = Field(
+        ("2024-06-01", "2024-06-20"),
+        description="Target (T2) date acquisition window (YYYY-MM-DD, YYYY-MM-DD)"
+    )
+    resolution: Tuple[int, int] = Field(
+        (256, 256),
+        description="Tile resolution in pixels (height, width)"
+    )
+
+
+class SentinelFetchResponse(BaseModel):
+    """Response containing fetched SAR tile metadata and preview images."""
+    status: str = "success"
+    bbox: List[float]
+    date_range_t1: Tuple[str, str]
+    date_range_t2: Tuple[str, str]
+    resolution: Tuple[int, int]
+    t1_stats: TileStats
+    t2_stats: TileStats
+    t1_preview_base64: str
+    t2_preview_base64: str
+
+
+class EvidenceSignal(BaseModel):
+    name: str
+    source: str
+    value: Any
+    normalized: float
+    weight: float
+
+
+class WeatherContext(BaseModel):
+    endpoint_used: str = Field(..., description="'archive' or 'forecast'")
+    total_precipitation_mm: float
+    peak_daily_precipitation_mm: float
+    peak_day: str
+    rainfall_class: str = Field(description="'LOW', 'MODERATE', or 'HIGH'")
+    antecedent_rainfall_mm: Optional[float] = None
+    mean_soil_moisture_pct: Optional[float] = None
+
+
+class LandcoverContext(BaseModel):
+    dominant_class: str
+    dominant_class_code: int
+    class_histogram: Dict[str, float]
+    is_cropland_dominant: bool
+    is_tree_consistent: bool
+    is_sparse_built_consistent: bool
+
+
+class FireContext(BaseModel):
+    nearby: bool
+    count: int
+    nearest_km: Optional[float] = None
+    dates: List[str]
+
+
+class SurfaceWaterContext(BaseModel):
+    new_water_km2: float
+    permanent_water_km2: float
+
+
+class OsmContext(BaseModel):
+    nearest_road_m: Optional[float] = None
+    buildings_within_500m: int
+    industrial: bool
+    nearest_water_m: Optional[float] = None
+
+
+class ContextLayers(BaseModel):
+    dem: Optional[dict] = None
+    weather: Optional[WeatherContext] = None
+    fire: Optional[FireContext] = None
+    landcover: Optional[LandcoverContext] = None
+    surface_water: Optional[SurfaceWaterContext] = None
+    osm: Optional[OsmContext] = None
+    ndvi: Optional[dict] = None
+
+
+class EvidenceObject(BaseModel):
+    evidence_score: float
+    evidence_strength: str = Field(description="LOW, MEDIUM, or HIGH")
+    interpretation: str
+    signals: List[EvidenceSignal]
+    caveats: List[str]
+    context: ContextLayers
+
+
+class ChangedRegion(BaseModel):
+    """Individual connected component cluster identified in the change mask."""
+    region_id: int
+    area_px: int
+    approx_area_sq_km: Optional[float] = None
+    area_km2: Optional[float] = None  # P0: Computed with equal-area projection
+    centroid_xy: Tuple[float, float]
+    bbox_xy: Tuple[int, int, int, int]  # (min_row, min_col, max_row, max_col)
+    geo_bbox: Optional[Tuple[float, float, float, float]] = None # (min_lon, min_lat, max_lon, max_lat)
+    geo_centroid: Optional[Tuple[float, float]] = None # (lon, lat)
+    change_probability: float = Field(alias="mean_change_prob", default=0.0) # Using alias for backward compat if needed, but we will provide it
+    severity: str = Field("Medium", description="Severity level: Low, Medium, High, Critical, Uncertain")
+    label: str = Field("Unclassified Change", description="Interpreted change classification label")
+    evidence: Optional[EvidenceObject] = None
+
+
+class DetectSentinelRequest(BaseModel):
+    """Request to fetch Sentinel-1 data live from CDSE and run Change Detection."""
+    bbox: BBox = Field(..., description="Geographic bounding box [min_lon, min_lat, max_lon, max_lat]")
+    date_range_t1: Tuple[str, str] = Field(
+        ("2024-01-01", "2024-01-20"),
+        description="Reference (T1) date window"
+    )
+    date_range_t2: Tuple[str, str] = Field(
+        ("2024-06-01", "2024-06-20"),
+        description="Target (T2) date window"
+    )
+    resolution: Tuple[int, int] = Field(
+        (256, 256),
+        description="Tile resolution in pixels (height, width)"
+    )
+    model_name: str = Field(
+        "snunet_cd_sar",
+        description="Model architecture to use: 'snunet_cd_sar'"
+    )
+    threshold: float = Field(
+        0.5,
+        ge=0.0,
+        le=1.0,
+        description="Decision threshold for binary classification"
+    )
+    min_region_area_px: int = Field(
+        10,
+        ge=1,
+        description="Minimum area in pixels for a change cluster to be retained"
+    )
+
+
+class AvailabilityResponse(BaseModel):
+    """Response containing metadata about the available Sentinel-1 scenes."""
+    t1_scene: dict = Field(..., description="Metadata for the T1 scene")
+    t2_scene: dict = Field(..., description="Metadata for the T2 scene")
+
+
+class ChangeDetectionResponse(BaseModel):
+    """Full Change Intelligence analysis output."""
+    job_id: Optional[int] = None
+    status: str = "success"
+    model_used: str
+    threshold: float
+    total_pixels: int
+    changed_pixels: int
+    change_percentage: float
+    total_changed_area_sq_km: Optional[float] = None
+    num_change_clusters: int
+    regions: List[ChangedRegion]
+    t1_preview_base64: Optional[str] = None
+    t2_preview_base64: Optional[str] = None
+    t1_grayscale_base64: Optional[str] = None
+    t2_grayscale_base64: Optional[str] = None
+    t1_false_color_base64: Optional[str] = None
+    t2_false_color_base64: Optional[str] = None
+    optical_base64: Optional[str] = None
+    optical_boxes_base64: Optional[str] = None
+    change_mask_base64: str
+    confidence_heatmap_base64: str
+    overlay_base64: Optional[str] = None
+    change_boxes_base64: Optional[str] = None
+    nemotron_interpretations: Optional[Dict[int, 'NemotronInterpretation']] = None
+    execution_time_sec: float
+    before_asset_id: Optional[int] = None
+    after_asset_id: Optional[int] = None
+    before_scene_id: Optional[int] = None
+    after_scene_id: Optional[int] = None
+    before_sentinel_scene_id: Optional[str] = None
+    after_sentinel_scene_id: Optional[str] = None
+    before_acquisition_date: Optional[datetime] = None
+    after_acquisition_date: Optional[datetime] = None
+    before_storage_key: Optional[str] = None
+    after_storage_key: Optional[str] = None
+    before_checksum_sha256: Optional[str] = None
+    after_checksum_sha256: Optional[str] = None
+
+
+class HealthResponse(BaseModel):
+    status: str = "healthy"
+    app_version: str
+    torch_version: str
+    cuda_available: bool
+    device_name: Optional[str] = None
+    vram_total_gb: Optional[float] = None
+    vram_used_gb: Optional[float] = None
+    loaded_models: List[str]
+
+
+class ModelInfo(BaseModel):
+    name: str
+    display_name: str
+    input_channels: int
+    parameters: int
+    description: str
+
+
+class TimeSeriesRequest(BaseModel):
+    bbox: BBox
+    date_range: Tuple[str, str]        # (start, end) YYYY-MM-DD
+    resolution: Tuple[int, int] = (512, 512)
+    model_name: str = "snunet_cd_sar"
+    threshold: float = Field(0.5, ge=0.0, le=1.0)
+    min_region_area_px: int = Field(10, ge=1)
+    max_scenes: int = Field(6, ge=2, le=20)
+
+
+class TimeSeriesAcquisition(BaseModel):
+    scene_id: str
+    acquisition_date: str
+    orbit_state: Optional[str] = None
+    relative_orbit: Optional[int] = None
+    mode: Optional[str] = None
+    polarizations: Optional[List[str]] = None
+
+
+class PairwiseChangeResult(BaseModel):
+    t1_acquisition: TimeSeriesAcquisition
+    t2_acquisition: TimeSeriesAcquisition
+    job_id: Optional[int]
+    change_percentage: float
+    num_change_clusters: int
+    total_changed_area_sq_km: Optional[float]
+    regions: List[ChangedRegion]
+    t1_preview_base64: Optional[str]
+    t2_preview_base64: Optional[str]
+    change_mask_base64: str
+    confidence_heatmap_base64: str
+    overlay_base64: Optional[str]
+    nemotron_interpretations: Optional[Dict[int, 'NemotronInterpretation']] = None
+
+
+class TimeSeriesResponse(BaseModel):
+    status: str = "success"
+    bbox: List[float]
+    date_range: Tuple[str, str]
+    acquisitions_found: int
+    acquisitions_used: int
+    acquisition_dates: Optional[Tuple[str, str]] = None
+    all_acquisitions: List[TimeSeriesAcquisition]
+    model_used: str
+    threshold: float
+    result: PairwiseChangeResult
+    execution_time_sec: float
+
+
+class LayerConfig(BaseModel):
+    url: Optional[str] = None
+    source: Optional[str] = None
+    bounds: Optional[List[float]] = None
+    native_res_m: Optional[int] = None
+    acquired: Optional[str] = None
+    note: Optional[str] = None
+
+
+class AnalysisSummary(BaseModel):
+    mean_change_probability: float
+    total_change_area_km2: float
+    num_regions: int
+    metrics_crs: str
+
+
+class NemotronInterpretation(BaseModel):
+    region_id: int
+    status: Optional[str] = None
+    category: Optional[str] = None
+    visual_confidence: Optional[float] = None
+    short_summary: Optional[str] = None
+    visual_cues: Optional[List[str]] = None
+    uncertainty: Optional[str] = None
+    error: Optional[str] = None
+
+
+class AnalysisResult(BaseModel):
+    aoi_id: str
+    mission: str
+    mode: str = Field(description="cached or live")
+    t1: TimeSeriesAcquisition
+    t2: TimeSeriesAcquisition
+    images_compared: int = 2
+    intermediate_acquisitions: List[TimeSeriesAcquisition]
+    event_date: Optional[str] = None
+    summary: AnalysisSummary
+    detections_geojson: dict
+    layers: Dict[str, LayerConfig]
+    nemotron_interpretations: Optional[Dict[int, NemotronInterpretation]] = None
+    disclaimer: str = "Detected change may include seasonal/agricultural surface changes. Contextual layers are supporting evidence, not proof of cause."
+    generated_at: str
+    context: Optional[ContextLayers] = None
+    
+    # Image Previews for Frontend Visualization
+    t1_preview_base64: Optional[str] = None
+    t2_preview_base64: Optional[str] = None
+    t1_grayscale_base64: Optional[str] = None
+    t2_grayscale_base64: Optional[str] = None
+    t1_false_color_base64: Optional[str] = None
+    t2_false_color_base64: Optional[str] = None
+    optical_base64: Optional[str] = None
+    optical_boxes_base64: Optional[str] = None
+    change_mask_base64: Optional[str] = None
+    confidence_heatmap_base64: Optional[str] = None
+    overlay_base64: Optional[str] = None
+    change_boxes_base64: Optional[str] = None
+    
+    # Internal metadata for debugging/UI
+    selection_reason: Optional[str] = None
+
+
+class AnalyzeRequest(BaseModel):
+    aoi: dict = Field(..., description="GeoJSON Polygon or bbox")
+    period: Dict[str, str] = Field(..., description="{'start': 'YYYY-MM-DD', 'end': 'YYYY-MM-DD'}")
+    mission: str
+    event_date: Optional[str] = None
+    mode: str = Field("live", description="'cached' or 'live'")
+    resolution: Tuple[int, int] = (512, 512)
+    model_name: str = "snunet_cd_sar"
+    threshold: float = 0.5
+    min_region_area_px: int = 10
+
+
+class InterpretRequest(BaseModel):
+    """Payload for on-demand semantic interpretation of change regions."""
+    t1_base64: str = Field(..., description="Base64 encoded JPEG of the T1 preview/image")
+    t2_base64: str = Field(..., description="Base64 encoded JPEG of the T2 preview/image")
+    regions: List[ChangedRegion] = Field(..., description="List of regions to interpret")
+
+# Rebuild models that contain forward references or deferred type hints
+# due to `from __future__ import annotations`.
+ChangedRegion.model_rebuild()
+PairwiseChangeResult.model_rebuild()
+TimeSeriesResponse.model_rebuild()
+WeatherContext.model_rebuild()
+ContextLayers.model_rebuild()
+AnalysisResult.model_rebuild()
+\n\n===== src/api/models/sar_scene.py =====\n\nfrom sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, String, Text, UniqueConstraint
+from sqlalchemy.sql import func
+
+from src.api.db import Base
+
+
+class SARScene(Base):
+    __tablename__ = "sar_scenes"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+
+    provider = Column(String(50), nullable=False)
+    scene_id = Column(String(255), nullable=False)
+
+    acquisition_date = Column(DateTime(timezone=True), nullable=False)
+
+    bbox_min_lon = Column(Float)
+    bbox_min_lat = Column(Float)
+    bbox_max_lon = Column(Float)
+    bbox_max_lat = Column(Float)
+
+    crs = Column(String(100))
+    has_georeference = Column(Boolean, nullable=True, default=False)
+
+    r2_object_key = Column(Text)
+    file_size_bytes = Column(BigInteger)
+    checksum_sha256 = Column(String(64))
+
+    status = Column(String(30), nullable=False, default="created")
+    error_message = Column(Text)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider", "scene_id", name="uq_sar_scene_provider_scene_id"
+        ),
+    )\n\n===== src/api/models/sar_scene_asset.py =====\n\nfrom sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.sql import func
+
+from src.api.db import Base
+
+
+class SARSceneAsset(Base):
+    """
+    AOI-specific raster asset downloaded from a canonical Sentinel-1 scene.
+
+    A single Sentinel scene may have multiple AOI-specific assets, so these
+    records are intentionally separate from SARScene itself.
+    """
+
+    __tablename__ = "sar_scene_assets"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+
+    scene_id = Column(
+        BigInteger,
+        ForeignKey("sar_scenes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    bbox_min_lon = Column(Float, nullable=False)
+    bbox_min_lat = Column(Float, nullable=False)
+    bbox_max_lon = Column(Float, nullable=False)
+    bbox_max_lat = Column(Float, nullable=False)
+
+    storage_key = Column(Text, nullable=False)
+
+    mime_type = Column(String(100), nullable=False, default="image/tiff")
+
+    file_size_bytes = Column(BigInteger)
+    checksum_sha256 = Column(String(64))
+
+    width = Column(Integer)
+    height = Column(Integer)
+    band_count = Column(Integer)
+    bands = Column(String(100))
+
+    crs = Column(String(100))
+    has_georeference = Column(
+        Boolean,
+        nullable=True,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "scene_id",
+            "bbox_min_lon",
+            "bbox_min_lat",
+            "bbox_max_lon",
+            "bbox_max_lat",
+            name="uq_sar_scene_asset_scene_bbox",
+        ),
+    )
+\n\n===== src/api/services/archive_tile_geo.py =====\n\nfrom __future__ import annotations
+
+from dataclasses import dataclass
+
+from rasterio.transform import Affine
+from rasterio.warp import transform_bounds
+
+
+@dataclass(frozen=True)
+class GeographicTileBounds:
+    """
+    Geographic footprint of a raster tile.
+
+    The returned bounds are always expressed in EPSG:4326.
+    """
+
+    west: float
+    south: float
+    east: float
+    north: float
+    crs: str
+
+
+def tile_bounds(
+    transform: Affine,
+    source_crs,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+) -> GeographicTileBounds:
+    """
+    Convert a tile's pixel coordinates into geographic bounds.
+
+    Parameters
+    ----------
+    transform:
+        Rasterio affine transform for the source raster.
+
+    source_crs:
+        CRS of the source raster.
+
+    x, y:
+        Pixel coordinates of the tile's upper-left corner.
+
+    width, height:
+        Tile dimensions in pixels.
+
+    Returns
+    -------
+    GeographicTileBounds
+        Tile bounds in EPSG:4326.
+    """
+
+    if width <= 0 or height <= 0:
+        raise ValueError(
+            "Tile width and height must be greater than zero."
+        )
+
+    if source_crs is None:
+        raise ValueError(
+            "Source raster CRS is required."
+        )
+
+    # Pixel edges, not pixel centers.
+    left, top = transform * (x, y)
+
+    right, bottom = transform * (
+        x + width,
+        y + height,
+    )
+
+    min_x = min(left, right)
+    max_x = max(left, right)
+    min_y = min(bottom, top)
+    max_y = max(bottom, top)
+
+    west, south, east, north = transform_bounds(
+        source_crs,
+        "EPSG:4326",
+        min_x,
+        min_y,
+        max_x,
+        max_y,
+        densify_pts=21,
+    )
+
+    return GeographicTileBounds(
+        west=float(west),
+        south=float(south),
+        east=float(east),
+        north=float(north),
+        crs="EPSG:4326",
+    )
+
+
+__all__ = [
+    "GeographicTileBounds",
+    "tile_bounds",
+]\n\n===== src/api/services/archive_asset_service.py =====\n\nfrom __future__ import annotations
+
+import tempfile
+from pathlib import Path
+
+from sqlalchemy.orm import Session
+
+from src.api.models import SARScene, SARSceneAsset
+from src.data_ingestion.sentinel_client import SentinelHubClient
+from src.storage.object_storage import upload_bytes
+from src.storage.tiff_metadata import read_tiff_metadata
+
+
+def get_existing_asset(
+    db: Session,
+    scene_id: int,
+    bbox: list[float],
+) -> SARSceneAsset | None:
+    """
+    Find an already-downloaded AOI asset for a Sentinel scene.
+    """
+
+    return (
+        db.query(SARSceneAsset)
+        .filter(
+            SARSceneAsset.scene_id == scene_id,
+            SARSceneAsset.bbox_min_lon == bbox[0],
+            SARSceneAsset.bbox_min_lat == bbox[1],
+            SARSceneAsset.bbox_max_lon == bbox[2],
+            SARSceneAsset.bbox_max_lat == bbox[3],
+        )
+        .first()
+    )
+
+
+def fetch_scene_asset(
+    db: Session,
+    sentinel_client: SentinelHubClient,
+    scene: SARScene,
+    bbox: list[float],
+    output_resolution: tuple[int, int] = (512, 512),
+) -> SARSceneAsset:
+    """
+    Fetch and persist an AOI-specific Sentinel-1 asset for a known scene.
+
+    If the same scene/AOI has already been downloaded, the existing asset
+    is returned without making another Sentinel request.
+    """
+
+    if len(bbox) != 4:
+        raise ValueError(
+            "bbox must contain [west, south, east, north]"
+        )
+
+    west, south, east, north = bbox
+
+    if not west < east or not south < north:
+        raise ValueError("Invalid bbox")
+
+    existing = get_existing_asset(
+        db=db,
+        scene_id=scene.id,
+        bbox=bbox,
+    )
+
+    if existing:
+        return existing
+
+    exact_datetime = scene.acquisition_date.isoformat()
+
+    tiff_bytes = sentinel_client.fetch_tile(
+        bbox=bbox,
+        exact_datetime=exact_datetime,
+        output_resolution=output_resolution,
+    )
+
+    if not tiff_bytes:
+        raise RuntimeError("Sentinel returned empty GeoTIFF content.")
+
+    with tempfile.NamedTemporaryFile(
+        suffix=".tif",
+        delete=False,
+    ) as temp_file:
+        temp_path = Path(temp_file.name)
+        temp_file.write(tiff_bytes)
+
+    try:
+        metadata = read_tiff_metadata(temp_path)
+
+        storage_key = (
+            f"sar/scenes/{scene.id}/"
+            f"{west}_{south}_{east}_{north}.tif"
+        )
+
+        storage_result = upload_bytes(
+            content=tiff_bytes,
+            object_key=storage_key,
+            content_type="image/tiff",
+        )
+
+        asset = SARSceneAsset(
+            scene_id=scene.id,
+            bbox_min_lon=west,
+            bbox_min_lat=south,
+            bbox_max_lon=east,
+            bbox_max_lat=north,
+            storage_key=storage_result["storage_key"],
+            mime_type="image/tiff",
+            file_size_bytes=storage_result["file_size_bytes"],
+            checksum_sha256=storage_result["checksum_sha256"],
+            width=metadata["width"],
+            height=metadata["height"],
+            band_count=metadata["band_count"],
+            bands=metadata["bands"],
+            crs=metadata["crs"],
+            has_georeference=metadata["crs"] is not None,
+        )
+
+        db.add(asset)
+        db.commit()
+        db.refresh(asset)
+
+        return asset
+
+    finally:
+        temp_path.unlink(missing_ok=True)
+\n\n===== src/api/main.py =====\n\n"""
+src/api/main.py
+===============
+FastAPI Application entry point for the GeoPulse SAR Intelligence System.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+
+# Ensure repo root is loaded and .env is present
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(REPO_ROOT / ".env", override=True)
+
+from src.api.routers.cdse import router as cdse_router
+from src.api.routers.detect import router as detect_router
+from src.api.routers.analyze import router as analyze_router
+from src.api.routers.health import router as health_router
+from src.api.routers.models import router as models_router
+from src.api.routers.requests import router as requests_router
+from src.api.routers.retrieval import router as retrieval_router
+from src.api.routers.timeline import router as timeline_router
+from src.api.services.model_service import ModelService
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("api")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Warm up model services and check CDSE credentials upon startup."""
+    logger.info("Initializing GeoPulse SAR Intelligence Server...")
+    
+    # Warm up models
+    ModelService.get_instance()
+    
+    cdse_id = os.environ.get("CDSE_CLIENT_ID")
+    if cdse_id:
+        logger.info(f"CDSE Credentials detected for client: {cdse_id[:8]}...")
+    else:
+        logger.warning("CDSE_CLIENT_ID not found in environment!")
+        
+    logger.info("API Server ready to accept requests.")
+    yield
+    logger.info("Shutting down GeoPulse SAR Intelligence Server...")
+
+
+app = FastAPI(
+    title="GeoPulse SAR Intelligence API",
+    description=(
+        "Production REST API for automated Synthetic Aperture Radar (SAR) and optical "
+        "satellite Change Detection. Provides Sentinel-1 GRD ingestion from Copernicus CDSE, "
+        "Siamese Neural Network inference (Siamese U-Net / SNUNet-CD), cluster extraction, "
+        "and calibrated intelligence scoring."
+    ),
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
+
+# Enable CORS for frontend clients (React, Vite, Next.js, Streamlit, etc.)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount sub-routers under /api/v1
+API_V1_PREFIX = "/api/v1"
+app.include_router(health_router, prefix=API_V1_PREFIX)
+app.include_router(cdse_router, prefix=API_V1_PREFIX)
+app.include_router(detect_router, prefix=API_V1_PREFIX)
+app.include_router(analyze_router, prefix=API_V1_PREFIX)
+app.include_router(models_router, prefix=API_V1_PREFIX)
+app.include_router(requests_router, prefix=API_V1_PREFIX)
+app.include_router(retrieval_router, prefix=API_V1_PREFIX)
+app.include_router(timeline_router, prefix=API_V1_PREFIX)
+
+# Also expose /health at root level for load balancers
+app.include_router(health_router)
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    """Redirect root path to interactive Swagger documentation."""
+    return RedirectResponse(url="/docs")
+
+\n\n===== ADDITIONAL RELEVANT FILE =====\nPATH: src/api/services/archive_index_manager.py\n\nfrom __future__ import annotations
+
+import json
+import os
+import tempfile
+from pathlib import Path
+
+import faiss
+import numpy as np
+
+
+class ArchiveIndexManager:
+    """
+    Incremental FAISS index manager for GeoPulse archive retrieval.
+
+    The FAISS index and metadata JSON always share the same ordering:
+
+        vector index 0 -> metadata[0]
+        vector index 1 -> metadata[1]
+        ...
+
+    This class keeps that invariant intact while allowing new
+    archive vectors to be appended without rebuilding the index.
+    """
+
+    DIMENSION = 1024
+
+    def __init__(
+        self,
+        index_path: str | Path,
+        metadata_path: str | Path,
+    ) -> None:
+
+        self.index_path = Path(index_path)
+        self.metadata_path = Path(metadata_path)
+
+        self.index_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        self.metadata: list[dict] = []
+
+        if self.index_path.exists():
+            self.index = faiss.read_index(
+                str(self.index_path)
+            )
+
+            if self.index.d != self.DIMENSION:
+                raise RuntimeError(
+                    f"FAISS dimension mismatch: "
+                    f"{self.index.d} != {self.DIMENSION}"
+                )
+
+        else:
+            self.index = faiss.IndexFlatIP(
+                self.DIMENSION
+            )
+
+        if self.metadata_path.exists():
+
+            with open(
+                self.metadata_path,
+                "r",
+                encoding="utf-8",
+            ) as f:
+                self.metadata = json.load(f)
+
+            if not isinstance(
+                self.metadata,
+                list,
+            ):
+                raise RuntimeError(
+                    "Retrieval metadata must be a JSON list."
+                )
+
+        self.verify()
+
+    @property
+    def count(self) -> int:
+        return self.index.ntotal
+
+    def verify(self) -> None:
+        """
+        Verify the fundamental FAISS/metadata invariant.
+        """
+
+        if self.index.d != self.DIMENSION:
+            raise RuntimeError(
+                f"FAISS dimension must be "
+                f"{self.DIMENSION}, got {self.index.d}"
+            )
+
+        if self.index.ntotal != len(
+            self.metadata
+        ):
+            raise RuntimeError(
+                "FAISS/metadata mismatch: "
+                f"{self.index.ntotal} vectors vs "
+                f"{len(self.metadata)} metadata records"
+            )
+
+    def add(
+        self,
+        embeddings: np.ndarray,
+        metadata_records: list[dict],
+    ) -> list[int]:
+        """
+        Append embeddings and metadata.
+
+        Returns the FAISS indices assigned to the new records.
+        """
+
+        embeddings = np.asarray(
+            embeddings,
+            dtype=np.float32,
+        )
+
+        if embeddings.ndim != 2:
+            raise ValueError(
+                f"Embeddings must be 2-D, got "
+                f"{embeddings.shape}"
+            )
+
+        if embeddings.shape[1] != self.DIMENSION:
+            raise ValueError(
+                f"Expected embedding dimension "
+                f"{self.DIMENSION}, got "
+                f"{embeddings.shape[1]}"
+            )
+
+        if len(embeddings) != len(
+            metadata_records
+        ):
+            raise ValueError(
+                "Embedding count and metadata count "
+                "must match."
+            )
+
+        if len(embeddings) == 0:
+            return []
+
+        # Defensive normalization.
+        faiss.normalize_L2(
+            embeddings
+        )
+
+        start_index = self.index.ntotal
+
+        self.index.add(
+            embeddings
+        )
+
+        assigned_indices = list(
+            range(
+                start_index,
+                start_index + len(embeddings),
+            )
+        )
+
+        for faiss_index, record in zip(
+            assigned_indices,
+            metadata_records,
+        ):
+
+            record = dict(record)
+
+            record["faiss_index"] = (
+                faiss_index
+            )
+
+            self.metadata.append(
+                record
+            )
+
+        self.verify()
+
+        return assigned_indices
+
+    def search(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 10,
+    ) -> list[dict]:
+        """
+        Search the current index.
+
+        Because the index contains normalized vectors,
+        inner product is cosine similarity.
+        """
+
+        if top_k < 1:
+            raise ValueError(
+                "top_k must be >= 1."
+            )
+
+        if self.index.ntotal == 0:
+            return []
+
+        top_k = min(
+            top_k,
+            self.index.ntotal,
+        )
+
+        query = np.asarray(
+            query_embedding,
+            dtype=np.float32,
+        )
+
+        if query.ndim == 1:
+            query = query.reshape(
+                1,
+                -1,
+            )
+
+        if query.shape != (
+            1,
+            self.DIMENSION,
+        ):
+            raise ValueError(
+                f"Expected query shape "
+                f"(1, {self.DIMENSION}), "
+                f"got {query.shape}"
+            )
+
+        faiss.normalize_L2(
+            query
+        )
+
+        scores, indices = (
+            self.index.search(
+                query,
+                top_k,
+            )
+        )
+
+        results = []
+
+        for rank, (
+            score,
+            index,
+        ) in enumerate(
+            zip(
+                scores[0],
+                indices[0],
+            ),
+            start=1,
+        ):
+
+            index = int(index)
+
+            if index < 0:
+                continue
+
+            results.append(
+                {
+                    "rank": rank,
+                    "score": float(score),
+                    "faiss_index": index,
+                    "record": dict(
+                        self.metadata[index]
+                    ),
+                }
+            )
+
+        return results
+
+    def save(self) -> None:
+        """
+        Persist FAISS index and metadata.
+
+        Temporary files are written first so an interrupted
+        save is less likely to leave a partially-written file.
+        """
+
+        self.verify()
+
+        self.index_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        # ----------------------------------------------------
+        # Save FAISS to temporary file
+        # ----------------------------------------------------
+
+        index_fd, index_tmp = (
+            tempfile.mkstemp(
+                suffix=".index.tmp",
+                dir=str(
+                    self.index_path.parent
+                ),
+            )
+        )
+
+        os.close(index_fd)
+
+        metadata_fd, metadata_tmp = (
+            tempfile.mkstemp(
+                suffix=".json.tmp",
+                dir=str(
+                    self.metadata_path.parent
+                ),
+            )
+        )
+
+        os.close(metadata_fd)
+
+        try:
+
+            faiss.write_index(
+                self.index,
+                index_tmp,
+            )
+
+            with open(
+                metadata_tmp,
+                "w",
+                encoding="utf-8",
+            ) as f:
+
+                json.dump(
+                    self.metadata,
+                    f,
+                    indent=2,
+                    ensure_ascii=False,
+                )
+
+            os.replace(
+                index_tmp,
+                self.index_path,
+            )
+
+            os.replace(
+                metadata_tmp,
+                self.metadata_path,
+            )
+
+        finally:
+
+            Path(
+                index_tmp
+            ).unlink(
+                missing_ok=True
+            )
+
+            Path(
+                metadata_tmp
+            ).unlink(
+                missing_ok=True
+            )
+
+    def get_record(
+        self,
+        faiss_index: int,
+    ) -> dict | None:
+        """
+        Return metadata for a FAISS index position.
+        """
+
+        if faiss_index < 0:
+            return None
+
+        if faiss_index >= len(
+            self.metadata
+        ):
+            return None
+
+        return dict(
+            self.metadata[
+                faiss_index
+            ]
+        )
+
+
+__all__ = [
+    "ArchiveIndexManager",
+]\n\n===== ADDITIONAL RELEVANT FILE =====\nPATH: src/api/routers/retrieval.py\n\nfrom __future__ import annotations
+
+import os
+from functools import lru_cache
+from io import BytesIO
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+from PIL import Image, UnidentifiedImageError
+from pydantic import BaseModel, Field
+
+from src.api.services.retrieval_encoder import RetrievalEncoder
+from src.api.services.retrieval_service import RetrievalService
+from src.api.services.archive_retrieval_encoder import ArchiveRetrievalEncoder
+from src.api.services.production_archive_retrieval_service import (
+    ProductionArchiveRetrievalService,
+)
+
+
+class TextSearchRequest(BaseModel):
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=500,
+        description="Natural language query",
+    )
+    top_k: int = Field(
+        10,
+        ge=1,
+        le=100,
+        description="Number of results to retrieve",
+    )
+
+
+router = APIRouter(
+    prefix="/retrieval",
+    tags=["retrieval"],
+)
+
+
+# ============================================================
+# EXISTING EXPERIMENTAL RETRIEVAL
+# ============================================================
+
+@lru_cache(maxsize=1)
+def get_retrieval_service() -> RetrievalService:
+    """
+    Create and cache the existing experimental retrieval service.
+    """
+
+    encoder = RetrievalEncoder(
+        os.environ["RETRIEVAL_MODEL_PATH"]
+    )
+
+    return RetrievalService.from_environment(
+        encoder
+    )
+
+
+# ============================================================
+# PRODUCTION ARCHIVE RETRIEVAL
+# ============================================================
+
+@lru_cache(maxsize=1)
+def get_production_archive_service() -> ProductionArchiveRetrievalService:
+    """
+    Create and cache the production Sentinel-1 archive
+    retrieval service.
+
+    The RemoteCLIP model and FAISS index are loaded once
+    and reused across requests.
+    """
+
+    checkpoint_path = os.environ.get(
+        "ARCHIVE_RETRIEVAL_MODEL_PATH"
+    )
+
+    if not checkpoint_path:
+        raise RuntimeError(
+            "ARCHIVE_RETRIEVAL_MODEL_PATH "
+            "is not configured."
+        )
+
+    encoder = ArchiveRetrievalEncoder(
+        checkpoint_path
+    )
+
+    return ProductionArchiveRetrievalService.from_environment(
+        encoder
+    )
+
+
+# ============================================================
+# EXISTING IMAGE SEARCH
+# ============================================================
+
+@router.post("/image-search")
+async def image_search(
+    image: UploadFile = File(...),
+    top_k: int = 10,
+):
+    """
+    Search the existing indexed satellite-image archive
+    using an uploaded image.
+    """
+
+    if top_k < 1 or top_k > 100:
+        raise HTTPException(
+            status_code=400,
+            detail="top_k must be between 1 and 100.",
+        )
+
+    try:
+        contents = await image.read()
+
+        if not contents:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded image is empty.",
+            )
+
+        pil_image = Image.open(
+            BytesIO(contents)
+        ).convert("RGB")
+
+    except UnidentifiedImageError:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is not a valid image.",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unable to read uploaded image: {exc}",
+        )
+
+    try:
+        service = get_retrieval_service()
+
+        results = service.search_image(
+            pil_image,
+            top_k=top_k,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Retrieval failed: {exc}",
+        )
+
+    return {
+        "query": {
+            "filename": image.filename,
+            "content_type": image.content_type,
+        },
+        "model": {
+            "name": service.encoder.MODEL_NAME,
+            "version": service.encoder.MODEL_VERSION,
+            "dimension": service.encoder.EMBEDDING_DIMENSION,
+            "metric": "cosine",
+        },
+        "results": results,
+        "count": len(results),
+    }
+
+
+# ============================================================
+# EXISTING TEXT SEARCH
+# ============================================================
+
+@router.post("/text-search")
+async def text_search(
+    request: TextSearchRequest,
+):
+    """
+    Search the existing indexed satellite-image archive
+    using a natural language text query.
+    """
+
+    if not request.query or not request.query.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Query text cannot be empty.",
+        )
+
+    try:
+        service = get_retrieval_service()
+
+        results = service.search_text(
+            request.query,
+            top_k=request.top_k,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Retrieval failed: {exc}",
+        )
+
+    return {
+        "query": {
+            "text": request.query,
+        },
+        "model": {
+            "name": service.encoder.MODEL_NAME,
+            "version": service.encoder.MODEL_VERSION,
+            "dimension": service.encoder.EMBEDDING_DIMENSION,
+            "metric": "cosine",
+        },
+        "results": results,
+        "count": len(results),
+    }
+
+
+# ============================================================
+# PRODUCTION ARCHIVE IMAGE SEARCH
+# ============================================================
+
+@router.post("/archive-image-search")
+async def archive_image_search(
+    image: UploadFile = File(...),
+    top_k: int = 10,
+):
+    """
+    Search the production Sentinel-1 archive using
+    an uploaded satellite image.
+    """
+
+    if top_k < 1 or top_k > 100:
+        raise HTTPException(
+            status_code=400,
+            detail="top_k must be between 1 and 100.",
+        )
+
+    try:
+        contents = await image.read()
+
+        if not contents:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded image is empty.",
+            )
+
+        pil_image = Image.open(
+            BytesIO(contents)
+        ).convert("RGB")
+
+    except UnidentifiedImageError:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is not a valid image.",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unable to read uploaded image: {exc}",
+        )
+
+    try:
+        service = get_production_archive_service()
+
+        results = service.search_image(
+            pil_image,
+            top_k=top_k,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Production archive retrieval failed: {exc}",
+        )
+
+    return {
+        "query": {
+            "filename": image.filename,
+            "content_type": image.content_type,
+        },
+        "archive": {
+            "type": "sentinel-1",
+            "index_vectors": service.count,
+        },
+        "model": {
+            "name": service.encoder.MODEL_NAME,
+            "version": service.encoder.MODEL_VERSION,
+            "dimension": service.encoder.EMBEDDING_DIMENSION,
+            "metric": "cosine",
+        },
+        "results": results,
+        "count": len(results),
+    }
+
+
+# ============================================================
+# PRODUCTION ARCHIVE TEXT SEARCH
+# ============================================================
+
+@router.post("/archive-text-search")
+async def archive_text_search(
+    request: TextSearchRequest,
+):
+    """
+    Search the production Sentinel-1 archive using
+    a natural language query.
+    """
+
+    if not request.query or not request.query.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Query text cannot be empty.",
+        )
+
+    try:
+        service = get_production_archive_service()
+
+        results = service.search_text(
+            request.query,
+            top_k=request.top_k,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Production archive retrieval failed: {exc}",
+        )
+
+    return {
+        "query": {
+            "text": request.query,
+        },
+        "archive": {
+            "type": "sentinel-1",
+            "index_vectors": service.count,
+        },
+        "model": {
+            "name": service.encoder.MODEL_NAME,
+            "version": service.encoder.MODEL_VERSION,
+            "dimension": service.encoder.EMBEDDING_DIMENSION,
+            "metric": "cosine",
+        },
+        "results": results,
+        "count": len(results),
+    }
+
+
+# ============================================================
+# EXISTING TILE ENDPOINT
+# ============================================================
+
+@router.get("/tile/{tile_id}")
+async def get_tile_image(
+    tile_id: str,
+):
+    """
+    Safely serve an existing retrieval tile image
+    by its tile_id.
+    """
+
+    try:
+        service = get_retrieval_service()
+
+        record = service.get_record_by_tile_id(
+            tile_id
+        )
+
+        if not record:
+            raise HTTPException(
+                status_code=404,
+                detail="Tile not found.",
+            )
+
+        image_path = record.get(
+            "image_path"
+        )
+
+        if not image_path or not os.path.exists(
+            image_path
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail="Image file not found.",
+            )
+
+        return FileResponse(
+            path=image_path,
+            media_type="image/png",
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to serve tile: {exc}",
+        )\n
+===== FILE DISCOVERY SUMMARY =====
+
+List:
+Requested files:
+- src/api/services/archive_retrieval_encoder.py
+- src/api/services/production_archive_retrieval_service.py
+- src/api/routers/timeline.py
+- src/api/services/change_analyzer.py
+- src/api/services/inference_service.py
+- src/api/services/model_service.py
+- src/preprocessing/sar_loader.py
+- src/api/schemas.py
+- src/api/models/sar_scene.py
+- src/api/models/sar_scene_asset.py
+- src/api/services/archive_tile_geo.py
+- src/api/services/archive_asset_service.py
+- src/api/main.py
+
+Additional relevant files discovered:
+- src/api/services/archive_index_manager.py
+- src/api/routers/retrieval.py
+
+- RemoteCLIP checkpoint path: NOT FOUND
+- Model/device configuration: Uses ModelService for main inference, ProductionArchiveRetrievalService / ArchiveRetrievalEncoder handles RemoteCLIP via torch.device.
+- RemoteCLIP currently supports text encoding in the existing code: True
+- Current timeline endpoint already produces region crops: True
+- Current timeline endpoint already exposes region masks/bounding boxes: True
+- Reusable components for zero-shot semantic classification:
+  - `ProductionArchiveRetrievalService.search_text()` (open_clip text tokenization and FAISS).
+  - `ArchiveRetrievalEncoder` (handles transforming images to CLIP embeddings).
+  - `run_change_detection` returns `ChangedRegion` objects containing bounding boxes (`bbox_xy`, `geo_bbox`), centroids, area, and change probability.

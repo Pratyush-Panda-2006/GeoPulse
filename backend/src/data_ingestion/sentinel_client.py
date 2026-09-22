@@ -54,7 +54,7 @@ _TOKEN_URL = (
     "https://identity.dataspace.copernicus.eu"
     "/auth/realms/CDSE/protocol/openid-connect/token"
 )
-_PROCESS_URL = "https://sh.dataspace.copernicus.eu/api/v1/process"
+_PROCESS_URL = "https://sh.dataspace.copernicus.eu/process/v1"
 _CATALOG_URL = "https://sh.dataspace.copernicus.eu/api/v1/catalog/1.0.0/search"
 
 # Back-off parameters for transient errors
@@ -341,7 +341,7 @@ def _build_dem_request_body(
                 {
                     "type": "dem",
                     "dataFilter": {
-                        "demInstance": "COPERNICUS_30"
+                        "demInstance": "COPERNICUS_90"
                     }
                 }
             ],

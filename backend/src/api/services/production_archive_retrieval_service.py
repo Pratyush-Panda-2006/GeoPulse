@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+import open_clip
 from PIL import Image
 
 from src.api.services.archive_index_manager import (
@@ -92,6 +93,70 @@ class ProductionArchiveRetrievalService:
             embedding = (
                 self.encoder.model.encode_image(
                     tensor
+                )
+            )
+
+            embedding = (
+                embedding
+                / embedding.norm(
+                    dim=-1,
+                    keepdim=True,
+                )
+            )
+
+        query = (
+            embedding
+            .cpu()
+            .numpy()
+            .astype(np.float32)
+        )
+
+        return self.index_manager.search(
+            query,
+            top_k=top_k,
+        )
+
+    def search_text(
+        self,
+        text: str,
+        top_k: int = 10,
+    ) -> list[dict]:
+        """
+        Search the production archive using a natural-language
+        text query through RemoteCLIP.
+        """
+
+        if not text or not text.strip():
+            raise ValueError(
+                "text query must not be empty."
+            )
+
+        if top_k < 1:
+            raise ValueError(
+                "top_k must be >= 1."
+            )
+
+        if self.count == 0:
+            return []
+
+        top_k = min(
+            top_k,
+            self.count,
+        )
+
+        import torch
+
+        tokens = open_clip.tokenize(
+            [text.strip()]
+        ).to(
+            self.encoder.device
+        )
+
+        with torch.no_grad():
+
+            embedding = (
+                self.encoder.model.encode_text(
+                    tokens
                 )
             )
 

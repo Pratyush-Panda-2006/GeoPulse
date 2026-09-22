@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple, Any, Dict
 from pydantic import BaseModel, Field, model_serializer
+from datetime import datetime
 
 
 class BBox(BaseModel):
@@ -202,6 +203,18 @@ class ChangeDetectionResponse(BaseModel):
     change_boxes_base64: Optional[str] = None
     nemotron_interpretations: Optional[Dict[int, 'NemotronInterpretation']] = None
     execution_time_sec: float
+    before_asset_id: Optional[int] = None
+    after_asset_id: Optional[int] = None
+    before_scene_id: Optional[int] = None
+    after_scene_id: Optional[int] = None
+    before_sentinel_scene_id: Optional[str] = None
+    after_sentinel_scene_id: Optional[str] = None
+    before_acquisition_date: Optional[datetime] = None
+    after_acquisition_date: Optional[datetime] = None
+    before_storage_key: Optional[str] = None
+    after_storage_key: Optional[str] = None
+    before_checksum_sha256: Optional[str] = None
+    after_checksum_sha256: Optional[str] = None
 
 
 class HealthResponse(BaseModel):

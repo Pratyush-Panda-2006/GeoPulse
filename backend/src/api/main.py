@@ -28,6 +28,7 @@ from src.api.routers.models import router as models_router
 from src.api.routers.requests import router as requests_router
 from src.api.routers.retrieval import router as retrieval_router
 from src.api.routers.timeline import router as timeline_router
+from src.api.routers.terrain import router as terrain_router
 from src.api.services.model_service import ModelService
 
 # Configure logging
@@ -91,6 +92,7 @@ app.include_router(models_router, prefix=API_V1_PREFIX)
 app.include_router(requests_router, prefix=API_V1_PREFIX)
 app.include_router(retrieval_router, prefix=API_V1_PREFIX)
 app.include_router(timeline_router, prefix=API_V1_PREFIX)
+app.include_router(terrain_router, prefix=API_V1_PREFIX)
 
 # Also expose /health at root level for load balancers
 app.include_router(health_router)

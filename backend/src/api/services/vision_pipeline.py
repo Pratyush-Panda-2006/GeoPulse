@@ -13,6 +13,7 @@ from src.api.services.vision_encoder import sar_pair_to_rgb, build_side_by_side_
 from src.api.services.vision_classifier import VisionClassifierClient, parse_nemotron_response
 import base64
 import io
+import time
 from PIL import Image, ImageDraw
 
 @dataclass
@@ -176,7 +177,11 @@ def orchestrate_vision_classification(
         calls_made += 1
 
         try:
+            print(f"[Vision] Region {region.region_id}: NVIDIA call started")
+            start_t = time.time()
             raw_response = client.classify_image_bytes(payload.jpeg_bytes, prompt, max_retries_override=1)
+            elapsed = time.time() - start_t
+            print(f"[Vision] Region {region.region_id}: NVIDIA call succeeded in {elapsed:.2f}s")
             
             try:
                 parsed = parse_nemotron_response(raw_response)
@@ -215,6 +220,11 @@ def orchestrate_vision_classification(
                     error=str(e)
                 )
         except Exception as e:
+            elapsed = time.time() - start_t
+            if "Timeout" in type(e).__name__ or "timeout" in str(e).lower():
+                print(f"[Vision] Region {region.region_id}: NVIDIA call timed out after {elapsed:.2f}s")
+            else:
+                print(f"[Vision] Region {region.region_id}: NVIDIA call failed after {elapsed:.2f}s: {type(e).__name__}: {e}")
             interpretations[region.region_id] = NemotronInterpretation(
                 region_id=region.region_id,
                 status="unavailable",
