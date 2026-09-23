@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "echo \"Static build complete\"",
-  "outputDirectory": ".",
+  "buildCommand": "echo \"Root static build complete\"",
+  "outputDirectory": "frontend",
   "framework": null,
   "routes": [
     { "src": "/", "dest": "/overview.html" }
