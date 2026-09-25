@@ -101,7 +101,9 @@ class ModelService:
             # SNUNet-CD SAR Model 3
             try:
                 snunet_sar = SNUNetCD(in_channels=2, num_classes=1)
-                ckpt_path = Path(__file__).resolve().parent.parent.parent.parent / "runs" / "2026-08-23_01-14-15_tum_oscd_sar_snunet_bce_tversky_scratch" / "checkpoints" / "best.pt"
+                import os
+                default_ckpt_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "models" / "snunet" / "best.pt"
+                ckpt_path = Path(os.getenv("SNUNET_MODEL_PATH", str(default_ckpt_path)))
                 if ckpt_path.exists():
                     checkpoint = torch.load(str(ckpt_path), map_location=self.device, weights_only=False)
                     if isinstance(checkpoint, dict):

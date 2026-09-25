@@ -102,4 +102,3 @@ app.include_router(health_router)
 async def root():
     """Redirect root path to interactive Swagger documentation."""
     return RedirectResponse(url="/docs")
-

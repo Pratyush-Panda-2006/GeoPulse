@@ -101,3 +101,37 @@ models/ChangeFormer/samples_LEVIR/*
 models/ChangeFormer/.git_changeformer_backup/
 .neon
 node_modules/
+
+# Database
+*.db
+backend/geopulse.db
+
+# Node
+node_modules/
+dist/
+
+# Benchmark and scratch scripts
+backend/test_all.py
+backend/test_arch.py
+scratch.py
+backend/scratch.py
+
+# Models & Weights
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Root Temporary files
+*.png
+*_backup.html
+*.patch
+!frontend/telemetry.friend.html
+!frontend/telemetry.react-backup.html
+friend_*.html
+git_log.txt
+*.txt
+!requirements.txt
+
+*.index
+models/external/*.json

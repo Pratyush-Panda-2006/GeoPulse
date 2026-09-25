@@ -23,3 +23,7 @@ shapely            # BBox geometry helpers
 psycopg2-binary
 SQLAlchemy
 alembic
+pyproj>=3.0.0
+boto3>=1.34.0
+open_clip_torch>=2.20.0
+faiss-cpu>=1.7.4

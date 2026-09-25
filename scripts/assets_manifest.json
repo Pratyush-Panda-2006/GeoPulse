@@ -1,0 +1,76 @@
+{
+    "assets": [
+        {
+            "name": "RemoteCLIP-RN50",
+            "type": "model",
+            "destination": "models/external/RemoteCLIP-RN50.pt",
+            "expected_filename": "RemoteCLIP-RN50.pt",
+            "distribution_required": true,
+            "required_by": [
+                "semantic text retrieval",
+                "image-to-image retrieval",
+                "archive retrieval"
+            ]
+        },
+        {
+            "name": "rsicd_remoteclip_rn50.index",
+            "type": "index",
+            "destination": "models/external/rsicd_remoteclip_rn50.index",
+            "expected_filename": "rsicd_remoteclip_rn50.index",
+            "distribution_required": true,
+            "required_by": [
+                "experimental retrieval"
+            ]
+        },
+        {
+            "name": "metadata.json",
+            "type": "metadata",
+            "destination": "models/external/metadata.json",
+            "expected_filename": "metadata.json",
+            "distribution_required": true,
+            "required_by": [
+                "experimental retrieval"
+            ]
+        },
+        {
+            "name": "geopulse_archive.index",
+            "type": "index",
+            "destination": "models/external/geopulse_archive.index",
+            "expected_filename": "geopulse_archive.index",
+            "distribution_required": true,
+            "required_by": [
+                "production archive retrieval"
+            ]
+        },
+        {
+            "name": "geopulse_archive_metadata.json",
+            "type": "metadata",
+            "destination": "models/external/geopulse_archive_metadata.json",
+            "expected_filename": "geopulse_archive_metadata.json",
+            "distribution_required": true,
+            "required_by": [
+                "production archive retrieval"
+            ]
+        },
+        {
+            "name": "SNUNet-CD SAR",
+            "type": "model",
+            "destination": "models/snunet/best.pt",
+            "expected_filename": "best.pt",
+            "distribution_required": true,
+            "required_by": [
+                "SNUNet-CD SAR change detection"
+            ]
+        },
+        {
+            "name": "ChangeFormer-LEVIR",
+            "type": "model",
+            "destination": "models/ChangeFormer/checkpoints/ChangeFormerV6_LEVIR/best_ckpt.pt",
+            "expected_filename": "best_ckpt.pt",
+            "distribution_required": true,
+            "required_by": [
+                "ChangeFormer change detection"
+            ]
+        }
+    ]
+}
